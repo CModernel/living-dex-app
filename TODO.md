@@ -144,16 +144,35 @@ This prevents surprise gaps like "the feature works in unit tests but breaks in 
       (`UserStateContext.test.tsx` — load/persist round-trip against a real Storage-shaped mock,
       3 tests) **+ manual device verification**.
 
-- [ ] **2.5 Tier-logic import verified (both platforms).**
-      - Both `apps/web` and `apps/mobile` can `import { TIERS } from '@cmodernel/living-dex-tiers'`
-        without errors.
-      - Tests in both apps exercise the import (e.g., `TIERS['living-form'].count > 0`).
+- [x] **2.5 Tier-logic import verified (both platforms).** ✅ `apps/mobile/src/tiers.test.ts` added
+      (mirrors `apps/web/src/tiers.test.ts` from 1.1, now runnable via 2.6's Jest setup).
+      - Both `apps/web` and `apps/mobile` import `{ TIERS }` from `@cmodernel/living-dex-tiers`
+      without errors
+      - Tests in both apps exercise the import and verify all 4 tier names
 
-- [ ] **2.6 Unit test setup verified (both platforms).**
+- [x] **2.6 Unit test setup verified (both platforms).** ✅ Mobile test runner stood up from scratch.
       - **Web:** Vitest + Testing Library (already configured; #1.3 verifies).
-      - **Mobile:** Vitest or Jest via Expo (configure if needed). At least one test passes.
+      - **Mobile:** `jest-expo` + `@testing-library/react-native` + `react-test-renderer` (all
+      pinned to versions that actually work together — see below). 2 tests pass
+      (`tiers.test.ts` + a `HomeScreen` render test).
+      - Found and fixed two real bugs along the way:
+        1. `babel-preset-expo` was still pinned to the old `~11.0.5` version scheme (a leftover
+        from an early-session hack, well before Expo SDK 54 switched this package to match its own
+        `54.x` version numbers) — this old version couldn't parse newer Flow syntax
+        (`ref as string` casts) present in `react-native@0.81.5`'s own `jest/mock.js`, breaking
+        every mobile test suite before any test code even ran. Bumped to `~54.0.12`.
+        2. `@testing-library/react-native@14.x` (New Architecture-oriented, needs a `test-renderer`
+        setup jest-expo doesn't provide out of the box) silently broke `render()`'s returned
+        queries. Downgraded to the widely-supported `^12.9.0` line, paired with
+        `react-test-renderer` pinned to the exact same React version as everything else in the
+        monorepo (`19.1.0`) — the same "must match exactly" constraint discovered for `react-dom`
+        in 2.2.
+      - Root `npm run test` (business-logic + web + mobile) now runs end-to-end for the first time:
+      29 tests total, all passing.
+      **Tests: Unit + UI** (`tiers.test.ts`, `HomeScreen.test.tsx`).
 
-**Phase 2 complete when:** Both apps compile, routing works, storage layer ready, no feature code yet.
+**Phase 2 complete when:** ✅ All 6 items done — both apps compile, routing works, storage layer
+ready, themed, tested, no feature code yet.
 
 ---
 
