@@ -261,10 +261,39 @@ even if the `3.X` task order below does.
       above, including the tooltip fix.
 
 ### Columns & Preferences
-- [ ] **3.4 #11 — Customizable columns.** TanStack Table column-visibility API; show/hide menu for
-      optional columns (dex #, generation, region, evolution stage — exact set decided once the
-      table's shipped).
-      **Tests: UI** (toggling a column hides/shows it).
+- [x] **3.4 #11 — Customizable columns.** ✅ First real use of TanStack Table v9 in this repo.
+      - `HomePage.tsx` rewritten with `useTable`/`createColumnHelper` (v9's API, meaningfully
+      different from v8 — no `getCoreRowModel` table option anymore, features are opt-in via
+      `tableFeatures({ columnVisibilityFeature })`, `ColumnDef` needs an extra `TFeatures`
+      generic). Researched from the installed package's own `.d.ts` files and bundled
+      `skills/*/SKILL.md` guides before writing any code (plan mode) — avoided guessing at an
+      unfamiliar, versioned API.
+      - New optional columns, hidden by default: Dex # (`dex`), Generation (`generation`), Region
+      (`region`, falls back to `—`), Stage (`evolutionStage`). Sprite/Name/Types/Owned stay
+      `enableHiding: false` — always visible, matching the pre-3.4 baseline table exactly until a
+      user opts in.
+      - New `ColumnVisibilityMenu.tsx` — a `<details>`/`<summary>` disclosure listing hideable
+      columns, no new dependency/custom popover needed.
+      - Hit a real TypeScript limitation: `ColumnDef` is invariant in its value-type generic
+      (`footer`/`cell` templates appear in both producer and consumer position), so a
+      heterogeneous array of columns with different value types (string/number/unknown) can't
+      structurally satisfy `ColumnDef<Features, Data, unknown>[]` even though it's fine at
+      runtime — fixed with an explicit `as ColumnDef<..., any>[]` cast, the standard escape hatch
+      for this known class of TS limitation.
+      - Found and fixed a real (if low-probability-in-practice) bug while chasing a flaky test:
+      `useActiveList`'s `toggleOwned` assumed the "auto-create a default list" mount effect had
+      already run, silently dropping a click that landed before it did (e.g. right as the
+      dataset resolves). Made `toggleOwned` create the list inline if needed instead of relying
+      on the effect's timing — atomic and correct regardless of race. Also hardened several tests
+      that captured a checkbox `await`-then-clicked-later: TanStack's row/cell rendering can
+      recreate cell elements across state changes, so a captured DOM reference can go stale
+      between the `await` and the click — now query-and-click happen in the same statement.
+      - Verified visually in-browser: toggled each optional column on/off (values render/disappear
+      correctly), confirmed the always-visible columns aren't offered in the menu, confirmed row
+      click / tier selector / hover tooltip / owned highlight all still work post-rewrite.
+      **Tests: UI** (3 new tests: optional columns hidden by default, toggling shows/hides,
+      always-visible columns excluded from the menu; existing tests hardened against the DOM
+      staleness issue above). 26/26 web tests passing, verified in a clean Docker build too.
 
 - [ ] **3.5 #19 — Persist preferences.** Wire `visibleColumns` (3.4) and `darkMode` (toggle-only
       since 2.3) into `UserPreferences` via the existing `useUserState()` — closes the

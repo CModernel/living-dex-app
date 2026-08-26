@@ -31,8 +31,11 @@ export function useActiveList() {
 
   function toggleOwned(slug: string) {
     setState((prev) => {
-      const list = prev.activeListId ? prev.lists[prev.activeListId] : undefined
-      if (!list) return prev
+      // Don't rely on the mount effect above having already run — a click can land before
+      // that effect commits (e.g. right after the dataset resolves), and a plain "no active
+      // list yet, so no-op" here would silently drop it. Create the list inline instead, so
+      // this is correct regardless of timing.
+      const list = (prev.activeListId ? prev.lists[prev.activeListId] : undefined) ?? createDefaultList()
 
       const owned = new Set(list.ownedIds)
       if (owned.has(slug)) owned.delete(slug)
@@ -41,6 +44,7 @@ export function useActiveList() {
       return {
         ...prev,
         lists: { ...prev.lists, [list.id]: { ...list, ownedIds: Array.from(owned) } },
+        activeListId: list.id,
       }
     })
   }

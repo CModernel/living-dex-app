@@ -1,6 +1,9 @@
-import { getSpriteUrl } from '@living-dex/business-logic'
+import { getSpriteUrl, type PokemonEntry, type PokemonDataset } from '@living-dex/business-logic'
 import { TIERS, type TierId } from '@cmodernel/living-dex-tiers'
-import { useState } from 'react'
+import { flexRender, useTable } from '@tanstack/react-table'
+import { columnVisibilityFeature, createColumnHelper, tableFeatures, type ColumnDef } from '@tanstack/table-core'
+import { useMemo, useState } from 'react'
+import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
 import TypeBadge from '../components/TypeBadge'
 import { useActiveList } from '../hooks/useActiveList'
 import { useDataset } from '../hooks/useDataset'
@@ -12,10 +15,95 @@ const TIER_LABELS: Record<TierId, string> = {
   'final-form': 'Final Form',
 }
 
+// Module-level: no runtime data dependency, must stay stable across renders.
+const features = tableFeatures({ columnVisibilityFeature })
+const columnHelper = createColumnHelper<typeof features, PokemonEntry>()
+
+function Sprite({ dataset, entry }: { dataset: PokemonDataset; entry: PokemonEntry }) {
+  const spriteUrl = getSpriteUrl(dataset, entry) ?? undefined
+  return (
+    <div className="group relative inline-block">
+      <img src={spriteUrl} alt="" loading="lazy" style={{ width: 48, height: 48, maxWidth: 'none' }} />
+      <div className="pointer-events-none absolute top-1/2 left-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 rounded border border-border bg-background p-2 shadow-lg group-hover:block">
+        <img src={spriteUrl} alt="" style={{ width: 96, height: 96, maxWidth: 'none' }} />
+      </div>
+    </div>
+  )
+}
+
 function HomePage() {
   const result = useDataset()
   const { activeList, toggleOwned } = useActiveList()
   const [tierId, setTierId] = useState<TierId>('living-form')
+
+  const dataset = result.loading || result.error ? null : result.dataset
+  const entries = useMemo(() => {
+    if (!dataset) return []
+    return Object.values(dataset.pokemon)
+      .filter(TIERS[tierId].predicate)
+      .sort((a, b) => a.sortIndex - b.sortIndex)
+  }, [dataset, tierId])
+  const ownedIds = useMemo(() => new Set(activeList?.ownedIds ?? []), [activeList])
+
+  const columns = useMemo(
+    () => [
+      columnHelper.display({
+        id: 'sprite',
+        header: '',
+        enableHiding: false,
+        cell: (ctx) => (dataset ? <Sprite dataset={dataset} entry={ctx.row.original} /> : null),
+      }),
+      columnHelper.accessor('name', { header: 'Name', enableHiding: false }),
+      columnHelper.display({
+        id: 'types',
+        header: 'Types',
+        enableHiding: false,
+        cell: (ctx) => (
+          <div className="flex gap-1">
+            {ctx.row.original.types.map((type) => (
+              <TypeBadge key={type} type={type} />
+            ))}
+          </div>
+        ),
+      }),
+      columnHelper.accessor('dex', { header: 'Dex #' }),
+      columnHelper.accessor('generation', { header: 'Generation' }),
+      columnHelper.accessor((row) => row.region ?? '—', { id: 'region', header: 'Region' }),
+      columnHelper.accessor('evolutionStage', { header: 'Stage' }),
+      columnHelper.display({
+        id: 'owned',
+        header: 'Owned',
+        enableHiding: false,
+        cell: (ctx) => (
+          <input
+            type="checkbox"
+            checked={ownedIds.has(ctx.row.original.slug)}
+            onChange={() => toggleOwned(ctx.row.original.slug)}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Mark ${ctx.row.original.name} as owned`}
+            className="cursor-pointer"
+          />
+        ),
+      }),
+      // TanStack's ColumnDef is invariant in TValue (footer/cell templates appear in both
+      // producer and consumer position), so a heterogeneous array (string/number/unknown value
+      // columns mixed together) can't structurally satisfy ColumnDef<Features, Data, unknown>[]
+      // even though it's fine at runtime — a standard, safe cast for this known TS limitation.
+    ] as ColumnDef<typeof features, PokemonEntry, any>[],
+    [dataset, ownedIds, toggleOwned],
+  )
+
+  const table = useTable(
+    {
+      features,
+      columns,
+      data: entries,
+      initialState: {
+        columnVisibility: { dex: false, generation: false, region: false, evolutionStage: false },
+      },
+    },
+    (state) => ({ columnVisibility: state.columnVisibility }),
+  )
 
   if (result.loading) {
     return <p className="text-muted">Loading Pokémon data…</p>
@@ -25,82 +113,64 @@ function HomePage() {
     return <p className="text-muted">Failed to load dataset: {result.error.message}</p>
   }
 
-  const { dataset } = result
-  const entries = Object.values(dataset.pokemon)
-    .filter(TIERS[tierId].predicate)
-    .sort((a, b) => a.sortIndex - b.sortIndex)
-  const ownedIds = new Set(activeList?.ownedIds ?? [])
+  const hideableColumns = table
+    .getAllColumns()
+    .filter((column) => column.getCanHide())
+    .map((column) => ({
+      id: column.id,
+      label: typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id,
+      isVisible: column.getIsVisible(),
+      toggle: () => column.toggleVisibility(),
+    }))
 
   return (
     <div className="w-full">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Living Dex</h1>
-        <label className="flex items-center gap-2 text-sm">
-          Tier
-          <select
-            value={tierId}
-            onChange={(e) => setTierId(e.target.value as TierId)}
-            className="cursor-pointer rounded border border-border bg-background px-2 py-1"
-          >
-            {(Object.keys(TIER_LABELS) as TierId[]).map((id) => (
-              <option key={id} value={id}>
-                {TIER_LABELS[id]}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            Tier
+            <select
+              value={tierId}
+              onChange={(e) => setTierId(e.target.value as TierId)}
+              className="cursor-pointer rounded border border-border bg-background px-2 py-1"
+            >
+              {(Object.keys(TIER_LABELS) as TierId[]).map((id) => (
+                <option key={id} value={id}>
+                  {TIER_LABELS[id]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <ColumnVisibilityMenu columns={hideableColumns} />
+        </div>
       </div>
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b border-border text-left">
-            <th className="p-2" aria-label="Sprite" />
-            <th className="p-2">Name</th>
-            <th className="p-2">Types</th>
-            <th className="p-2 text-center">Owned</th>
-          </tr>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id} className="border-b border-border text-left">
+              {headerGroup.headers.map((header) => (
+                <th key={header.id} className="p-2">
+                  {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                </th>
+              ))}
+            </tr>
+          ))}
         </thead>
         <tbody>
-          {entries.map((entry) => {
-            const owned = ownedIds.has(entry.slug)
-            const spriteUrl = getSpriteUrl(dataset, entry) ?? undefined
-
+          {table.getRowModel().rows.map((row) => {
+            const owned = ownedIds.has(row.original.slug)
             return (
               <tr
-                key={entry.slug}
-                onClick={() => toggleOwned(entry.slug)}
+                key={row.id}
+                onClick={() => toggleOwned(row.original.slug)}
                 className={`cursor-pointer border-b border-border ${owned ? 'bg-brand/15' : ''}`}
               >
-                <td className="p-2">
-                  <div className="group relative inline-block">
-                    <img
-                      src={spriteUrl}
-                      alt=""
-                      loading="lazy"
-                      style={{ width: 48, height: 48, maxWidth: 'none' }}
-                    />
-                    <div className="pointer-events-none absolute top-1/2 left-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 rounded border border-border bg-background p-2 shadow-lg group-hover:block">
-                      <img src={spriteUrl} alt="" style={{ width: 96, height: 96, maxWidth: 'none' }} />
-                    </div>
-                  </div>
-                </td>
-                <td className="p-2">{entry.name}</td>
-                <td className="p-2">
-                  <div className="flex gap-1">
-                    {entry.types.map((type) => (
-                      <TypeBadge key={type} type={type} />
-                    ))}
-                  </div>
-                </td>
-                <td className="p-2 text-center">
-                  <input
-                    type="checkbox"
-                    checked={owned}
-                    onChange={() => toggleOwned(entry.slug)}
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label={`Mark ${entry.name} as owned`}
-                    className="cursor-pointer"
-                  />
-                </td>
+                {row.getVisibleCells().map((cell) => (
+                  <td key={cell.id} className="p-2">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
               </tr>
             )
           })}

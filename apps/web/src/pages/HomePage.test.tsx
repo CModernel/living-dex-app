@@ -137,12 +137,18 @@ test('toggling the owned checkbox persists to the active list', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
   renderHomePage()
 
-  const checkbox = await screen.findByRole('checkbox', { name: /mark bulbasaur as owned/i })
-  expect(checkbox).not.toBeChecked()
+  await screen.findByRole('checkbox', { name: /mark bulbasaur as owned/i })
+  expect(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i })).not.toBeChecked()
 
-  fireEvent.click(checkbox)
+  // Query and click in the same statement rather than holding a reference across an await —
+  // an in-flight effect (e.g. the active-list auto-create) can re-render and replace this
+  // node between an earlier `await` and the click, leaving a stale/detached element that
+  // silently swallows the click.
+  fireEvent.click(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i }))
 
-  await waitFor(() => expect(checkbox).toBeChecked())
+  await waitFor(() => {
+    expect(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i })).toBeChecked()
+  })
   await waitFor(() => {
     const stored = JSON.parse(window.localStorage.getItem('living-dex:user-state') ?? '{}')
     const lists = Object.values(stored.lists ?? {}) as { ownedIds: string[] }[]
@@ -159,18 +165,60 @@ test('clicking anywhere in the row toggles owned, not just the checkbox', async 
 
   fireEvent.click(screen.getByText('Bulbasaur'))
 
-  await waitFor(() => expect(checkbox).toBeChecked())
+  await waitFor(() => {
+    // Re-query rather than reuse the earlier reference: TanStack Table's row/cell rendering
+    // recreates cell elements on state changes, so a captured DOM node can go stale.
+    const updated = screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i })
+    expect(updated).toBeChecked()
+  })
 })
 
 test('clicking the checkbox directly does not double-toggle via the row handler', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
   renderHomePage()
 
-  const checkbox = await screen.findByRole('checkbox', { name: /mark bulbasaur as owned/i })
-  fireEvent.click(checkbox)
+  await screen.findByRole('checkbox', { name: /mark bulbasaur as owned/i })
+  // Query and click in the same statement — see the "persists" test above for why.
+  fireEvent.click(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i }))
 
-  await waitFor(() => expect(checkbox).toBeChecked())
   // If the click bubbled to the row's own toggle handler too, this would already be unchecked
-  // again by the time the assertion above resolves.
-  expect(checkbox).toBeChecked()
+  // again by the time this resolves.
+  await waitFor(() => {
+    expect(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i })).toBeChecked()
+  })
+})
+
+test('optional columns are hidden by default', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+  expect(screen.queryByText('0001')).not.toBeInTheDocument()
+})
+
+test('toggling a column in the menu shows and hides it', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  const dexCheckbox = screen.getByRole('checkbox', { name: 'Dex #' })
+  expect(dexCheckbox).not.toBeChecked()
+
+  fireEvent.click(dexCheckbox)
+  await waitFor(() => expect(screen.getByText('0001')).toBeInTheDocument())
+
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Dex #' }))
+  await waitFor(() => expect(screen.queryByText('0001')).not.toBeInTheDocument())
+})
+
+test('always-visible columns are not offered in the column menu', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  expect(screen.queryByRole('checkbox', { name: 'Name' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('checkbox', { name: 'Types' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('checkbox', { name: 'Owned' })).not.toBeInTheDocument()
 })
