@@ -272,10 +272,22 @@ even if the `3.X` task order below does.
 
 ---
 
+## Ideas / Future (optional, not scheduled)
+
+- **Publish `@cmodernel/living-dex-tiers` to npm.** Currently a `file:` dependency on the sibling
+  `living-dex-organizer` repo, which required checking that repo out as a second step in CI (see
+  `.github/workflows/deploy-web.yml`) since GitHub Actions only checks out one repo by default.
+  Publishing it as a real npm package would remove that CI coupling and the cross-repo dependency
+  entirely. Not urgent — the current setup works — but worth doing whenever it's convenient
+  (e.g., next time that package needs a real version bump anyway).
+
+---
+
 ## How we work
 
 - **Phase 1 & 2** are blockers — everything else depends on them. Do them fully before Phase 3.
 - **Phase 3** items are loosely ordered by dependency (earlier items don't need later ones), but
   can be done in parallel or reordered if a feature becomes urgent.
 - Every item in Phase 3 gets tests (unit or integration) — standing rule.
-- No commits without confirmation (per `living-dex-organizer/docs/RULES.md` #7).
+- Claude has standing permission to commit directly once a task is verified — no need to ask each
+  time (see `docs/RULES.md` #8). Push still requires explicit confirmation.
