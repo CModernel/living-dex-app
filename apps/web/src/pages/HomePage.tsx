@@ -1,6 +1,7 @@
 import { getSpriteUrl } from '@living-dex/business-logic'
 import { TIERS, type TierId } from '@cmodernel/living-dex-tiers'
 import { useState } from 'react'
+import TypeBadge from '../components/TypeBadge'
 import { useActiveList } from '../hooks/useActiveList'
 import { useDataset } from '../hooks/useDataset'
 
@@ -39,7 +40,7 @@ function HomePage() {
           <select
             value={tierId}
             onChange={(e) => setTierId(e.target.value as TierId)}
-            className="rounded border border-border bg-background px-2 py-1"
+            className="cursor-pointer rounded border border-border bg-background px-2 py-1"
           >
             {(Object.keys(TIER_LABELS) as TierId[]).map((id) => (
               <option key={id} value={id}>
@@ -59,29 +60,50 @@ function HomePage() {
           </tr>
         </thead>
         <tbody>
-          {entries.map((entry) => (
-            <tr key={entry.slug} className="border-b border-border">
-              <td className="p-2">
-                <img
-                  src={getSpriteUrl(dataset, entry) ?? undefined}
-                  alt=""
-                  width={32}
-                  height={32}
-                  loading="lazy"
-                />
-              </td>
-              <td className="p-2">{entry.name}</td>
-              <td className="p-2">{entry.types.join(', ')}</td>
-              <td className="p-2 text-center">
-                <input
-                  type="checkbox"
-                  checked={ownedIds.has(entry.slug)}
-                  onChange={() => toggleOwned(entry.slug)}
-                  aria-label={`Mark ${entry.name} as owned`}
-                />
-              </td>
-            </tr>
-          ))}
+          {entries.map((entry) => {
+            const owned = ownedIds.has(entry.slug)
+            const spriteUrl = getSpriteUrl(dataset, entry) ?? undefined
+
+            return (
+              <tr
+                key={entry.slug}
+                onClick={() => toggleOwned(entry.slug)}
+                className={`cursor-pointer border-b border-border ${owned ? 'bg-brand/15' : ''}`}
+              >
+                <td className="p-2">
+                  <div className="group relative inline-block">
+                    <img
+                      src={spriteUrl}
+                      alt=""
+                      loading="lazy"
+                      style={{ width: 48, height: 48, maxWidth: 'none' }}
+                    />
+                    <div className="pointer-events-none absolute top-full left-1/2 z-10 hidden -translate-x-1/2 rounded border border-border bg-background p-2 shadow-lg group-hover:block">
+                      <img src={spriteUrl} alt="" style={{ width: 96, height: 96, maxWidth: 'none' }} />
+                    </div>
+                  </div>
+                </td>
+                <td className="p-2">{entry.name}</td>
+                <td className="p-2">
+                  <div className="flex gap-1">
+                    {entry.types.map((type) => (
+                      <TypeBadge key={type} type={type} />
+                    ))}
+                  </div>
+                </td>
+                <td className="p-2 text-center">
+                  <input
+                    type="checkbox"
+                    checked={owned}
+                    onChange={() => toggleOwned(entry.slug)}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`Mark ${entry.name} as owned`}
+                    className="cursor-pointer"
+                  />
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

@@ -16,7 +16,7 @@ function Layout() {
             type="button"
             onClick={toggle}
             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            className="rounded border border-border px-2 py-1 text-xs"
+            className="cursor-pointer rounded border border-border px-2 py-1 text-xs"
           >
             {isDark ? '☀️ Light' : '🌙 Dark'}
           </button>

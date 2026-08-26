@@ -237,6 +237,29 @@ even if the `3.X` task order below does.
       **Tests: UI** (`HomePage.test.tsx` — switching the selector changes which rows render,
       using a fixture entry that only survives the Final Form predicate). 19/19 web tests passing.
 
+- [x] **3.3b Web table UX polish.** ✅ User-requested batch of small interaction/visual fixes
+      after using 3.2/3.3 for real.
+      - `cursor-pointer` on the dark-mode toggle and the tier `<select>` (buttons/selects don't
+      get a pointer cursor by default).
+      - Clicking anywhere in a table row toggles owned, not just the small checkbox — checkbox
+      keeps its own `onClick` with `stopPropagation()` so it doesn't double-toggle when clicked
+      directly (verified with a dedicated test).
+      - Owned rows get a `bg-brand/15` highlight.
+      - Sprites bumped to 48px (web only — mobile sprite size is separate, see 3.10 notes below).
+      - Hover tooltip showing a larger (96px) sprite — pure CSS (`group`/`group-hover`), no JS
+      tooltip library. Hit a real bug along the way: Tailwind's preflight sets
+      `img { max-width: 100%; height: auto }`, which shrank the enlarged tooltip image to fit its
+      container; fixed with an explicit inline `style` (wins over any stylesheet rule regardless
+      of specificity) instead of the `width`/`height` HTML attributes alone.
+      - Types render as colored badges (`TypeBadge` component, standard Pokémon type color map in
+      `lib/pokemonTypeColors.ts`) instead of a plain comma-joined text string — no new icon-asset
+      dependency added; real icon graphics can replace this later if wanted (the user referenced
+      a prior app's icon set that isn't available in this environment).
+      **Tests: UI** (`TypeBadge.test.tsx`; `HomePage.test.tsx` — row click toggles owned, and a
+      dedicated test confirming the checkbox's own click doesn't double-toggle via the row
+      handler). 22/22 web tests passing. Verified visually in-browser (screenshots) for all of the
+      above, including the tooltip fix.
+
 ### Columns & Preferences
 - [ ] **3.4 #11 — Customizable columns.** TanStack Table column-visibility API; show/hide menu for
       optional columns (dex #, generation, region, evolution stage — exact set decided once the
@@ -268,6 +291,18 @@ even if the `3.X` task order below does.
 - [ ] **3.9 #15 — Export/import.**
 - [ ] **3.10 #12 — Mobile layout.** Port the web table + filters to React Native, reusing the same
       `useDataset`-equivalent + tier-predicate + `useUserState()` plumbing proven on web.
+      Mobile equivalents of 3.3b's polish to carry over (web-only bits like `cursor-pointer` and
+      the hover tooltip obviously don't apply):
+      - Tap anywhere on a row/card toggles owned (same idea as "click anywhere in the row" on web).
+      - Owned rows/cards get a visual highlight, matching web's approach.
+      - Types as colored badges, not plain text — reuse the same type-color mapping idea
+      (`apps/web/src/lib/pokemonTypeColors.ts`) rather than reinventing it.
+      - No hover on touch, so no hover-tooltip equivalent — instead, consider a user-facing
+      **sprite size setting** (mobile's own sprites are fine as-is by default, but a size option
+      gives a similar "see it bigger" affordance without needing hover).
+      - Verify `crypto.randomUUID()` (used by `useActiveList`'s list-creation logic on web) is
+      actually available in this project's Hermes/RN setup before assuming the hook ports as-is —
+      flagged as an open question in an earlier conversation, never actually checked.
 - [ ] **3.11 #23 — Mobile portrait/landscape.**
 
 ### Tests
@@ -292,6 +327,31 @@ even if the `3.X` task order below does.
   that makes it safe (append-only, stable slot ordering) and why the sync layer (once Supabase
   exists) is where the real version-mismatch handling belongs, not everyday local usage. Relevant
   once dataset caching (mobile especially) or Supabase sync gets scheduled.
+
+- **Selectable theme system.** User leans toward a dark theme mixing black + purple, and a light
+  theme of white + grays, but wants to decide the exact palette later — and beyond just picking
+  one palette, wants the *user* to be able to choose between a set of themes (not just light/dark).
+  Reshapes 2.3's fixed token set into something more like a registry of token sets +
+  a settings-page picker. Web and mobile already share the token-mirroring approach from 2.3
+  (`index.css` `@theme` / `theme.ts`), so a multi-theme registry should extend that same pattern
+  on both platforms rather than diverging.
+
+- **Left sidebar nav (collapsible) + Home as a user profile screen.** Web-specific idea for later:
+  a left sidebar (list switcher, add list, settings, home) replacing 2.1's top nav bar, collapsing
+  when the viewport narrows. Home would become a profile-style screen listing the user's lists
+  (similar to a GitHub profile's repo list) rather than the table itself. Note: **mobile already
+  has a version of this** — 2.2's bottom tabs (Home / Lists / Settings) are conceptually the same
+  navigation split this is proposing for web, just a different widget (tabs vs. sidebar). Worth
+  keeping the *information architecture* consistent between platforms even though the widget
+  differs — e.g., mobile's existing "Lists" tab is the natural home for list create/delete (see
+  next item), matching whatever the web sidebar ends up doing.
+
+- **Create/delete lists (user-facing).** Already tracked as 3.6 (`#16`, multiple lists) — noted
+  here only because the sidebar/profile idea above adds more concrete vision for what that task's
+  UI looks like on web. No new tracking needed, just context for whoever picks up 3.6.
+
+- **Social features.** Explicitly "way at the end" per the user — not to be considered until
+  everything above is in a good place. No design thinking done on this yet, intentionally.
 
 ---
 

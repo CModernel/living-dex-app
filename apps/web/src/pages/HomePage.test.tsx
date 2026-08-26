@@ -149,3 +149,28 @@ test('toggling the owned checkbox persists to the active list', async () => {
     expect(lists[0]?.ownedIds).toContain('bulbasaur')
   })
 })
+
+test('clicking anywhere in the row toggles owned, not just the checkbox', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  const checkbox = await screen.findByRole('checkbox', { name: /mark bulbasaur as owned/i })
+  expect(checkbox).not.toBeChecked()
+
+  fireEvent.click(screen.getByText('Bulbasaur'))
+
+  await waitFor(() => expect(checkbox).toBeChecked())
+})
+
+test('clicking the checkbox directly does not double-toggle via the row handler', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  const checkbox = await screen.findByRole('checkbox', { name: /mark bulbasaur as owned/i })
+  fireEvent.click(checkbox)
+
+  await waitFor(() => expect(checkbox).toBeChecked())
+  // If the click bubbled to the row's own toggle handler too, this would already be unchecked
+  // again by the time the assertion above resolves.
+  expect(checkbox).toBeChecked()
+})
