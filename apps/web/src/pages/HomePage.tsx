@@ -1,11 +1,20 @@
 import { getSpriteUrl } from '@living-dex/business-logic'
-import { TIERS } from '@cmodernel/living-dex-tiers'
+import { TIERS, type TierId } from '@cmodernel/living-dex-tiers'
+import { useState } from 'react'
 import { useActiveList } from '../hooks/useActiveList'
 import { useDataset } from '../hooks/useDataset'
+
+const TIER_LABELS: Record<TierId, string> = {
+  'living-form': 'Living Form',
+  'living-lite': 'Living Lite',
+  'final-form-full': 'Final Form Full',
+  'final-form': 'Final Form',
+}
 
 function HomePage() {
   const result = useDataset()
   const { activeList, toggleOwned } = useActiveList()
+  const [tierId, setTierId] = useState<TierId>('living-form')
 
   if (result.loading) {
     return <p className="text-muted">Loading Pokémon data…</p>
@@ -17,13 +26,29 @@ function HomePage() {
 
   const { dataset } = result
   const entries = Object.values(dataset.pokemon)
-    .filter(TIERS['living-form'].predicate)
+    .filter(TIERS[tierId].predicate)
     .sort((a, b) => a.sortIndex - b.sortIndex)
   const ownedIds = new Set(activeList?.ownedIds ?? [])
 
   return (
     <div className="w-full">
-      <h1 className="mb-4 text-center text-2xl font-semibold">Living Dex</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Living Dex</h1>
+        <label className="flex items-center gap-2 text-sm">
+          Tier
+          <select
+            value={tierId}
+            onChange={(e) => setTierId(e.target.value as TierId)}
+            className="rounded border border-border bg-background px-2 py-1"
+          >
+            {(Object.keys(TIER_LABELS) as TierId[]).map((id) => (
+              <option key={id} value={id}>
+                {TIER_LABELS[id]}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-border text-left">

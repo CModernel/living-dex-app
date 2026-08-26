@@ -5,7 +5,7 @@ import { UserStateProvider } from '../state/UserStateContext'
 import HomePage from './HomePage'
 
 const mockDataset: PokemonDataset = {
-  count: 2,
+  count: 3,
   sprite: {
     baseUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/',
     variants: { front_default: '', front_shiny: 'shiny/', front_female: 'female/', front_shiny_female: 'shiny/female/' },
@@ -51,6 +51,27 @@ const mockDataset: PokemonDataset = {
       hasStatOrTypeDifference: false,
       sortIndex: 1,
     },
+    // Only entry with evolutionStage: 'final' — used to verify the tier selector: it's the
+    // only fixture entry that survives filtering down to the "Final Form" tier.
+    charizard: {
+      slug: 'charizard',
+      pokeapiSlug: 'charizard',
+      csvKeyword: 'charizard',
+      name: 'Charizard',
+      species: 'Charizard',
+      dex: '0006',
+      types: ['fire', 'flying'],
+      generation: 1,
+      regionalDex: {},
+      sprites: { id: '6', hasFemale: false, hasShinyFemale: false },
+      evolutionStage: 'final',
+      isAlternateForm: false,
+      isGenderVariant: false,
+      isRegionalForm: false,
+      region: null,
+      hasStatOrTypeDifference: false,
+      sortIndex: 2,
+    },
   },
 }
 
@@ -95,6 +116,21 @@ test('renders one row per living-form entry, applying the tier predicate', async
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
   // The gender-variant entry is filtered out by the living-form tier predicate.
   expect(screen.queryByText('Pikachu (female)')).not.toBeInTheDocument()
+})
+
+test('switching the tier selector changes which rows render', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+  expect(screen.getByText('Charizard')).toBeInTheDocument()
+
+  fireEvent.change(screen.getByLabelText(/tier/i), { target: { value: 'final-form' } })
+
+  // Bulbasaur (evolutionStage: 'pre') doesn't survive the Final Form predicate; Charizard
+  // (evolutionStage: 'final') does.
+  await waitFor(() => expect(screen.queryByText('Bulbasaur')).not.toBeInTheDocument())
+  expect(screen.getByText('Charizard')).toBeInTheDocument()
 })
 
 test('toggling the owned checkbox persists to the active list', async () => {

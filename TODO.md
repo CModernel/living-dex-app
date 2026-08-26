@@ -228,9 +228,14 @@ even if the `3.X` task order below does.
       `HomePage.test.tsx`/`Layout.test.tsx` updated for the new data-fetching HomePage) **+ manual
       browser verification** (real dataset, persistence across reload).
 
-- [ ] **3.3 #30 — Tier predicate selector.** Dropdown/segmented control switching which of the 4
-      `TIERS` predicates filters the table rows (builds directly on 3.2).
-      **Tests: UI** (selecting a tier changes which rows render).
+- [x] **3.3 #30 — Tier predicate selector.** ✅ Dropdown switching between the 4 `TIERS`, wired
+      into 3.2's filtering.
+      - `HomePage.tsx`: `TierId` state (default `living-form`), `<select>` with human-readable
+      labels, filters `entries` via `TIERS[tierId].predicate` instead of a hardcoded tier.
+      - Verified visually in-browser: switching to "Final Form" correctly drops pre-evolution
+      entries (Bulbasaur) and keeps final-stage ones (Venusaur, Charizard, Blastoise, ...).
+      **Tests: UI** (`HomePage.test.tsx` — switching the selector changes which rows render,
+      using a fixture entry that only survives the Final Form predicate). 19/19 web tests passing.
 
 ### Columns & Preferences
 - [ ] **3.4 #11 — Customizable columns.** TanStack Table column-visibility API; show/hide menu for
