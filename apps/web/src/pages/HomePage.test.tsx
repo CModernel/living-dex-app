@@ -1,8 +1,115 @@
-import { render, screen } from '@testing-library/react'
-import { expect, test } from 'vitest'
+import { clearDatasetCache, type PokemonDataset } from '@living-dex/business-logic'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { UserStateProvider } from '../state/UserStateContext'
 import HomePage from './HomePage'
 
-test('renders the home heading', () => {
-  render(<HomePage />)
-  expect(screen.getByRole('heading', { name: /living dex organizer/i })).toBeInTheDocument()
+const mockDataset: PokemonDataset = {
+  count: 2,
+  sprite: {
+    baseUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/',
+    variants: { front_default: '', front_shiny: 'shiny/', front_female: 'female/', front_shiny_female: 'shiny/female/' },
+  },
+  pokemon: {
+    bulbasaur: {
+      slug: 'bulbasaur',
+      pokeapiSlug: 'bulbasaur',
+      csvKeyword: 'bulbasaur',
+      name: 'Bulbasaur',
+      species: 'Bulbasaur',
+      dex: '0001',
+      types: ['grass', 'poison'],
+      generation: 1,
+      regionalDex: {},
+      sprites: { id: '1', hasFemale: false, hasShinyFemale: false },
+      evolutionStage: 'pre',
+      isAlternateForm: false,
+      isGenderVariant: false,
+      isRegionalForm: false,
+      region: null,
+      hasStatOrTypeDifference: false,
+      sortIndex: 0,
+    },
+    // isGenderVariant entries are excluded by the living-form tier predicate — this
+    // fixture entry should never render as a row.
+    pikachuFemale: {
+      slug: 'pikachu-female',
+      pokeapiSlug: 'pikachu',
+      csvKeyword: 'pikachu-f',
+      name: 'Pikachu (female)',
+      species: 'Pikachu',
+      dex: '0025',
+      types: ['electric'],
+      generation: 1,
+      regionalDex: {},
+      sprites: { id: '25', hasFemale: true, hasShinyFemale: false },
+      evolutionStage: 'mid',
+      isAlternateForm: false,
+      isGenderVariant: true,
+      isRegionalForm: false,
+      region: null,
+      hasStatOrTypeDifference: false,
+      sortIndex: 1,
+    },
+  },
+}
+
+let originalFetch: typeof fetch
+
+beforeEach(() => {
+  originalFetch = global.fetch
+  clearDatasetCache()
+  window.localStorage.clear()
+})
+
+afterEach(() => {
+  global.fetch = originalFetch
+  clearDatasetCache()
+  window.localStorage.clear()
+})
+
+function renderHomePage() {
+  return render(
+    <UserStateProvider>
+      <HomePage />
+    </UserStateProvider>,
+  )
+}
+
+test('shows a loading state before the dataset resolves', () => {
+  global.fetch = vi.fn(() => new Promise(() => {}))
+  renderHomePage()
+  expect(screen.getByText(/loading pokémon data/i)).toBeInTheDocument()
+})
+
+test('shows an error message when the dataset fails to load', async () => {
+  global.fetch = vi.fn(async () => ({ ok: false, status: 500 }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText(/failed to load dataset/i)).toBeInTheDocument())
+})
+
+test('renders one row per living-form entry, applying the tier predicate', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+  // The gender-variant entry is filtered out by the living-form tier predicate.
+  expect(screen.queryByText('Pikachu (female)')).not.toBeInTheDocument()
+})
+
+test('toggling the owned checkbox persists to the active list', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  const checkbox = await screen.findByRole('checkbox', { name: /mark bulbasaur as owned/i })
+  expect(checkbox).not.toBeChecked()
+
+  fireEvent.click(checkbox)
+
+  await waitFor(() => expect(checkbox).toBeChecked())
+  await waitFor(() => {
+    const stored = JSON.parse(window.localStorage.getItem('living-dex:user-state') ?? '{}')
+    const lists = Object.values(stored.lists ?? {}) as { ownedIds: string[] }[]
+    expect(lists[0]?.ownedIds).toContain('bulbasaur')
+  })
 })

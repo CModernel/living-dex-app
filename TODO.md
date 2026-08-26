@@ -178,38 +178,97 @@ ready, themed, tested, no feature code yet.
 
 ## Phase 3: Features (Building the app)
 
-After Phase 2, implement the actual feature list. Organized by dependency order:
+After Phase 2, implement the actual feature list. Refined into single-sitting-sized tasks (each
+task = one implementation + one local test cycle, per the user's explicit preference) — feature
+IDs (`#20`, `#11`, etc.) trace back to `living-dex-organizer/TODO.md`'s numbering and never change,
+even if the `3.X` task order below does.
+
+**Decisions locked in for the first table task** (confirmed with the user before starting):
+- Owned-state persists for real from day one — auto-create one default `PokemonList` (tier
+  `living-form`, standard `DEFAULT_LIST_FILTER`) the first time the app loads with no lists yet.
+  Becomes "the user's first list" once #16 (list switcher) lands, no rework needed.
+- Default/fixed tier until #30's selector exists: `living-form` (full ~1387-entry set).
+- Sprite column included from the start (`getSpriteUrl()` already tested in 1.2), not deferred.
 
 ### Foundation
-- **3.1 #29 — Dataset fetching** (done in Phase 1.2, but add UI integration: web table can fetch & render)
-- **3.2 #30 — Tier predicates** (done in Phase 1.5 import, but add UI: filter dropdown showing tier names)
+- [x] **3.1 Dataset loading hook (web).** ✅ `apps/web/src/hooks/useDataset.ts` wraps
+      `fetchDataset()` from `@living-dex/business-logic` in a `{ dataset, loading, error }` hook.
+      **Tests: Unit** (`useDataset.test.ts` — mock fetch, loading→success and loading→error
+      transitions, 2 tests).
 
-### Core Table (Web)
-- **3.3 #20 — Main spreadsheet table** (name, types, owned checkbox; no customization yet)
-- **3.4 #11 — Customizable columns** (hide/show via TanStack Table column visibility)
-- **3.5 #19 — Persist preferences** (selected columns saved to localStorage)
+- [x] **3.2 #20 — Main spreadsheet table.** ✅ `HomePage.tsx` renders the `living-form` tier via
+      `TIERS['living-form'].predicate`. Columns: sprite (`getSpriteUrl`), name, types, owned
+      checkbox. Owned checkbox reads/writes `useUserState()`'s active list `ownedIds`, via a new
+      `useActiveList()` hook that auto-creates the default list per the locked-in decision above.
+      - Used a plain HTML `<table>` instead of TanStack Table for this first pass: TanStack Table
+      v9 (already installed) turned out to have a substantially different, more complex API than
+      v8 (`useTable` + `TableFeatures` config instead of `useReactTable` + `getCoreRowModel`), and
+      this first table has no sorting/customization yet to justify that complexity. TanStack Table
+      gets introduced starting at 3.4 (customizable columns), where its column-visibility API is
+      actually needed.
+      - Found and fixed two real bugs along the way:
+        1. `@cmodernel/living-dex-tiers` ships no `.d.ts` (plain JS package) — added an ambient
+        `apps/web/src/types/living-dex-tiers.d.ts` declaration so `tsc -b` (production build)
+        can type-check `TIERS` usage (previously only tolerated by excluding test files from the
+        build, per the 1.5 CI fix — that exclusion is now only needed for genuinely test-only
+        code, not for this now-typed production import).
+        2. Vite's **dev server** (not the production build) failed to load
+        `@cmodernel/living-dex-tiers` at all — `ReferenceError: module is not defined`. Root
+        cause: Vite treats a `file:` dependency symlinked from *outside* `node_modules` (this
+        package lives in the sibling `living-dex-organizer` repo) as project source rather than a
+        dependency to pre-bundle, so it skips CJS→ESM interop entirely and serves the raw
+        CommonJS file as native ESM. Fixed via `apps/web/vite.config.ts`'s
+        `optimizeDeps.include: ['@cmodernel/living-dex-tiers']`, forcing it through esbuild's
+        pre-bundling (which does the CJS interop correctly) like a normal dependency.
+      - Verified visually in-browser with the real dataset (via jsDelivr): table renders,
+      sprites/names/types display correctly, toggling the owned checkbox persists to
+      `localStorage` and survives a full page reload.
+      **Tests: Unit + UI** (`HomePage.test.tsx` — loading/error states, tier-predicate filtering
+      excludes a gender-variant fixture entry, checkbox toggle persists; `AppRoutes.test.tsx` and
+      `HomePage.test.tsx`/`Layout.test.tsx` updated for the new data-fetching HomePage) **+ manual
+      browser verification** (real dataset, persistence across reload).
+
+- [ ] **3.3 #30 — Tier predicate selector.** Dropdown/segmented control switching which of the 4
+      `TIERS` predicates filters the table rows (builds directly on 3.2).
+      **Tests: UI** (selecting a tier changes which rows render).
+
+### Columns & Preferences
+- [ ] **3.4 #11 — Customizable columns.** TanStack Table column-visibility API; show/hide menu for
+      optional columns (dex #, generation, region, evolution stage — exact set decided once the
+      table's shipped).
+      **Tests: UI** (toggling a column hides/shows it).
+
+- [ ] **3.5 #19 — Persist preferences.** Wire `visibleColumns` (3.4) and `darkMode` (toggle-only
+      since 2.3) into `UserPreferences` via the existing `useUserState()` — closes the
+      dark-mode-persistence gap left open in 2.3.
+      **Tests: Integration** (preference survives a reload).
 
 ### Multiple Lists & Filtering
-- **3.6 #16 — Multiple lists** (list switcher, "start a list" flow)
-- **3.7 #14 — Custom filtering** (3-toggle UI for `ListFilter`)
+- [ ] **3.6 #16 — Multiple lists.** List switcher UI + "start a new list" flow. Replaces 3.2's
+      implicit single default list with real UI.
+      **Tests: UI** (switching lists changes which `ownedIds` the table reads/writes)
+      **+ Integration**.
+
+- [ ] **3.7 #14 — Custom filtering.** 3-toggle UI for `ListFilter`
+      (`finalStageOnly`/`regionalFormsOnly`/`hideGenderVariants`), applied on top of 3.3's tier
+      predicate.
+      **Tests: Unit** (filter-combination logic) **+ UI**.
 
 ### Polish (web)
-- **3.8 #21 — Progress indicator** (% owned)
-- **3.9 #22 — Sticky headers**
-- **3.10 #17 — Box/slot column**
-- **3.11 #10 — Dark mode** (toggle + persist in #19)
-- **3.12 #13 — Intro/welcome page**
+- [ ] **3.8 Polish pass** — `#21` progress indicator (% owned), `#22` sticky headers, `#17`
+      box/slot column, `#13` intro/welcome page. Sequenced and detailed individually once the
+      table/lists/filtering core (3.2–3.7) is solid.
 
 ### Data & Mobile
-- **3.13 #15 — Export/import**
-- **3.14 #12 — Mobile layout** (port web table + filters to React Native)
-- **3.15 #23 — Mobile portrait/landscape**
+- [ ] **3.9 #15 — Export/import.**
+- [ ] **3.10 #12 — Mobile layout.** Port the web table + filters to React Native, reusing the same
+      `useDataset`-equivalent + tier-predicate + `useUserState()` plumbing proven on web.
+- [ ] **3.11 #23 — Mobile portrait/landscape.**
 
 ### Tests
-- **3.16 #25 — Integration tests**
-- **3.17 #26 — UI tests**
-
-(#24 unit tests applied throughout, per `docs/RULES.md` #5)
+- [ ] **3.12 #25/#26 — Integration/UI test sweep.** Cross-cutting pass once the above is done.
+      `#24` (unit tests) is already a standing rule applied throughout every task above, not a
+      separate step.
 
 ---
 
