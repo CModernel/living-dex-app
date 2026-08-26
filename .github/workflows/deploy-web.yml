@@ -18,25 +18,40 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout living-dex-app
         uses: actions/checkout@v4
+        with:
+          path: living-dex-app
+
+      # apps/web depends on @cmodernel/living-dex-tiers via a `file:` dependency pointing
+      # at ../../../living-dex-organizer/packages/tiers -- a sibling repo, not published to
+      # npm. Locally both repos are checked out side by side; replicate that here so the
+      # symlink resolves the same way in CI.
+      - name: Checkout living-dex-organizer
+        uses: actions/checkout@v4
+        with:
+          repository: CModernel/living-dex-organizer
+          path: living-dex-organizer
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
+          cache-dependency-path: living-dex-app/package-lock.json
 
       - name: Install dependencies
+        working-directory: living-dex-app
         run: npm ci
 
       - name: Build web app
+        working-directory: living-dex-app
         run: npm run build:web
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'apps/web/dist'
+          path: 'living-dex-app/apps/web/dist'
 
   deploy:
     environment:
