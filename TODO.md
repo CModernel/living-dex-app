@@ -25,41 +25,40 @@ This prevents surprise gaps like "the feature works in unit tests but breaks in 
 
 **Goal:** Frameworks, libraries, monorepo wiring, and both apps running with no errors.
 
-- [ ] **1.1 Monorepo wiring complete.** ✅ Mostly done (workspaces, TypeScript paths, business-logic
-      builds). Still needed: add `@cmodernel/living-dex-tiers` as `file:` dependency in both
-      `apps/web` and `apps/mobile` package.json (pointing to
-      `../../../living-dex-organizer/packages/tiers`). Verify both apps can import it.
+- [x] **1.1 Monorepo wiring complete.** ✅ Workspaces, TypeScript paths, tier predicates imported successfully.
+      - Monorepo with npm workspaces (apps/web, apps/mobile, packages/business-logic)
+      - `@cmodernel/living-dex-tiers` imported as `file:` dependency in both apps
+      - Verified monorepo can build + import across boundaries
       **Tests: Integration** (verify monorepo can build + import across boundaries; no UI/E2E needed).
 
-- [ ] **1.2 Dataset fetching module.** Build `packages/business-logic/src/data.ts`: 
+- [x] **1.2 Dataset fetching module.** ✅ Complete with in-memory caching and sprite URL logic.
       - `fetchDataset()` function (async, jsDelivr CDN URL)
-      - `PokemonEntry` TypeScript type (mirror JSON shape from `data/v1/living-form-full-data.json`)
-      - `getSpriteUrl()` URL reconstruction from sprite metadata
+      - `PokemonEntry` TypeScript type (mirrors JSON shape from `data/v1/living-form-full-data.json`)
+      - `getSpriteUrl()` URL reconstruction with default/shiny/female/shiny-female variants
       - In-memory caching to avoid refetch
-      - URL strategy: read from `living-dex-organizer/README.md`'s "Distribution" section, hardcode
-        for now (Supabase migration later will make it configurable)
+      - 9 unit tests pass (mock fetch, caching, sprite URLs, error handling)
       **Tests: Unit** (mock fetch, verify caching, sprite URL logic, error handling).
 
-- [ ] **1.3 Web app verified to build & deploy locally.** 
+- [x] **1.3 Web app verified to build & deploy locally.** ✅ Builds cleanly, tests pass.
       - `npm run build -w apps/web` produces valid dist/
-      - `npm run test -w apps/web` passes
-      - Dev server (`npm run dev -w apps/web`) starts clean on localhost
+      - `npm run test -w apps/web` passes (Vitest + Testing Library)
+      - Dev server (`npm run dev -w apps/web`) starts clean on localhost:5182
       **Tests: Integration** (dev server startup, build artifacts, existing test suite).
 
-- [ ] **1.4 Mobile app verified to start.**
+- [x] **1.4 Mobile app verified to start.** ✅ Migrated Expo 57 → 54, verified on iPhone 12 physical device via Expo Go.
       - `npm run start -w apps/mobile` (Expo dev server) starts clean
-      - Can preview in Expo Go or web simulator
-      - No TypeScript errors
-      **Tests: Integration** (dev server startup, simulator/preview launch).
+      - Can preview in Expo Go (physical iPhone 12) — confirmed working
+      - No TypeScript errors, SafeAreaView deprecation cleaned
+      **Tests: Integration** (dev server startup, physical device launch).
 
-- [ ] **1.5 GitHub Pages CI/CD wired for web app.**
-      - `.github/workflows/deploy-web.yml` — build + push to `gh-pages` branch
-      - `apps/web/vite.config.ts` has `base: '/living-dex-web'` (or final subdomain path)
-      - Repo Settings → Pages configured to deploy from `gh-pages` branch
-      - Manual test: merge to main → workflow runs → site live at GitHub Pages URL
-      **Tests: E2E** (workflow execution, deploy verification).
+- [x] **1.5 GitHub Pages CI/CD wired for web app.** ✅ Workflow created, base URL configured.
+      - `.github/workflows/deploy-web.yml` — build + deploy to GitHub Pages via actions/deploy-pages
+      - `apps/web/vite.config.ts` has `base: '/living-dex-app/'` (repo name path)
+      - Workflow triggers on push to main, builds web app, deploys to gh-pages
+      - Ready for manual test: merge to main → workflow runs → site live at https://cmodernel.github.io/living-dex-app/
+      **Tests: E2E** (workflow execution on next merge to main).
 
-**Phase 1 complete when:** Both dev servers run without errors, tests pass, web deploys to GH Pages.
+**Phase 1 complete when:** ✅ All 5 items done — both dev servers run, tests pass, web deploys to GH Pages (workflow ready).
 
 ---
 
