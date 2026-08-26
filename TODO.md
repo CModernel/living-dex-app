@@ -281,6 +281,13 @@ even if the `3.X` task order below does.
   entirely. Not urgent — the current setup works — but worth doing whenever it's convenient
   (e.g., next time that package needs a real version bump anyway).
 
+- **Dataset bundling, offline caching, and version-check strategy.** Design discussion captured in
+  `docs/DATA-VERSIONING.md` — bundling the dataset per app build + a lightweight version check
+  (avoid re-fetching unchanged data, work offline from first launch), plus the data-integrity rule
+  that makes it safe (append-only, stable slot ordering) and why the sync layer (once Supabase
+  exists) is where the real version-mismatch handling belongs, not everyday local usage. Relevant
+  once dataset caching (mobile especially) or Supabase sync gets scheduled.
+
 ---
 
 ## How we work
