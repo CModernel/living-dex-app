@@ -78,7 +78,7 @@ function HomePage() {
                       loading="lazy"
                       style={{ width: 48, height: 48, maxWidth: 'none' }}
                     />
-                    <div className="pointer-events-none absolute top-full left-1/2 z-10 hidden -translate-x-1/2 rounded border border-border bg-background p-2 shadow-lg group-hover:block">
+                    <div className="pointer-events-none absolute top-1/2 left-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 rounded border border-border bg-background p-2 shadow-lg group-hover:block">
                       <img src={spriteUrl} alt="" style={{ width: 96, height: 96, maxWidth: 'none' }} />
                     </div>
                   </div>
