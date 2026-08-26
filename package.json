@@ -17,5 +17,9 @@
     "build": "npm run build -w packages/business-logic && npm run build:web && npm run build:mobile",
     "test": "npm run test -w packages/business-logic && npm run test -w apps/web && npm run test -w apps/mobile",
     "lint": "npm run lint -w apps/web && npm run lint -w apps/mobile"
+  },
+  "devDependencies": {
+    "babel-preset-expo": "~11.0.5",
+    "expo": "~54.0.33"
   }
 }

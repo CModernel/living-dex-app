@@ -1,28 +1,18 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
+    "target": "es2020",
+    "useDefineForClassFields": true,
+    "lib": ["es2020", "dom", "dom.iterable"],
+    "module": "esnext",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "strict": true,
-    "ignoreDeprecations": "6.0",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@/assets/*": [
-        "./assets/*"
-      ],
-      "@living-dex/business-logic": [
-        "../../packages/business-logic/dist/index.d.ts"
-      ],
-      "@living-dex/business-logic/*": [
-        "../../packages/business-logic/dist/*"
-      ]
-    }
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "resolveJsonModule": true
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ]
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
 }
