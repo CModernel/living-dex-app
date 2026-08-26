@@ -19,13 +19,24 @@ const TIER_LABELS: Record<TierId, string> = {
 const features = tableFeatures({ columnVisibilityFeature })
 const columnHelper = createColumnHelper<typeof features, PokemonEntry>()
 
+// The hover tooltip keeps this same zoom ratio relative to the base size — bump SPRITE_SIZE
+// alone to resize both consistently.
+const SPRITE_SIZE = 64
+const SPRITE_HOVER_ZOOM = 2
+
 function Sprite({ dataset, entry }: { dataset: PokemonDataset; entry: PokemonEntry }) {
   const spriteUrl = getSpriteUrl(dataset, entry) ?? undefined
+  const hoverSize = SPRITE_SIZE * SPRITE_HOVER_ZOOM
   return (
     <div className="group relative inline-block">
-      <img src={spriteUrl} alt="" loading="lazy" style={{ width: 48, height: 48, maxWidth: 'none' }} />
+      <img
+        src={spriteUrl}
+        alt=""
+        loading="lazy"
+        style={{ width: SPRITE_SIZE, height: SPRITE_SIZE, maxWidth: 'none' }}
+      />
       <div className="pointer-events-none absolute top-1/2 left-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 rounded border border-border bg-background p-2 shadow-lg group-hover:block">
-        <img src={spriteUrl} alt="" style={{ width: 96, height: 96, maxWidth: 'none' }} />
+        <img src={spriteUrl} alt="" style={{ width: hoverSize, height: hoverSize, maxWidth: 'none' }} />
       </div>
     </div>
   )

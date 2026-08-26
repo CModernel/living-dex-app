@@ -325,6 +325,17 @@ even if the `3.X` task order below does.
       **Tests:** all existing 3.2/3.3/3.4 tests still pass unmodified (26/26, verified 10x
       repeated + clean Docker build) — this was a pure performance fix, no behavior change.
 
+- [x] **3.4c Bigger sprites, same hover zoom ratio.** ✅ User-requested: base sprite too small,
+      but the hover tooltip's zoom level must stay exactly as it was.
+      - Base sprite 48px → 64px; hover tooltip 96px → 128px — introduced `SPRITE_SIZE` (64) and
+      `SPRITE_HOVER_ZOOM` (2) constants in `HomePage.tsx`, tooltip size derived as
+      `SPRITE_SIZE * SPRITE_HOVER_ZOOM` so the 2x ratio (confirmed unchanged from before this
+      change) stays correct if the base size is tuned again later.
+      - Verified visually in-browser (base size and centered hover tooltip both render bigger,
+      same proportions).
+      **Tests:** no behavior change, existing 26/26 web tests still pass, verified in a clean
+      Docker build too.
+
 - [ ] **3.5 #19 — Persist preferences.** Wire `visibleColumns` (3.4) and `darkMode` (toggle-only
       since 2.3) into `UserPreferences` via the existing `useUserState()` — closes the
       dark-mode-persistence gap left open in 2.3.
