@@ -107,11 +107,19 @@ This prevents surprise gaps like "the feature works in unit tests but breaks in 
       physical device — Detox/Maestro automated UI tests for mobile are a future TODO, not yet
       set up per the Testing Convention's mobile UI-test caveat).
 
-- [ ] **2.3 Theme/styling foundation (both platforms).**
-      - **Web:** Tailwind color tokens finalized (`dark:` variants working). Verify light/dark mode
-        toggle exists (will be wired to #19 later).
-      - **Mobile:** React Native theme context (colors, spacing, typography). Pairs with Tailwind
-        for web consistency.
+- [x] **2.3 Theme/styling foundation (both platforms).** ✅ Shared token set, verified visually + on device.
+      - **Web:** Color tokens (`background`/`foreground`/`muted`/`border`/`brand`) defined via
+      Tailwind v4 `@theme` in `index.css`, with `@custom-variant dark` for class-based dark mode
+      (not just OS `prefers-color-scheme`). `useDarkMode` hook seeds from OS preference, toggle
+      button in `Layout` header flips a `.dark` class on `<html>` — verified visually in-browser
+      (light↔dark screenshots). No persistence yet (per TODO note, wired to #19 later).
+      - **Mobile:** `src/theme/theme.ts` mirrors the same color tokens (+ spacing/typography
+      scales); `ThemeContext`/`useTheme()` picks light/dark via `useColorScheme()`. Wired into
+      `RootNavigator`'s `NavigationContainer` theme (tab bar colors) and all 3 placeholder screens.
+      Verified: typecheck clean, Metro bundle export clean.
+      **Tests: UI** (`useDarkMode.test.ts` — toggle flips state + DOM class; `Layout.test.tsx` —
+      toggle button renders and switches the theme class) **+ manual visual verification** (browser
+      screenshots showing both themes render correctly).
 
 - [ ] **2.4 Storage wiring in business-logic.**
       - `packages/business-logic/src/storage.ts` — already has `getUserState()` / `setUserState()`

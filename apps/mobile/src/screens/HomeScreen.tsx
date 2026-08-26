@@ -1,10 +1,17 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTheme } from '../theme/ThemeContext'
 
 export default function HomeScreen() {
+  const theme = useTheme()
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Living Dex Organizer</Text>
-      <Text style={styles.subtitle}>Scaffold ready — data table comes next (TODO #20).</Text>
+    <View style={[styles.container, { backgroundColor: theme.colors.background, gap: theme.spacing.sm }]}>
+      <Text style={[styles.title, { color: theme.colors.foreground, fontSize: theme.typography.title }]}>
+        Living Dex Organizer
+      </Text>
+      <Text style={[styles.subtitle, { color: theme.colors.muted, fontSize: theme.typography.body }]}>
+        Scaffold ready — data table comes next (TODO #20).
+      </Text>
     </View>
   )
 }
@@ -14,17 +21,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
     padding: 16,
   },
   title: {
-    fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
-    color: '#666',
     textAlign: 'center',
   },
 })
