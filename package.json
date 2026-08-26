@@ -19,8 +19,6 @@
     "lint": "npm run lint -w apps/web && npm run lint -w apps/mobile"
   },
   "devDependencies": {
-    "babel-preset-expo": "~11.0.5",
-    "expo": "~54.0.33",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   }
