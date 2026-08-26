@@ -295,6 +295,36 @@ even if the `3.X` task order below does.
       always-visible columns excluded from the menu; existing tests hardened against the DOM
       staleness issue above). 26/26 web tests passing, verified in a clean Docker build too.
 
+- [x] **3.4b Fix per-click latency (~200-380ms → ~5-20ms).** ✅ User-reported: clicking felt slow.
+      - Measured (not guessed) via `performance.now()` + `MutationObserver` in the real browser
+      before changing anything: a single checkbox click took 200-380ms end to end. Instrumented
+      with `console.time` around each render phase to localize it — `HomePage`'s own render body
+      was only 1-3ms; the actual cost (85-270ms) was in the un-memoized `rows.map(...)` JSX
+      construction (~1387 rows × sprite/type-badge/checkbox elements), re-executed on every
+      single render because it lived inline in the render body with no memoization.
+      - Fixed with a `React.memo`-wrapped `TableRow` component, given only stable props (`row`
+      from TanStack's cached row model, a plain `owned` boolean, a `useCallback`-stabilized
+      `onToggle`, and `columnVisibility`) so toggling one row's owned status no longer forces
+      React to re-render the other ~1386 unaffected rows. The "owned" checkbox cell is rendered
+      directly in `TableRow` from props rather than through the column definition + `flexRender`,
+      specifically so `columns` never needs to depend on `ownedIds`/`toggleOwned` (keeping the
+      row model itself, and therefore each row's `row` prop, referentially stable across toggles
+      — the precondition for `memo` to actually skip work).
+      - `useActiveList`'s `toggleOwned` wrapped in `useCallback` for the same reason.
+      - Hit a real regression while building this: the first version of `TableRow`'s memo didn't
+      account for column-visibility changes — since toggling a column doesn't change `row`'s own
+      reference (only which cells are visible), rows silently stopped updating when visibility
+      changed. Fixed by adding `columnVisibility` as an explicit prop so `memo` correctly detects
+      that case too (verified with the existing column-visibility tests, which caught this).
+      - A first attempt (isolating just the checkbox into its own context-subscribing component)
+      made test flakiness *worse*, not better, and was reverted — the actual bottleneck was JSX
+      construction cost for the whole row, not context subscription structure. Diagnosed via
+      actual `console.time` measurements rather than a second guess.
+      - Re-measured after the fix: 5-20ms per click (with an optional column also visible),
+      down from 200-380ms — roughly a 15-40x improvement.
+      **Tests:** all existing 3.2/3.3/3.4 tests still pass unmodified (26/26, verified 10x
+      repeated + clean Docker build) — this was a pure performance fix, no behavior change.
+
 - [ ] **3.5 #19 — Persist preferences.** Wire `visibleColumns` (3.4) and `darkMode` (toggle-only
       since 2.3) into `UserPreferences` via the existing `useUserState()` — closes the
       dark-mode-persistence gap left open in 2.3.

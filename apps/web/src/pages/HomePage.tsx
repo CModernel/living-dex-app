@@ -1,8 +1,8 @@
 import { getSpriteUrl, type PokemonEntry, type PokemonDataset } from '@living-dex/business-logic'
 import { TIERS, type TierId } from '@cmodernel/living-dex-tiers'
 import { flexRender, useTable } from '@tanstack/react-table'
-import { columnVisibilityFeature, createColumnHelper, tableFeatures, type ColumnDef } from '@tanstack/table-core'
-import { useMemo, useState } from 'react'
+import { columnVisibilityFeature, createColumnHelper, tableFeatures, type ColumnDef, type Row } from '@tanstack/table-core'
+import { memo, useMemo, useState } from 'react'
 import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
 import TypeBadge from '../components/TypeBadge'
 import { useActiveList } from '../hooks/useActiveList'
@@ -31,6 +31,53 @@ function Sprite({ dataset, entry }: { dataset: PokemonDataset; entry: PokemonEnt
   )
 }
 
+// Memoized and given only stable-ish props (row from TanStack's cached row model, plus a plain
+// `owned` boolean) so toggling ONE row doesn't force React to re-render all ~1387 rows' cells
+// (sprites, type badges, etc.) — before this, a single click took 100-270ms because the whole
+// row list was recreated on every render. The "owned" cell is rendered directly here (using the
+// owned/onToggle props) rather than through the column's own cell definition + flexRender,
+// specifically so the column definitions never need to depend on ownedIds/toggleOwned either.
+const TableRow = memo(function TableRow({
+  row,
+  owned,
+  onToggle,
+}: {
+  row: Row<typeof features, PokemonEntry>
+  owned: boolean
+  onToggle: (slug: string) => void
+  // Not read directly — including it in props (a new object each time visibility changes) is
+  // what makes memo correctly re-render when column visibility toggles. `row`'s own reference
+  // doesn't change on a visibility toggle (only data/columns changes affect the row model), so
+  // without this, memo would wrongly skip re-rendering rows after a column show/hide.
+  columnVisibility: Record<string, boolean>
+}) {
+  return (
+    <tr
+      onClick={() => onToggle(row.original.slug)}
+      className={`cursor-pointer border-b border-border ${owned ? 'bg-brand/15' : ''}`}
+    >
+      {row.getVisibleCells().map((cell) =>
+        cell.column.id === 'owned' ? (
+          <td key={cell.id} className="p-2 text-center">
+            <input
+              type="checkbox"
+              checked={owned}
+              onChange={() => onToggle(row.original.slug)}
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`Mark ${row.original.name} as owned`}
+              className="cursor-pointer"
+            />
+          </td>
+        ) : (
+          <td key={cell.id} className="p-2">
+            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+          </td>
+        ),
+      )}
+    </tr>
+  )
+})
+
 function HomePage() {
   const result = useDataset()
   const { activeList, toggleOwned } = useActiveList()
@@ -45,52 +92,45 @@ function HomePage() {
   }, [dataset, tierId])
   const ownedIds = useMemo(() => new Set(activeList?.ownedIds ?? []), [activeList])
 
+  // Deliberately does NOT depend on ownedIds/toggleOwned — TableRow renders the "owned" cell
+  // itself from props instead of through this column's cell definition. Keeping this stable
+  // (only depending on `dataset`) is what lets `rows` below stay referentially stable across
+  // toggles, which is what makes the per-row React.memo above actually skip unrelated rows.
   const columns = useMemo(
-    () => [
-      columnHelper.display({
-        id: 'sprite',
-        header: '',
-        enableHiding: false,
-        cell: (ctx) => (dataset ? <Sprite dataset={dataset} entry={ctx.row.original} /> : null),
-      }),
-      columnHelper.accessor('name', { header: 'Name', enableHiding: false }),
-      columnHelper.display({
-        id: 'types',
-        header: 'Types',
-        enableHiding: false,
-        cell: (ctx) => (
-          <div className="flex gap-1">
-            {ctx.row.original.types.map((type) => (
-              <TypeBadge key={type} type={type} />
-            ))}
-          </div>
-        ),
-      }),
-      columnHelper.accessor('dex', { header: 'Dex #' }),
-      columnHelper.accessor('generation', { header: 'Generation' }),
-      columnHelper.accessor((row) => row.region ?? '—', { id: 'region', header: 'Region' }),
-      columnHelper.accessor('evolutionStage', { header: 'Stage' }),
-      columnHelper.display({
-        id: 'owned',
-        header: 'Owned',
-        enableHiding: false,
-        cell: (ctx) => (
-          <input
-            type="checkbox"
-            checked={ownedIds.has(ctx.row.original.slug)}
-            onChange={() => toggleOwned(ctx.row.original.slug)}
-            onClick={(e) => e.stopPropagation()}
-            aria-label={`Mark ${ctx.row.original.name} as owned`}
-            className="cursor-pointer"
-          />
-        ),
-      }),
-      // TanStack's ColumnDef is invariant in TValue (footer/cell templates appear in both
-      // producer and consumer position), so a heterogeneous array (string/number/unknown value
-      // columns mixed together) can't structurally satisfy ColumnDef<Features, Data, unknown>[]
-      // even though it's fine at runtime — a standard, safe cast for this known TS limitation.
-    ] as ColumnDef<typeof features, PokemonEntry, any>[],
-    [dataset, ownedIds, toggleOwned],
+    () =>
+      [
+        columnHelper.display({
+          id: 'sprite',
+          header: '',
+          enableHiding: false,
+          cell: (ctx) => (dataset ? <Sprite dataset={dataset} entry={ctx.row.original} /> : null),
+        }),
+        columnHelper.accessor('name', { header: 'Name', enableHiding: false }),
+        columnHelper.display({
+          id: 'types',
+          header: 'Types',
+          enableHiding: false,
+          cell: (ctx) => (
+            <div className="flex gap-1">
+              {ctx.row.original.types.map((type) => (
+                <TypeBadge key={type} type={type} />
+              ))}
+            </div>
+          ),
+        }),
+        columnHelper.accessor('dex', { header: 'Dex #' }),
+        columnHelper.accessor('generation', { header: 'Generation' }),
+        columnHelper.accessor((row) => row.region ?? '—', { id: 'region', header: 'Region' }),
+        columnHelper.accessor('evolutionStage', { header: 'Stage' }),
+        // Rendered directly in TableRow instead — this cell definition is never invoked, it
+        // only exists so the column shows up in the header row and the visibility menu.
+        columnHelper.display({ id: 'owned', header: 'Owned', enableHiding: false, cell: () => null }),
+        // TanStack's ColumnDef is invariant in TValue (footer/cell templates appear in both
+        // producer and consumer position), so a heterogeneous array (string/number/unknown value
+        // columns mixed together) can't structurally satisfy ColumnDef<Features, Data, unknown>[]
+        // even though it's fine at runtime — a standard, safe cast for this known TS limitation.
+      ] as ColumnDef<typeof features, PokemonEntry, any>[],
+    [dataset],
   )
 
   const table = useTable(
@@ -158,22 +198,15 @@ function HomePage() {
           ))}
         </thead>
         <tbody>
-          {table.getRowModel().rows.map((row) => {
-            const owned = ownedIds.has(row.original.slug)
-            return (
-              <tr
-                key={row.id}
-                onClick={() => toggleOwned(row.original.slug)}
-                className={`cursor-pointer border-b border-border ${owned ? 'bg-brand/15' : ''}`}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="p-2">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            )
-          })}
+          {table.getRowModel().rows.map((row) => (
+            <TableRow
+              key={row.id}
+              row={row}
+              owned={ownedIds.has(row.original.slug)}
+              onToggle={toggleOwned}
+              columnVisibility={table.state.columnVisibility}
+            />
+          ))}
         </tbody>
       </table>
     </div>
