@@ -66,11 +66,22 @@ This prevents surprise gaps like "the feature works in unit tests but breaks in 
 
 **Goal:** Component/screen base, routing, theme, storage wiring — everything "empty" but connected.
 
-- [ ] **2.1 Web app routing & layout shell.**
-      - Install React Router (already have Vite + React 19)
-      - Root layout component (header, sidebar sketch, footer stub)
-      - Route structure: `/` (main table placeholder), `/lists` (list management), `/settings`
-      - Placeholder pages for each route (1-2 lines of JSX, no logic yet)
+- [x] **2.1 Web app routing & layout shell.** ✅ react-router v7 wired, 3 routes + layout shell.
+      - Installed `react-router` v7 (React 19 compatible)
+      - `Layout` component: header + nav (Home/Lists/Settings), footer stub, `<Outlet />`
+      - Routes: `/` (HomePage placeholder), `/lists` (ListsPage), `/settings` (SettingsPage)
+      - `AppRoutes` kept separate from `<BrowserRouter>` so tests can use `<MemoryRouter>`
+      - GitHub Pages SPA deep-link fix: `public/404.html` + restoration script in `index.html`
+      (standard rafgraph/spa-github-pages trick, needed since `BrowserRouter` + `basename` requires
+      server rewrites GH Pages doesn't provide)
+      - Along the way: fixed a monorepo react/react-dom duplicate-instance bug (react-router was
+      hoisted to the workspace root while react/react-dom stayed nested per-workspace due to the
+      apps/mobile react version pin, so Node module resolution for react-router walked past the
+      repo root into an unrelated ancestor directory's react copy) — resolved by hoisting a shared
+      react/react-dom copy to the workspace root
+      **Tests: UI** (HomePage/ListsPage/SettingsPage/Layout render assertions) **+ Integration**
+      (`AppRoutes.test.tsx` verifies `/`, `/lists`, `/settings` each render the correct page via
+      `MemoryRouter`). 8/8 tests passing.
 
 - [ ] **2.2 Mobile app routing ready.**
       - Expo Router already scaffolded; verify tab-based or stack-based routing is clear

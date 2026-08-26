@@ -20,6 +20,8 @@
   },
   "devDependencies": {
     "babel-preset-expo": "~11.0.5",
-    "expo": "~54.0.33"
+    "expo": "~54.0.33",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   }
 }

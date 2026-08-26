@@ -14,7 +14,8 @@
     "@cmodernel/living-dex-tiers": "file:../../../living-dex-organizer/packages/tiers",
     "@tanstack/react-table": "^9.1.2",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "react-router": "^7.18.2"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

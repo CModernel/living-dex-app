@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import { expect, test } from 'vitest'
-import App from './App'
+import HomePage from './HomePage'
 
-test('renders the app heading', () => {
-  render(<App />)
+test('renders the home heading', () => {
+  render(<HomePage />)
   expect(screen.getByRole('heading', { name: /living dex organizer/i })).toBeInTheDocument()
 })
