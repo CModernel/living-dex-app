@@ -77,17 +77,35 @@ This prevents surprise gaps like "the feature works in unit tests but breaks in 
       - Along the way: fixed a monorepo react/react-dom duplicate-instance bug (react-router was
       hoisted to the workspace root while react/react-dom stayed nested per-workspace due to the
       apps/mobile react version pin, so Node module resolution for react-router walked past the
-      repo root into an unrelated ancestor directory's react copy) — resolved by hoisting a shared
-      react/react-dom copy to the workspace root
+      repo root into an unrelated ancestor directory's react copy). First patched by hoisting a
+      shared react/react-dom copy to the workspace root; later fully resolved in 2.2 by pinning
+      React to one exact version across the whole monorepo (see 2.2 notes)
       **Tests: UI** (HomePage/ListsPage/SettingsPage/Layout render assertions) **+ Integration**
       (`AppRoutes.test.tsx` verifies `/`, `/lists`, `/settings` each render the correct page via
       `MemoryRouter`). 8/8 tests passing.
 
-- [ ] **2.2 Mobile app routing ready.**
-      - Expo Router already scaffolded; verify tab-based or stack-based routing is clear
-      - Root layout (Expo's `_layout.tsx`)
-      - Placeholder screens for the same flows as web (main table, lists, settings)
-      - Can navigate between them without errors
+- [x] **2.2 Mobile app routing ready.** ✅ React Navigation (bottom tabs), verified on physical iPhone 12.
+      - Expo Router was removed during 1.4 (part of the SDK 57→54 migration); chose React Navigation
+      instead for 2.2 — more stable in Expo Go 54, no file-based-routing/Babel-plugin surface area
+      - `RootNavigator` (bottom tabs): Home / Lists / Settings, `@expo/vector-icons` tab icons
+      - Placeholder screens mirroring the web routes (HomeScreen, ListsScreen, SettingsScreen)
+      - **Root-caused a recurring "Invalid hook call" / duplicate-React crash** hit while wiring
+      this up: `react-native@0.81.5` hard-requires an exact-matching `react@19.1.0` (its bundled
+      `react-native-renderer` is compiled against that one version, no tolerance for a different
+      patch); meanwhile `apps/web` had drifted to `react@^19.2.8`, and packages hoisted to the
+      workspace root (`@expo/vector-icons`, `@react-navigation/*`) resolved whichever copy was
+      nearest in the (per-workspace-inconsistent) node_modules tree — sometimes a different
+      instance than the one `react-native` itself used. `metro.config.js`'s custom
+      `resolver.nodeModulesPaths` did NOT fix this (Metro's hierarchical per-importer walk finds a
+      root-hoisted package's nearest `react` before consulting that config). Fixed for good by
+      pinning React to one exact version (`19.1.0`, matching `react-native`'s hard requirement)
+      across the entire monorepo (root, `apps/web`, `apps/mobile`) — confirmed a single physical
+      `node_modules/react` afterward, no nested duplicates anywhere
+      - Verified end-to-end on physical iPhone 12 via Expo Go: bottom tabs render, navigation
+      between Home/Lists/Settings works with no errors
+      **Tests: Integration** (Metro bundle export verified clean; manual navigation test on
+      physical device — Detox/Maestro automated UI tests for mobile are a future TODO, not yet
+      set up per the Testing Convention's mobile UI-test caveat).
 
 - [ ] **2.3 Theme/styling foundation (both platforms).**
       - **Web:** Tailwind color tokens finalized (`dark:` variants working). Verify light/dark mode

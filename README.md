@@ -22,7 +22,7 @@ published via jsDelivr CDN. Both web and mobile apps fetch it at runtime (no bun
 
 ## Development
 
-**Prerequisites:** Node.js 18+, npm/yarn
+**Prerequisites:** Node.js 20.19+ (or 22.12+), npm/yarn — required by Vite 8's `rolldown` dependency
 
 ```bash
 npm install                    # Install monorepo dependencies
