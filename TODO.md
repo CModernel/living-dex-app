@@ -121,12 +121,28 @@ This prevents surprise gaps like "the feature works in unit tests but breaks in 
       toggle button renders and switches the theme class) **+ manual visual verification** (browser
       screenshots showing both themes render correctly).
 
-- [ ] **2.4 Storage wiring in business-logic.**
-      - `packages/business-logic/src/storage.ts` — already has `getUserState()` / `setUserState()`
-        (localStorage).
-      - Add hooks/React context wrapper so web/mobile can call `useUserState()` and get
-        `[state, setState]`. (React-specific; not in business-logic, but in each app's context.)
-      - Verify persists to localStorage (web) / AsyncStorage (mobile) correctly.
+- [x] **2.4 Storage wiring in business-logic.** ✅ Platform-agnostic adapter + React context both sides.
+      - `storage.ts` refactored to `createUserStateStorage(adapter)` — takes a `StorageAdapter`
+      (`getItem`/`setItem`) instead of hardcoding `localStorage`, since that global doesn't exist in
+      React Native. Fixed a latent bug along the way: internal imports (`./types`, and `index.ts`'s
+      re-exports) were missing `.js` extensions, which silently broke Node's native ESM resolution
+      the moment anything actually exercised those import paths (never caught before — nothing had
+      imported through `index.ts`/`storage.ts` until now)
+      - Both `apps/web` and `apps/mobile` now depend on `@living-dex/business-logic` for real (npm
+      workspace symlink) — first actual runtime usage of that package outside `packages/business-logic`
+      itself
+      - **Web:** `UserStateProvider`/`useUserState()` in `apps/web/src/state/`, adapter wraps
+      `localStorage`
+      - **Mobile:** same pattern in `apps/mobile/src/state/`, adapter wraps `@react-native-async-storage/async-storage`
+      directly (its API already matches `StorageAdapter`'s shape)
+      - Both providers guard against a race: the "persist on state change" effect is gated on an
+      `hydrated` flag so it can't fire with `DEFAULT_USER_STATE` before the initial load completes
+      and clobber whatever was already persisted
+      - Verified end-to-end on physical iPhone 12 (AsyncStorage's first real runtime exercise —
+      app still boots and navigates cleanly)
+      **Tests: Unit** (`storage.test.ts` — 5 tests, fake in-memory adapter) **+ Integration**
+      (`UserStateContext.test.tsx` — load/persist round-trip against a real Storage-shaped mock,
+      3 tests) **+ manual device verification**.
 
 - [ ] **2.5 Tier-logic import verified (both platforms).**
       - Both `apps/web` and `apps/mobile` can `import { TIERS } from '@cmodernel/living-dex-tiers'`

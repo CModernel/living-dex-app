@@ -1,11 +1,14 @@
 import { BrowserRouter } from 'react-router'
 import AppRoutes from './AppRoutes'
+import { UserStateProvider } from './state/UserStateContext'
 
 function App() {
   return (
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <AppRoutes />
-    </BrowserRouter>
+    <UserStateProvider>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
+        <AppRoutes />
+      </BrowserRouter>
+    </UserStateProvider>
   )
 }
 
