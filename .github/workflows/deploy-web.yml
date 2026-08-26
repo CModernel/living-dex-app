@@ -28,7 +28,12 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        # npm ci requires the lockfile to carry a resolvable entry for every optional
+        # platform-specific dependency (native rolldown/oxlint bindings). Ours only has
+        # macOS entries (generated on a Mac) due to a known npm bug (npm/cli#4828) — npm
+        # doesn't always record other platforms' optional deps when the lockfile is written.
+        # `npm install` re-resolves the correct binary for the runner's actual platform.
+        run: npm install --legacy-peer-deps
 
       - name: Build web app
         run: npm run build:web
