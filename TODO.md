@@ -417,20 +417,23 @@ even if the `3.X` task order below does.
       **Tests: Unit** (filter-combination logic) **+ UI**.
 
 ### Polish (web)
-- [ ] **3.4f Table styling refinements.** User-requested (2026-08-27), small/mechanical:
-      - Sprite size: nudge `SPRITE_SIZE` (`HomePage.tsx`) down slightly from 64px — a small
-      reduction, not back to the pre-3.4c 48px. Hover tooltip ratio (`SPRITE_HOVER_ZOOM`) stays.
-      - `Dex #` column: force `text-left` explicitly (currently relies on the browser/table
-      default, which the user says doesn't read as left-aligned in practice).
-      - `Generation` column: center (`text-center`) — currently left-aligned like everything else,
-      which doesn't read as centered for a short numeric value.
-      - `Region` column: capitalize the displayed value — the raw data is a lowercase slug
-      (`alola`, `galar`, `hisui`, `paldea`); either a display-only `capitalize` class or
-      title-casing the string, not a data change.
-      - `Stage` column: capitalize the displayed value too. **Checked**: `evolutionStage`
-      (`'pre' | 'mid' | 'final'`) is **not** a raw PokeAPI field — it's a classification our own
-      generator derives from PokeAPI's evolution-chain data (`computeEvolutionStages` in
-      `generate-living-form-full.js`). Capitalizing it is purely a display concern either way.
+- [x] **3.4f Table styling refinements.** ✅ User-requested (2026-08-27), small/mechanical:
+      - Sprite size: `SPRITE_SIZE` (`HomePage.tsx`) 64px → 56px, a small reduction (not back to
+      the pre-3.4c 48px). Hover tooltip ratio (`SPRITE_HOVER_ZOOM`) unchanged.
+      - Added a `COLUMN_CELL_CLASS` map (column id → extra Tailwind classes), applied to both the
+      header `<th>` and body `<td>` so they can't drift apart: `dex` → `text-left` (explicit,
+      was previously just relying on the browser default), `generation` → `text-center` (header
+      centered too, to match), `region`/`evolutionStage` → `capitalize` (display-only — the raw
+      data stays the lowercase slug/value it already was; confirmed live in-browser: "alola" →
+      "Alola", "pre"/"final" → "Pre"/"Final").
+      - **Checked**: `evolutionStage` (`'pre' | 'mid' | 'final'`) is **not** a raw PokeAPI field —
+      it's a classification our own generator derives from PokeAPI's evolution-chain data
+      (`computeEvolutionStages` in `generate-living-form-full.js`). Capitalizing it is purely a
+      display concern either way.
+      - Verified visually in-browser (Chrome MCP): toggled all four columns on via the column
+      menu, confirmed alignment and capitalization on both a plain entry (Bulbasaur) and a
+      regional form (Rattata (Alolan) → "Alola").
+      **Tests:** no behavior change (styling only), existing 28/28 web tests still pass.
 
 - [ ] **3.8 Polish pass** — `#21` progress indicator (% owned), `#22` sticky headers, `#13`
       intro/welcome page. Sequenced and detailed individually once the table/lists/filtering

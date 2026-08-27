@@ -26,8 +26,19 @@ const columnHelper = createColumnHelper<typeof features, PokemonEntry>()
 
 // The hover tooltip keeps this same zoom ratio relative to the base size — bump SPRITE_SIZE
 // alone to resize both consistently.
-const SPRITE_SIZE = 64
+const SPRITE_SIZE = 56
 const SPRITE_HOVER_ZOOM = 2
+
+// Per-column cell styling that a plain accessor column can't express on its own (text
+// alignment, and capitalizing Region/Stage's raw lowercase slugs — display-only, the
+// underlying data stays untouched). Centralized here so both the header `<th>` and body
+// `<td>` pull from the same source and can't drift apart.
+const COLUMN_CELL_CLASS: Record<string, string> = {
+  dex: 'text-left',
+  generation: 'text-center',
+  region: 'capitalize',
+  evolutionStage: 'capitalize',
+}
 
 // Prefers PokeJungle (the sprites Austin John's own sheet uses) and falls back to
 // PokeAPI. The fallback isn't just belt-and-braces: PokeJungle has no shiny art for the
@@ -107,7 +118,7 @@ const TableRow = memo(function TableRow({
             />
           </td>
         ) : (
-          <td key={cell.id} className="p-2">
+          <td key={cell.id} className={`p-2 ${COLUMN_CELL_CLASS[cell.column.id] ?? ''}`}>
             {flexRender(cell.column.columnDef.cell, cell.getContext())}
           </td>
         ),
@@ -228,7 +239,7 @@ function HomePage() {
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id} className="border-b border-border text-left">
               {headerGroup.headers.map((header) => (
-                <th key={header.id} className="p-2">
+                <th key={header.id} className={`p-2 ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}>
                   {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                 </th>
               ))}
