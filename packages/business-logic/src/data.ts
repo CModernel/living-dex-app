@@ -8,9 +8,24 @@ export type PokemonEntry = {
   types: string[]
   generation: number
   regionalDex: Record<string, number>
-  // `pokejungleId` is optional because the app can be running against a dataset
-  // published before that field existed — see getPokeJungleSpriteUrl.
-  sprites: { id: string; hasFemale: boolean; hasShinyFemale: boolean; pokejungleId?: string }
+  // `pokejungleId`/`pokejungleShinyId` are optional because the app can be running
+  // against a dataset published before those fields existed — see
+  // getPokeJungleSpriteUrl. `pokejungleShinyId` is additionally only ever set for the
+  // handful of entries (Minior, Alcremie) whose shiny id differs from `pokejungleId` —
+  // every other entry's shiny sprite lives at the same id as its normal one.
+  //
+  // `pokejungleShinyUnavailable` covers entries with NO shiny art on PokeJungle at
+  // all (real 404s, or the site's own lock-icon image served with HTTP 200 — a
+  // request that "succeeds" but isn't the sprite, so it can't be detected by an
+  // <img onError> at runtime). Precomputed here rather than checked client-side.
+  sprites: {
+    id: string
+    hasFemale: boolean
+    hasShinyFemale: boolean
+    pokejungleId?: string
+    pokejungleShinyId?: string
+    pokejungleShinyUnavailable?: boolean
+  }
   evolutionStage: 'pre' | 'mid' | 'final'
   isAlternateForm: boolean
   isGenderVariant: boolean
@@ -92,8 +107,13 @@ export function getPokeJungleSpriteUrl(
   entry: PokemonEntry,
   variant: PokeJungleVariant = 'normal',
 ): string | null {
+  if (variant === 'shiny' && entry.sprites.pokejungleShinyUnavailable) return null
+
   const source = dataset.sprite.sources?.pokejungle
-  const spriteId = entry.sprites.pokejungleId
+  const spriteId =
+    variant === 'shiny'
+      ? (entry.sprites.pokejungleShinyId ?? entry.sprites.pokejungleId)
+      : entry.sprites.pokejungleId
   if (!source || !spriteId) return null
   return `${source.baseUrl}${source.variants[variant]}${spriteId}.png`
 }

@@ -366,6 +366,40 @@ even if the `3.X` task order below does.
       trap; 2 new for `getPokeJungleSpriteUrl` incl. the older-dataset null case) **+ UI** (2 new:
       sprite renders from PokéJungle, and a failed load falls back to PokeAPI).
 
+- [x] **3.4e Fix PokéJungle's shiny id scheme (Alcremie/Minior collapse + genuine locks).** ✅
+      User-provided two more of Austin John's sheets (a standalone shiny export, and the shiny
+      "Living Form" box layout) surfaced two real gaps in 3.4d's normal-variant derivation, both
+      confirmed live rather than assumed:
+      - **Alcremie/Minior shiny art is visually redundant, not missing.** In-game, shiny Minior is
+      always the same dark core regardless of caught color, and shiny Alcremie's body color never
+      varies by cream (only its 7 sweets do) — so PokeJungle only ever rendered ONE shiny image
+      per case that's actually distinct, not one per form. The normal-variant id 404s for these.
+      Fix: `deriveShinyOverrides` collapses Minior to a single bare id and Alcremie to a
+      sweet-only id (ignoring cream), using PokeJungle's own flat numeric suffix scheme for shiny
+      (`-1`..`-6`) rather than the lettered one the normal variant uses. Closes 62 of the 63 gaps
+      found in 3.4d — with *correct* PokéJungle art, not a PokeAPI fallback.
+      - **A second, more dangerous gap: PokeJungle serves a lock-icon image with HTTP 200** for
+      genuinely shiny-locked Pokémon (128×128px, exactly 2051 bytes) instead of a 404 — a request
+      that "succeeds" but isn't the sprite, invisible to both an HTTP-status check and an `<img
+      onError>`. Found by comparing `content-length` across a full live re-scan of all 1387 shiny
+      ids: exactly 37 entries share that exact byte count (every real sprite's size is unique,
+      19KB–205KB — zero false positives). The result reads as a legitimate shiny-lock list, not
+      noise: nearly every one is a known shiny-locked Mythical or event-exclusive Legendary
+      (Victini, Magearna, Marshadow, Zarude, Kubfu/Urshifu, Glastrier/Spectrier/Calyrex, every Gen
+      9 DLC Paradox/Ogerpon/Pecharunt/Terapagos, Cosmog/Cosmoem, Floette's Eternal Flower,
+      Vivillon's Poké Ball pattern, and every Pikachu cap except Original Cap — which correctly
+      is *not* flagged, confirming no false positives). Hoopa is the one species split across both
+      failure modes (Confined → lock icon, Unbound → real 404) and is tracked as one fact in the
+      `SHINY_LOCKED` table rather than two.
+      - Precomputed at generation time (`sprites.pokejungleShinyUnavailable`), not checked live —
+      `getPokeJungleSpriteUrl` returns `null` immediately for these before ever building a
+      PokeJungle URL, so the app never even requests, let alone flashes, the lock icon.
+      **Tests: Unit** (7 new in the organizer: Minior collapse, Alcremie sweet-only collapse incl.
+      the ribbon/`-6` distinction, pass-through for every other species, `SHINY_LOCKED` incl. the
+      Original-Cap negative case and the two-Hoopa-formes case; 1 new for
+      `getPokeJungleSpriteUrl`'s shiny-unavailable short-circuit). No UI change — shiny still isn't
+      wired to any toggle (see the shiny-toggle idea note below for what's left).
+
 - [ ] **3.5 #19 — Persist preferences.** Wire `visibleColumns` (3.4) and `darkMode` (toggle-only
       since 2.3) into `UserPreferences` via the existing `useUserState()` — closes the
       dark-mode-persistence gap left open in 2.3.
@@ -453,17 +487,11 @@ even if the `3.X` task order below does.
 - **Social features.** Explicitly "way at the end" per the user — not to be considered until
   everything above is in a good place. No design thinking done on this yet, intentionally.
 
-- **Shiny sprite toggle.** `PokemonList.variant: 'normal' | 'shiny'` already exists in `types.ts`
-  and `getPokeJungleSpriteUrl`/`getSpriteUrl` (3.4d) already accept a shiny variant — nothing
-  reads it yet, no UI exposes it. When this gets built, the per-image `onError` fallback from 3.4d
-  needs a **family-level**, not per-image, decision for shiny specifically: PokéJungle's shiny
-  coverage is measured at 1324/1387 (95.5%), but the 63 gaps aren't spread evenly — they're 100%
-  of every non-Vanilla Alcremie cream (56 combos) and 6 of Minior's 7 colors. Falling back
-  per-image would show, e.g., Alcremie's 7 Vanilla-cream shinies in PokéJungle's nicer render
-  sitting next to the other 56 in PokeAPI's flatter one — inconsistent within the same family, even
-  though each individual image is "correct". Decide per-species (by dex) whether PokéJungle has
-  *complete* shiny coverage; if not, use PokeAPI for that species' shiny sprites entirely. User
-  flagged this tradeoff (2026-08-27); no code changes needed until the toggle itself is built.
+- **Shiny sprite toggle.** `PokemonList.variant: 'normal' | 'shiny'` already exists in `types.ts`,
+  and `getPokeJungleSpriteUrl` (3.4e) already resolves correct shiny sprite ids — including the
+  Alcremie/Minior/lock-icon edge cases — when called with `'shiny'`. Nothing reads `variant` yet
+  and `Sprite` (`HomePage.tsx`) always requests the default sprite. What's left is purely UI: a
+  toggle, and threading that choice into `Sprite`'s `getPokeJungleSpriteUrl`/`getSpriteUrl` calls.
 
 ---
 

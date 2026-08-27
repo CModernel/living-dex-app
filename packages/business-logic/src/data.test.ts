@@ -198,3 +198,20 @@ test('getPokeJungleSpriteUrl returns null when the dataset predates PokeJungle s
   const withoutId = { ...bulbasaur, sprites: { id: '1', hasFemale: false, hasShinyFemale: false } }
   assert.equal(getPokeJungleSpriteUrl(mockDataset, withoutId), null)
 })
+
+test('getPokeJungleSpriteUrl returns null for shiny-unavailable entries without attempting a URL', () => {
+  // PokeJungle serves a lock-icon image with HTTP 200 for these — a request that
+  // "succeeds" but isn't the sprite, so this must be checked before building any URL
+  // rather than relying on the caller's <img onError> to catch it.
+  const bulbasaur = mockDataset.pokemon.bulbasaur
+  const shinyLocked = {
+    ...bulbasaur,
+    sprites: { id: '1', hasFemale: false, hasShinyFemale: false, pokejungleId: '0001', pokejungleShinyUnavailable: true },
+  }
+  assert.equal(getPokeJungleSpriteUrl(mockDataset, shinyLocked, 'shiny'), null)
+  // The normal variant is unaffected — only shiny is locked.
+  assert.equal(
+    getPokeJungleSpriteUrl(mockDataset, shinyLocked, 'normal'),
+    'https://pokejungle.net/sprites/normal/0001.png',
+  )
+})
