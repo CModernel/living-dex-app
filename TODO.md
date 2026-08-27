@@ -453,6 +453,18 @@ even if the `3.X` task order below does.
 - **Social features.** Explicitly "way at the end" per the user — not to be considered until
   everything above is in a good place. No design thinking done on this yet, intentionally.
 
+- **Shiny sprite toggle.** `PokemonList.variant: 'normal' | 'shiny'` already exists in `types.ts`
+  and `getPokeJungleSpriteUrl`/`getSpriteUrl` (3.4d) already accept a shiny variant — nothing
+  reads it yet, no UI exposes it. When this gets built, the per-image `onError` fallback from 3.4d
+  needs a **family-level**, not per-image, decision for shiny specifically: PokéJungle's shiny
+  coverage is measured at 1324/1387 (95.5%), but the 63 gaps aren't spread evenly — they're 100%
+  of every non-Vanilla Alcremie cream (56 combos) and 6 of Minior's 7 colors. Falling back
+  per-image would show, e.g., Alcremie's 7 Vanilla-cream shinies in PokéJungle's nicer render
+  sitting next to the other 56 in PokeAPI's flatter one — inconsistent within the same family, even
+  though each individual image is "correct". Decide per-species (by dex) whether PokéJungle has
+  *complete* shiny coverage; if not, use PokeAPI for that species' shiny sprites entirely. User
+  flagged this tradeoff (2026-08-27); no code changes needed until the toggle itself is built.
+
 ---
 
 ## How we work
