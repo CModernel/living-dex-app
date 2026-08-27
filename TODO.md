@@ -417,9 +417,51 @@ even if the `3.X` task order below does.
       **Tests: Unit** (filter-combination logic) **+ UI**.
 
 ### Polish (web)
-- [ ] **3.8 Polish pass** — `#21` progress indicator (% owned), `#22` sticky headers, `#17`
-      box/slot column, `#13` intro/welcome page. Sequenced and detailed individually once the
-      table/lists/filtering core (3.2–3.7) is solid.
+- [ ] **3.4f Table styling refinements.** User-requested (2026-08-27), small/mechanical:
+      - Sprite size: nudge `SPRITE_SIZE` (`HomePage.tsx`) down slightly from 64px — a small
+      reduction, not back to the pre-3.4c 48px. Hover tooltip ratio (`SPRITE_HOVER_ZOOM`) stays.
+      - `Dex #` column: force `text-left` explicitly (currently relies on the browser/table
+      default, which the user says doesn't read as left-aligned in practice).
+      - `Generation` column: center (`text-center`) — currently left-aligned like everything else,
+      which doesn't read as centered for a short numeric value.
+      - `Region` column: capitalize the displayed value — the raw data is a lowercase slug
+      (`alola`, `galar`, `hisui`, `paldea`); either a display-only `capitalize` class or
+      title-casing the string, not a data change.
+      - `Stage` column: capitalize the displayed value too. **Checked**: `evolutionStage`
+      (`'pre' | 'mid' | 'final'`) is **not** a raw PokeAPI field — it's a classification our own
+      generator derives from PokeAPI's evolution-chain data (`computeEvolutionStages` in
+      `generate-living-form-full.js`). Capitalizing it is purely a display concern either way.
+
+- [ ] **3.8 Polish pass** — `#21` progress indicator (% owned), `#22` sticky headers, `#13`
+      intro/welcome page. Sequenced and detailed individually once the table/lists/filtering
+      core (3.2–3.7) is solid.
+
+- [ ] **3.8b `#17` Box/slot/page + column sorting.** User-specified behavior (2026-08-27):
+      - Box and Slot are shown **by default** once implemented; Page starts **hidden** (if it
+      ends up getting added at all — not yet decided it's useful).
+      - Box/Slot/Page must be derived from each tier's **canonical** order — `sortIndex` ascending
+      (chunked into boxes of 30, per `docs/PLANNING.md` in the sibling repo) — computed once in
+      the `entries` `useMemo` (which already filters-then-sorts by `sortIndex` before this point)
+      and attached to each entry, independent of whatever the table currently displays. This is
+      what makes them immune to the sort proposal below by construction: they're baked into the
+      row's data before `useTable` ever sees it, so re-sorting the *display* can never touch them.
+      - **Sorting proposal**: add TanStack's sorting feature (`sortingFeature`, alongside 3.4's
+      `columnVisibilityFeature`) restricted to 4 columns — Dex, Name, Generation, Region
+      (`enableSorting: true` only on those; verify what v9 defaults the rest to when
+      implementing). Default `initialState.sorting` is always `[{ id: 'dex', desc: false }]`.
+      Toggling sort direction/column only reorders `table.getRowModel().rows` for display — it
+      must never feed back into the `entries` `useMemo` that computes Box/Slot/Page, per the
+      point above.
+      - **Column proposals** (for #17 or later, evaluated on data already in the dataset — no new
+      derivation needed): **`Species`** (the bare species name without a form suffix, e.g. "Raichu"
+      vs. `name`'s "Raichu (Alolan)") is the strongest candidate — useful for sorting/grouping by
+      species family once `Name` includes parenthetical forms, and the field already exists.
+      Considered and set aside for now: a `Form`-only column (redundant with `Region` + `Name`
+      already showing this), an alternate-form/stat-difference badge (niche, better suited to a
+      tooltip or legend than a full column), and a per-region Pokédex-number column (`regionalDex`
+      is keyed by region, so it'd need its own region selector — real complexity, not a quick add).
+      An "owned date" column isn't feasible from current data at all — `ownedIds` has no
+      timestamp; that's a `PokemonList` data-model change, not a column, if ever wanted.
 
 ### Data & Mobile
 - [ ] **3.9 #15 — Export/import.**
