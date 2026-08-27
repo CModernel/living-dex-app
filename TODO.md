@@ -568,6 +568,45 @@ even if the `3.X` task order below does.
 - **Social features.** Explicitly "way at the end" per the user — not to be considered until
   everything above is in a good place. No design thinking done on this yet, intentionally.
 
+- **"Line Form" tier — breeding-based family completion.** User's idea (2026-08-27): a new tier
+  with the same row set as Living Lite (no final-stage requirement — every distinct catchable
+  form in a line still gets a row), but a different **ownership** rule: marking any ONE entry in
+  an evolution family as owned marks the WHOLE family as owned, on the reasoning that once you
+  have any member of a breedable line, the rest of the line is obtainable via breeding without a
+  separate wild encounter. **Flagged by the user as needing real analysis before scoping into a
+  ticket** — recommend Opus + plan mode, for the reasons below.
+  - **This isn't a new filter, it's a new ownership mechanic.** Every existing tier (Living Form,
+    Living Lite, Final Form Full, Final Form) is a pure predicate over the dataset — which rows
+    render — while `ownedIds` tracking is completely independent of tier. Line Form couples the
+    two: checking one row needs to affect the completion status of OTHER rows. That's a
+    genuinely different feature, not a fifth tier predicate alongside the existing four.
+  - **The data needed for this doesn't exist in the dataset yet.** `generate-living-form-full.js`
+    fetches each entry's PokeAPI evolution-chain URL (`evolutionChainUrl`) but only uses it
+    internally to compute the already-published `evolutionStage` ('pre'/'mid'/'final') — the
+    chain grouping itself (which entries share a family) is never persisted to the output JSON.
+    Making Line Form possible means adding a new field (e.g. a chain id) to the sibling
+    `living-dex-organizer` repo's generator and dataset — the same kind of cross-repo,
+    regenerate-and-verify work as 3.4d/3.4e's PokeJungle sprite ids, not a web-app-only change.
+  - **Regional forms need real breeding-mechanics research, not an assumption.** PokeAPI models
+    a regional form as sharing its base species' evolution chain (e.g. Alolan Raichu's `species`
+    still points at dex 0026 — already noted in `computeEvolutionStages`'s own comment) — but
+    that's a data-modeling fact about PokeAPI, not a claim about whether the real games let an
+    Alolan Vulpix egg hatch into a Kantonian one or vice versa (breeding outcomes depend on which
+    parent is used and vary by generation). Treating "shares a PokeAPI chain" as "shares a
+    breeding family" without checking real game mechanics first risks silently marking unearned
+    regional forms as owned — the same class of mistake the PokeJungle sprite work in 3.4d/e was
+    careful to verify rather than assume.
+  - **Open product questions, not yet decided:** Does un-marking one family member un-mark the
+    rest, or is the cascade one-way (marking-as-owned only)? Does `ownedIds` actually gain every
+    family member's slug when one is tapped (simple completion-% math, but bloats stored data and
+    complicates "is this slug owned" once other features touch `ownedIds` directly), or does
+    ownership stay stored per-tapped-entry only, with every row's displayed/counted status
+    *computed* by checking whether it or any family-mate is in `ownedIds` (keeps storage minimal,
+    but every consumer of `ownedIds` needs to know about family-grouping semantics)?
+  - **Worth checking**: whether Austin John's own methodology already has a named tier matching
+    this idea, the way every other tier in this project is grounded in his real sheets rather
+    than invented fresh.
+
 - **Shiny sprite toggle.** `PokemonList.variant: 'normal' | 'shiny'` already exists in `types.ts`,
   and `getPokeJungleSpriteUrl` (3.4e) already resolves correct shiny sprite ids — including the
   Alcremie/Minior/lock-icon edge cases — when called with `'shiny'`. Nothing reads `variant` yet
