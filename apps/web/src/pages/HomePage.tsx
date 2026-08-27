@@ -11,6 +11,7 @@ import { memo, useMemo, useState } from 'react'
 import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
 import TypeBadge from '../components/TypeBadge'
 import { useActiveList } from '../hooks/useActiveList'
+import { useColumnVisibility } from '../hooks/useColumnVisibility'
 import { useDataset } from '../hooks/useDataset'
 
 const TIER_LABELS: Record<TierId, string> = {
@@ -130,6 +131,7 @@ const TableRow = memo(function TableRow({
 function HomePage() {
   const result = useDataset()
   const { activeList, toggleOwned } = useActiveList()
+  const { columnVisibility, setColumnVisibility } = useColumnVisibility()
   const [tierId, setTierId] = useState<TierId>('living-form')
 
   const dataset = result.loading || result.error ? null : result.dataset
@@ -182,14 +184,16 @@ function HomePage() {
     [dataset],
   )
 
+  // Controlled (not `initialState`) so a preference loaded from storage after the
+  // table's first render — UserStateProvider's hydration is async — still takes
+  // effect; `initialState` is a one-time seed TanStack won't re-apply on its own.
   const table = useTable(
     {
       features,
       columns,
       data: entries,
-      initialState: {
-        columnVisibility: { dex: false, generation: false, region: false, evolutionStage: false },
-      },
+      state: { columnVisibility },
+      onColumnVisibilityChange: setColumnVisibility,
     },
     (state) => ({ columnVisibility: state.columnVisibility }),
   )

@@ -400,10 +400,46 @@ even if the `3.X` task order below does.
       `getPokeJungleSpriteUrl`'s shiny-unavailable short-circuit). No UI change — shiny still isn't
       wired to any toggle (see the shiny-toggle idea note below for what's left).
 
-- [ ] **3.5 #19 — Persist preferences.** Wire `visibleColumns` (3.4) and `darkMode` (toggle-only
-      since 2.3) into `UserPreferences` via the existing `useUserState()` — closes the
-      dark-mode-persistence gap left open in 2.3.
-      **Tests: Integration** (preference survives a reload).
+- [x] **3.5 #19 — Persist preferences.** ✅ Wired `visibleColumns` (3.4) and `darkMode`
+      (toggle-only since 2.3) into `UserPreferences` via the existing `useUserState()` — closes
+      the dark-mode-persistence gap left open in 2.3.
+      - New `apps/web/src/hooks/useColumnVisibility.ts`: converts between the persisted
+      `visibleColumns: string[]` (the array shape `UserPreferences` already declared) and
+      TanStack's own `Record<string, boolean>` state, both directions. Returns
+      `setColumnVisibility` as TanStack's raw `OnChangeFn` shape (value-or-updater, resolved via
+      the package's own exported `functionalUpdate`) so it plugs straight into
+      `onColumnVisibilityChange` — `column.toggleVisibility()` calls it with an updater, not a
+      plain value, confirmed against the installed package's own `table-state` skill doc.
+      - `HomePage.tsx`'s `useTable` call switched from `initialState.columnVisibility` (a
+      one-time seed) to controlled `state.columnVisibility` + `onColumnVisibilityChange` —
+      required because `UserStateProvider`'s hydration from storage is async, so the real
+      preference isn't known yet on the table's first render.
+      - `useDarkMode.ts` now reads/writes `preferences.darkMode` instead of a local `useState`
+      that reset to the OS preference every reload. Kept the existing toggle-only API
+      (`{ isDark, toggle }`) — 3.5 explicitly doesn't build the 3-state system/light/dark picker
+      (that's the separate "Selectable theme system" idea).
+      - `DEFAULT_USER_STATE.preferences.visibleColumns` default corrected from a stale
+      pre-3.4 placeholder (`['name','types','owned']`, none of which are even hideable columns)
+      to `[]`, matching the table's actual pre-3.5 hardcoded default — a behavior-preserving fix,
+      not a change, confirmed via `packages/business-logic`'s own `storage.test.ts` (asserts
+      against `DEFAULT_USER_STATE` directly, not a hardcoded literal).
+      - Found and fixed a real, if narrow, race while writing the persistence tests: an
+      `UserStateProvider` consumer that changes state before the async hydration effect
+      resolves gets that change silently overwritten once hydration completes. Effectively
+      unreachable from real user interaction today (hydration resolves in a microtask, far
+      faster than a human click, given today's synchronous-localStorage-wrapped-in-a-Promise
+      adapter) but real for a future AsyncStorage-backed mobile adapter (3.10) where the window
+      is much wider — worth revisiting then. Tests wait for hydration's own write-back
+      (localStorage having a value) before interacting, rather than fixing `UserStateContext.tsx`
+      itself, which felt like unrequested scope for this ticket given the near-zero current risk.
+      - Verified end-to-end in-browser (Chrome MCP) with a **real page reload**, not just a
+      React remount: toggled dark mode + the Dex # column, reloaded, confirmed both survived.
+      **Tests: Unit** (`useColumnVisibility.test.ts`: default state, plain-value and
+      updater-function calls, persistence-survives-a-fresh-instance) **+ Integration**
+      (`useDarkMode.test.ts`'s new persistence test; `HomePage.test.tsx`'s new
+      unmount-then-remount column-visibility test, simulating a reload within the existing
+      harness). 34/34 web tests passing (up from 28), 17/17 business-logic, verified in a clean
+      Docker build too.
 
 ### Multiple Lists & Filtering
 - [ ] **3.6 #16 — Multiple lists.** List switcher UI + "start a new list" flow. Replaces 3.2's

@@ -218,6 +218,23 @@ test('toggling a column in the menu shows and hides it', async () => {
   await waitFor(() => expect(screen.queryByText('0001')).not.toBeInTheDocument())
 })
 
+test('column visibility survives a reload (3.5 — persisted, not just in-session state)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  const { unmount } = renderHomePage()
+
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Dex #' }))
+  await waitFor(() => expect(screen.getByText('0001')).toBeInTheDocument())
+
+  // Simulates a reload: a brand new HomePage/UserStateProvider instance, reading
+  // whatever localStorage the unmounted instance left behind.
+  unmount()
+  renderHomePage()
+
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+  expect(screen.getByText('0001')).toBeInTheDocument()
+})
+
 test('always-visible columns are not offered in the column menu', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
   renderHomePage()

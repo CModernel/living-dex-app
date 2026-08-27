@@ -1,25 +1,30 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, expect, test } from 'vitest'
+import { UserStateProvider } from '../state/UserStateContext'
 import Layout from './Layout'
 
 beforeEach(() => {
   document.documentElement.classList.remove('dark')
+  window.localStorage.clear()
 })
 
 afterEach(() => {
   document.documentElement.classList.remove('dark')
+  window.localStorage.clear()
 })
 
 function renderLayout() {
   render(
-    <MemoryRouter initialEntries={['/']}>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route index element={<div>Child content</div>} />
-        </Route>
-      </Routes>
-    </MemoryRouter>,
+    <UserStateProvider>
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route index element={<div>Child content</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </UserStateProvider>,
   )
 }
 
@@ -32,7 +37,7 @@ test('renders nav links and outlet content', () => {
   expect(screen.getByText('Child content')).toBeInTheDocument()
 })
 
-test('dark mode toggle button switches the document theme class', () => {
+test('dark mode toggle button switches the document theme class', async () => {
   renderLayout()
 
   const toggle = screen.getByRole('button', { name: /switch to (dark|light) mode/i })
@@ -40,5 +45,5 @@ test('dark mode toggle button switches the document theme class', () => {
 
   fireEvent.click(toggle)
 
-  expect(document.documentElement.classList.contains('dark')).toBe(!wasDark)
+  await waitFor(() => expect(document.documentElement.classList.contains('dark')).toBe(!wasDark))
 })
