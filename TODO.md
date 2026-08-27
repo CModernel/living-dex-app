@@ -336,6 +336,36 @@ even if the `3.X` task order below does.
       **Tests:** no behavior change, existing 26/26 web tests still pass, verified in a clean
       Docker build too.
 
+- [x] **3.4d Switch sprites to PokéJungle.** ✅ User-requested: the PokeAPI sprites look poor next
+      to the PokéJungle art Austin John's own sheet uses.
+      - The URL is `pokejungle.net/sprites/{normal|shiny}/{natDex}{formId}{genderId}.png`. The
+      open question was whether those ids could be derived rather than read from Austin John's
+      sprite export — **they can: 1387/1387 reproduced exactly.** `formId` is just the entry's
+      position among its species' forms in our own dataset order, plus two species rules:
+      Pikachu skips `-8` (PokéJungle numbers the Let's Go partner form there; our sheet has no
+      row for it), and Alcremie is a 9 creams × 7 sweets grid split across *both* suffixes —
+      where `-f` means "ribbon sweet", not "female" (that false friend silently produced the
+      only 8 wrong URLs in a first attempt).
+      - Derivation deliberately keys off **our** entry order, not PokeAPI's raw form order —
+      the latter was tested and rejected (70 mismatches across 7 species; it includes
+      Mega/Zen/meteor forms we drop and orders Vivillon differently).
+      - Lives in the sibling repo as `scripts/lib/pokejungle-sprite.js` (pure, unit-tested), with
+      `sheets/sprite-urls.csv` committed as ground truth and diffed by `scripts/verify.js` on
+      every run. That check exists because a wrong id still returns HTTP 200 — it just shows a
+      different Pokémon — so drift would otherwise be invisible.
+      - Dataset gained `sprites.pokejungleId` and `sprite.sources.pokejungle`, both additive, so
+      it stays on `data/v1` and older clients keep working.
+      - App renders PokéJungle and falls back to PokeAPI via `onError`. The fallback is load-
+      bearing, not decorative: PokéJungle has no shiny art for the per-combination Alcremie and
+      Minior forms (~5%), and until the regenerated dataset propagates through jsDelivr the
+      field is simply absent — both land on PokeAPI with no special handling.
+      - Verified all 1387 normal URLs resolve (one-off, run outside CI — hitting a third-party
+      host from CI would trade a real check for a flaky one), and confirmed in-browser that all
+      2568 rendered images came from PokéJungle with zero fallbacks and zero broken images.
+      **Tests: Unit** (12 new in the organizer covering both species rules incl. the ribbon/`-f`
+      trap; 2 new for `getPokeJungleSpriteUrl` incl. the older-dataset null case) **+ UI** (2 new:
+      sprite renders from PokéJungle, and a failed load falls back to PokeAPI).
+
 - [ ] **3.5 #19 — Persist preferences.** Wire `visibleColumns` (3.4) and `darkMode` (toggle-only
       since 2.3) into `UserPreferences` via the existing `useUserState()` — closes the
       dark-mode-persistence gap left open in 2.3.

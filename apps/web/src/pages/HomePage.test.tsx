@@ -9,6 +9,12 @@ const mockDataset: PokemonDataset = {
   sprite: {
     baseUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/',
     variants: { front_default: '', front_shiny: 'shiny/', front_female: 'female/', front_shiny_female: 'shiny/female/' },
+    sources: {
+      pokejungle: {
+        baseUrl: 'https://pokejungle.net/sprites/',
+        variants: { normal: 'normal/', shiny: 'shiny/' },
+      },
+    },
   },
   pokemon: {
     bulbasaur: {
@@ -21,7 +27,7 @@ const mockDataset: PokemonDataset = {
       types: ['grass', 'poison'],
       generation: 1,
       regionalDex: {},
-      sprites: { id: '1', hasFemale: false, hasShinyFemale: false },
+      sprites: { id: '1', hasFemale: false, hasShinyFemale: false, pokejungleId: '0001' },
       evolutionStage: 'pre',
       isAlternateForm: false,
       isGenderVariant: false,
@@ -42,7 +48,7 @@ const mockDataset: PokemonDataset = {
       types: ['electric'],
       generation: 1,
       regionalDex: {},
-      sprites: { id: '25', hasFemale: true, hasShinyFemale: false },
+      sprites: { id: '25', hasFemale: true, hasShinyFemale: false, pokejungleId: '0025-f' },
       evolutionStage: 'mid',
       isAlternateForm: false,
       isGenderVariant: true,
@@ -63,7 +69,7 @@ const mockDataset: PokemonDataset = {
       types: ['fire', 'flying'],
       generation: 1,
       regionalDex: {},
-      sprites: { id: '6', hasFemale: false, hasShinyFemale: false },
+      sprites: { id: '6', hasFemale: false, hasShinyFemale: false, pokejungleId: '0006' },
       evolutionStage: 'final',
       isAlternateForm: false,
       isGenderVariant: false,
@@ -221,4 +227,34 @@ test('always-visible columns are not offered in the column menu', async () => {
   expect(screen.queryByRole('checkbox', { name: 'Name' })).not.toBeInTheDocument()
   expect(screen.queryByRole('checkbox', { name: 'Types' })).not.toBeInTheDocument()
   expect(screen.queryByRole('checkbox', { name: 'Owned' })).not.toBeInTheDocument()
+})
+
+test('sprites render from PokeJungle when the dataset provides them', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  const { container } = renderHomePage()
+
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  expect(container.querySelector('img')).toHaveAttribute(
+    'src',
+    'https://pokejungle.net/sprites/normal/0001.png',
+  )
+})
+
+test('a sprite that fails to load falls back to the PokeAPI url', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  const { container } = renderHomePage()
+
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  // PokeJungle has no shiny art for the per-combination Alcremie/Minior forms, so a
+  // missing image is an expected state rather than a bug — it must degrade, not break.
+  fireEvent.error(container.querySelectorAll('img')[0])
+
+  await waitFor(() => {
+    expect(container.querySelector('img')).toHaveAttribute(
+      'src',
+      'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png',
+    )
+  })
 })

@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import {
   clearDatasetCache,
   fetchDataset,
+  getPokeJungleSpriteUrl,
   getSpriteUrl,
   type PokemonDataset,
 } from './data.js'
@@ -17,6 +18,12 @@ const mockDataset: PokemonDataset = {
       front_female: 'female/',
       front_shiny_female: 'shiny/female/',
     },
+    sources: {
+      pokejungle: {
+        baseUrl: 'https://pokejungle.net/sprites/',
+        variants: { normal: 'normal/', shiny: 'shiny/' },
+      },
+    },
   },
   pokemon: {
     bulbasaur: {
@@ -29,7 +36,7 @@ const mockDataset: PokemonDataset = {
       types: ['grass', 'poison'],
       generation: 1,
       regionalDex: { isle: 1 },
-      sprites: { id: '1', hasFemale: false, hasShinyFemale: false },
+      sprites: { id: '1', hasFemale: false, hasShinyFemale: false, pokejungleId: '0001' },
       evolutionStage: 'pre',
       isAlternateForm: false,
       isGenderVariant: false,
@@ -48,7 +55,7 @@ const mockDataset: PokemonDataset = {
       types: ['electric'],
       generation: 1,
       regionalDex: { alola: 25 },
-      sprites: { id: '25', hasFemale: true, hasShinyFemale: true },
+      sprites: { id: '25', hasFemale: true, hasShinyFemale: true, pokejungleId: '0025' },
       evolutionStage: 'mid',
       isAlternateForm: false,
       isGenderVariant: false,
@@ -164,4 +171,30 @@ test('getSpriteUrl defaults to default variant', () => {
     url,
     'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png',
   )
+})
+
+test('getPokeJungleSpriteUrl builds both variants and defaults to normal', () => {
+  const bulbasaur = mockDataset.pokemon.bulbasaur
+  assert.equal(
+    getPokeJungleSpriteUrl(mockDataset, bulbasaur),
+    'https://pokejungle.net/sprites/normal/0001.png',
+  )
+  assert.equal(
+    getPokeJungleSpriteUrl(mockDataset, bulbasaur, 'shiny'),
+    'https://pokejungle.net/sprites/shiny/0001.png',
+  )
+})
+
+test('getPokeJungleSpriteUrl returns null when the dataset predates PokeJungle sprites', () => {
+  // The dataset comes from a CDN, so the app can be running against a copy published
+  // before this field existed — it must fall back to PokeAPI, not break.
+  const bulbasaur = mockDataset.pokemon.bulbasaur
+  const withoutSources: PokemonDataset = {
+    ...mockDataset,
+    sprite: { baseUrl: mockDataset.sprite.baseUrl, variants: mockDataset.sprite.variants },
+  }
+  assert.equal(getPokeJungleSpriteUrl(withoutSources, bulbasaur), null)
+
+  const withoutId = { ...bulbasaur, sprites: { id: '1', hasFemale: false, hasShinyFemale: false } }
+  assert.equal(getPokeJungleSpriteUrl(mockDataset, withoutId), null)
 })

@@ -8,7 +8,9 @@ export type PokemonEntry = {
   types: string[]
   generation: number
   regionalDex: Record<string, number>
-  sprites: { id: string; hasFemale: boolean; hasShinyFemale: boolean }
+  // `pokejungleId` is optional because the app can be running against a dataset
+  // published before that field existed — see getPokeJungleSpriteUrl.
+  sprites: { id: string; hasFemale: boolean; hasShinyFemale: boolean; pokejungleId?: string }
   evolutionStage: 'pre' | 'mid' | 'final'
   isAlternateForm: boolean
   isGenderVariant: boolean
@@ -25,9 +27,19 @@ export type SpriteVariants = {
   front_shiny_female: string
 }
 
+export type PokeJungleVariant = 'normal' | 'shiny'
+
 export type PokemonDataset = {
   count: number
-  sprite: { baseUrl: string; variants: SpriteVariants }
+  sprite: {
+    baseUrl: string
+    variants: SpriteVariants
+    // Optional for the same reason as `pokejungleId` above: older published datasets
+    // only carry the top-level PokeAPI baseUrl/variants.
+    sources?: {
+      pokejungle?: { baseUrl: string; variants: Record<PokeJungleVariant, string> }
+    }
+  }
   pokemon: Record<string, PokemonEntry>
 }
 
@@ -61,6 +73,29 @@ export function getSpriteUrl(
   const variantKey = variantKeyMap[variant]
   const prefix = dataset.sprite.variants[variantKey]
   return `${dataset.sprite.baseUrl}${prefix}${entry.sprites.id}.png`
+}
+
+/**
+ * PokeJungle sprite URL for an entry, or null if this dataset doesn't carry them.
+ *
+ * These are the sprites Austin John's own sheet uses, and the ones we render by
+ * preference — getSpriteUrl (PokeAPI) stays as the fallback. Returning null rather
+ * than throwing is deliberate: the dataset is fetched from a CDN, so the app can be
+ * running against a copy published before `sources.pokejungle` existed, and it should
+ * quietly keep showing PokeAPI sprites until the newer data propagates.
+ *
+ * Note PokeJungle's shiny coverage isn't total — the per-combination Alcremie and
+ * Minior shinies 404 — so callers should still handle an image that fails to load.
+ */
+export function getPokeJungleSpriteUrl(
+  dataset: PokemonDataset,
+  entry: PokemonEntry,
+  variant: PokeJungleVariant = 'normal',
+): string | null {
+  const source = dataset.sprite.sources?.pokejungle
+  const spriteId = entry.sprites.pokejungleId
+  if (!source || !spriteId) return null
+  return `${source.baseUrl}${source.variants[variant]}${spriteId}.png`
 }
 
 export function clearDatasetCache(): void {

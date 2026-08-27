@@ -1,4 +1,9 @@
-import { getSpriteUrl, type PokemonEntry, type PokemonDataset } from '@living-dex/business-logic'
+import {
+  getPokeJungleSpriteUrl,
+  getSpriteUrl,
+  type PokemonEntry,
+  type PokemonDataset,
+} from '@living-dex/business-logic'
 import { TIERS, type TierId } from '@cmodernel/living-dex-tiers'
 import { flexRender, useTable } from '@tanstack/react-table'
 import { columnVisibilityFeature, createColumnHelper, tableFeatures, type ColumnDef, type Row } from '@tanstack/table-core'
@@ -24,19 +29,41 @@ const columnHelper = createColumnHelper<typeof features, PokemonEntry>()
 const SPRITE_SIZE = 64
 const SPRITE_HOVER_ZOOM = 2
 
+// Prefers PokeJungle (the sprites Austin John's own sheet uses) and falls back to
+// PokeAPI. The fallback isn't just belt-and-braces: PokeJungle has no shiny art for the
+// per-combination Alcremie/Minior forms, and a dataset published before `pokejungleId`
+// existed returns null here — both cases land on PokeAPI without any special handling.
 function Sprite({ dataset, entry }: { dataset: PokemonDataset; entry: PokemonEntry }) {
-  const spriteUrl = getSpriteUrl(dataset, entry) ?? undefined
+  const pokeApiUrl = getSpriteUrl(dataset, entry)
+  const pokeJungleUrl = getPokeJungleSpriteUrl(dataset, entry)
+  // Records WHICH url failed rather than a bare "it failed" flag: switching tiers
+  // re-renders rows in place, so one Sprite instance can end up showing a different
+  // entry, and a boolean would strand that new entry on the fallback.
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+
+  const usePokeJungle = pokeJungleUrl !== null && failedUrl !== pokeJungleUrl
+  const spriteUrl = (usePokeJungle ? pokeJungleUrl : pokeApiUrl) ?? undefined
+  // Re-setting the same value is a no-op in React, so a fallback that also 404s just
+  // stops here instead of looping.
+  const handleError = usePokeJungle ? () => setFailedUrl(pokeJungleUrl) : undefined
   const hoverSize = SPRITE_SIZE * SPRITE_HOVER_ZOOM
+
   return (
     <div className="group relative inline-block">
       <img
         src={spriteUrl}
         alt=""
         loading="lazy"
+        onError={handleError}
         style={{ width: SPRITE_SIZE, height: SPRITE_SIZE, maxWidth: 'none' }}
       />
       <div className="pointer-events-none absolute top-1/2 left-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 rounded border border-border bg-background p-2 shadow-lg group-hover:block">
-        <img src={spriteUrl} alt="" style={{ width: hoverSize, height: hoverSize, maxWidth: 'none' }} />
+        <img
+          src={spriteUrl}
+          alt=""
+          onError={handleError}
+          style={{ width: hoverSize, height: hoverSize, maxWidth: 'none' }}
+        />
       </div>
     </div>
   )
