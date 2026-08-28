@@ -442,10 +442,37 @@ even if the `3.X` task order below does.
       Docker build too.
 
 ### Multiple Lists & Filtering
-- [ ] **3.6 #16 — Multiple lists.** List switcher UI + "start a new list" flow. Replaces 3.2's
-      implicit single default list with real UI.
-      **Tests: UI** (switching lists changes which `ownedIds` the table reads/writes)
-      **+ Integration**.
+- [x] **3.6 #16 — Multiple lists.** ✅ List switcher UI + "start a new list" flow. Replaces 3.2's
+      implicit single default list with real UI. Scope decided upfront: **switch + create only**
+      (no delete/rename — trivial to add later since `UserState.lists`/`activeListId` were
+      already multi-list-shaped from the start, so this needed no schema change at all).
+      - New `apps/web/src/hooks/useLists.ts`: exports `createList(name)` (moved out of
+      `useActiveList.ts`, which now imports it instead of keeping its own duplicate factory) and
+      `useLists()` (`lists` in creation order, `createNewList(name)` — adds and immediately
+      activates, `switchTo(id)` — no-ops for an unknown id).
+      - `ListsPage.tsx` (was a placeholder): empty state ("You don't have any lists yet" + a
+      create-first-list form) handles a user whose first visit is `/lists`, not `/`, without
+      depending on `useActiveList`'s bootstrap having run first. Otherwise lists as rows
+      (name + owned count), click-anywhere-in-row to switch (matching 3.3b's row-click
+      language), active one highlighted with the same `bg-brand/15` HomePage uses for owned rows.
+      - **Zero changes needed in `HomePage.tsx`** — it already derives `activeList` from
+      `state.activeListId` via the shared `UserStateContext`, so switching lists elsewhere in the
+      tree reactively updates which `ownedIds` it reads/writes with no code change there at all.
+      - Found the **same async-hydration race from 3.5** here too, now proven to bite even a
+      *single* mutation immediately after render under load (not just consecutive ones as first
+      suspected) — confirmed by intermittent failures in a full-suite run that passed reliably in
+      isolation. Same fix as 3.5: tests wait for hydration's own localStorage write-back first;
+      `UserStateContext.tsx` itself is still untouched (still unreachable from real user timing).
+      - Verified end-to-end in-browser (Chrome MCP): created two lists, owned a Pokémon on one,
+      confirmed the owned-count on `/lists` updated live, confirmed switching lists on `/lists`
+      correctly changed Home's checked state both ways (isolation, not just switching away).
+      **Tests: Unit** (`useLists.test.ts`: starts empty, create-then-active, `switchTo`'s
+      unknown-id no-op, creation-order stability) **+ UI** (`ListsPage.test.tsx`, rewritten from
+      the placeholder-only test: empty state, create-and-activate, switching between two lists)
+      **+ Integration** (new `HomePage.test.tsx` test: owning a Pokémon on the default list,
+      creating a second list, confirming it starts unowned, switching back and confirming the
+      first list's ownership survived — the ticket's own stated requirement). 41/41 web tests
+      passing (up from 34), 17/17 business-logic, verified in a clean Docker build too.
 
 - [ ] **3.7 #14 — Custom filtering.** 3-toggle UI for `ListFilter`
       (`finalStageOnly`/`regionalFormsOnly`/`hideGenderVariants`), applied on top of 3.3's tier

@@ -1,6 +1,7 @@
 import { clearDatasetCache, type PokemonDataset } from '@living-dex/business-logic'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { useLists } from '../hooks/useLists'
 import { UserStateProvider } from '../state/UserStateContext'
 import HomePage from './HomePage'
 
@@ -274,4 +275,52 @@ test('a sprite that fails to load falls back to the PokeAPI url', async () => {
       'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png',
     )
   })
+})
+
+// A minimal consumer exposing useLists() alongside HomePage under one UserStateProvider —
+// mirrors UserStateContext.test.tsx's TestConsumer pattern, so this stays a focused
+// integration test rather than a heavier full-router AppRoutes render (3.6).
+function ListSwitcher() {
+  const { lists, createNewList, switchTo } = useLists()
+  return (
+    <div>
+      <button type="button" onClick={() => createNewList('List B')}>
+        create list b
+      </button>
+      {lists.map((list) => (
+        <button key={list.id} type="button" onClick={() => switchTo(list.id)}>
+          switch to {list.name}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+test('switching the active list changes which ownedIds the table reads and writes (3.6)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  render(
+    <UserStateProvider>
+      <HomePage />
+      <ListSwitcher />
+    </UserStateProvider>,
+  )
+
+  // UserStateProvider hydrates from storage asynchronously; mutating before that resolves
+  // can get silently clobbered back to defaults once it does (see 3.5's useDarkMode.test.ts
+  // for the same guard, and TODO.md for why this is left as-is for now).
+  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
+
+  // Owning Bulbasaur creates the default first list ("My Living Dex") implicitly, same as
+  // every other test in this file.
+  await screen.findByRole('checkbox', { name: /mark bulbasaur as owned/i })
+  fireEvent.click(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i }))
+  await waitFor(() => expect(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i })).toBeChecked())
+
+  // A fresh list has nothing owned, even though the same Bulbasaur row is showing.
+  fireEvent.click(screen.getByRole('button', { name: /create list b/i }))
+  await waitFor(() => expect(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i })).not.toBeChecked())
+
+  // Switching back to the original list shows the earlier toggle survived.
+  fireEvent.click(screen.getByRole('button', { name: /switch to my living dex/i }))
+  await waitFor(() => expect(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i })).toBeChecked())
 })

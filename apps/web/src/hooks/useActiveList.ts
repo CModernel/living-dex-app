@@ -1,17 +1,9 @@
-import { DEFAULT_LIST_FILTER, type PokemonList } from '@living-dex/business-logic'
 import { useCallback, useEffect } from 'react'
 import { useUserState } from '../state/UserStateContext'
+import { createList } from './useLists'
 
-function createDefaultList(): PokemonList {
-  return {
-    id: crypto.randomUUID(),
-    name: 'My Living Dex',
-    createdAt: new Date().toISOString(),
-    dataVersion: 'v1',
-    variant: 'normal',
-    filter: DEFAULT_LIST_FILTER,
-    ownedIds: [],
-  }
+function createDefaultList() {
+  return createList('My Living Dex')
 }
 
 export function useActiveList() {
