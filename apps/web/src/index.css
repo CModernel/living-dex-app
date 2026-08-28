@@ -8,6 +8,9 @@
   --color-muted: #666666;
   --color-border: #e5e7eb;
   --color-brand: #208aef;
+  /* A subtle lift off the page background — headers, panels, table header row — so those
+     areas read as distinct surfaces rather than blending flat into the page. */
+  --color-surface: #f7f8fa;
 }
 
 .dark {
@@ -16,6 +19,7 @@
   --color-muted: #a1a1aa;
   --color-border: #27272a;
   --color-brand: #4da8f5;
+  --color-surface: #131316;
 }
 
 body {

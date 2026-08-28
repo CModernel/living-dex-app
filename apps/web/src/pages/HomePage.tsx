@@ -105,11 +105,11 @@ const TableRow = memo(function TableRow({
   return (
     <tr
       onClick={() => onToggle(row.original.slug)}
-      className={`cursor-pointer border-b border-border ${owned ? 'bg-brand/15' : ''}`}
+      className={`cursor-pointer border-b border-border last:border-b-0 hover:bg-border/20 ${owned ? 'bg-brand/15' : ''}`}
     >
       {row.getVisibleCells().map((cell) =>
         cell.column.id === 'owned' ? (
-          <td key={cell.id} className="p-2 text-center">
+          <td key={cell.id} className="p-2.5 text-center">
             <input
               type="checkbox"
               checked={owned}
@@ -120,7 +120,7 @@ const TableRow = memo(function TableRow({
             />
           </td>
         ) : (
-          <td key={cell.id} className={`p-2 ${COLUMN_CELL_CLASS[cell.column.id] ?? ''}`}>
+          <td key={cell.id} className={`p-2.5 ${COLUMN_CELL_CLASS[cell.column.id] ?? ''}`}>
             {flexRender(cell.column.columnDef.cell, cell.getContext())}
           </td>
         ),
@@ -213,8 +213,8 @@ function HomePage() {
   // here instead of requiring a trip to another page.
   return (
     <div className="flex w-full gap-6">
-      <aside className="w-48 shrink-0">
-        <h2 className="mb-2 text-sm font-semibold text-muted">Lists</h2>
+      <aside className="w-52 shrink-0 rounded-lg border border-border bg-surface p-3">
+        <h2 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">Lists</h2>
         <ListSwitcher />
       </aside>
       <div className="min-w-0 flex-1">
@@ -223,14 +223,14 @@ function HomePage() {
         {!result.loading && !result.error && (
           <>
             <div className="mb-4 flex items-center justify-between">
-              <h1 className="text-2xl font-semibold">Living Dex</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">Living Dex</h1>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 text-sm">
                   Tier
                   <select
                     value={tierId}
                     onChange={(e) => setTierId(e.target.value as TierId)}
-                    className="cursor-pointer rounded border border-border bg-background px-2 py-1"
+                    className="cursor-pointer rounded-md border border-border bg-background px-2.5 py-1.5 hover:border-muted"
                   >
                     {(Object.keys(TIER_LABELS) as TierId[]).map((id) => (
                       <option key={id} value={id}>
@@ -242,32 +242,37 @@ function HomePage() {
                 <ColumnVisibilityMenu columns={hideableColumns} />
               </div>
             </div>
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <tr key={headerGroup.id} className="border-b border-border text-left">
-                    {headerGroup.headers.map((header) => (
-                      <th key={header.id} className={`p-2 ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
-                      </th>
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-              <tbody>
-                {table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    row={row}
-                    owned={ownedIds.has(row.original.slug)}
-                    onToggle={toggleOwned}
-                    columnVisibility={table.state.columnVisibility}
-                  />
-                ))}
-              </tbody>
-            </table>
+            <div className="overflow-hidden rounded-lg border border-border">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr key={headerGroup.id} className="border-b border-border bg-surface text-left">
+                      {headerGroup.headers.map((header) => (
+                        <th
+                          key={header.id}
+                          className={`p-2.5 text-xs font-semibold tracking-wide text-muted uppercase ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(header.column.columnDef.header, header.getContext())}
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
+                </thead>
+                <tbody>
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      row={row}
+                      owned={ownedIds.has(row.original.slug)}
+                      onToggle={toggleOwned}
+                      columnVisibility={table.state.columnVisibility}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
       </div>
