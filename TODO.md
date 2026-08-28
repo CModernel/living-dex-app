@@ -454,6 +454,25 @@ even if the `3.X` task order below does.
       trigger the row's switch handler) behind a `window.confirm` — verified live that deleting
       the last remaining list correctly falls through to the bootstrap-created default. Rename
       still deliberately out of scope.
+      **Second same-day follow-up round** (user feedback on the design pass above):
+      - Fixed the sprite hover tooltip being clipped by the table's new `overflow-hidden`
+      rounded-corner wrapper — it now renders through a `createPortal` to `document.body`,
+      positioned via the sprite `<img>`'s `getBoundingClientRect()` read once on
+      `onMouseEnter` (not recomputed every render, to avoid layout thrashing).
+      - The per-row hover tint no longer applies to an already-owned row — it was sitting on
+      top of and washing out the `bg-brand/15` owned highlight while hovering, hiding the very
+      state it exists to show. Owned rows now get no hover tint at all instead.
+      - The sprite column got a real header (`'Sprite'`) — it was an empty string.
+      - `DEFAULT_USER_STATE.preferences.visibleColumns` default changed from `[]` to `['dex']` —
+      Dex # now starts visible; every other hideable column still starts hidden. Updated the
+      three tests that used Dex # as their "some hideable column" example to use Stage instead,
+      since Dex # is no longer representative of "hidden by default."
+      - `ListSwitcher.tsx`'s always-visible name input + "Create list" button replaced with a
+      small "+" icon button (top-right, `aria-label="Create new list"`) that opens a plain
+      modal (name input + Cancel/Create) — explicitly a placeholder for a nicer, animated
+      version later (see the "Polished create-list dialog" idea below).
+      - Also logged a "Sprite loading shimmer" idea (below) per the user's request — not
+      implemented, no design work done on it yet.
       - New `apps/web/src/hooks/useLists.ts`: exports `createList(name)` (moved out of
       `useActiveList.ts`, which now imports it instead of keeping its own duplicate factory) and
       `useLists()` (`lists` in creation order, `createNewList(name)` — adds and immediately
@@ -488,7 +507,7 @@ even if the `3.X` task order below does.
       lists, delete-after-confirm, decline-keeps-the-list, delete-doesn't-bubble-into-switch)
       **+ Integration** (new `HomePage.test.tsx` test: owning a Pokémon on the default list,
       creating a second list, confirming it starts unowned, switching back and confirming the
-      first list's ownership survived — the ticket's own stated requirement). 48/48 web tests
+      first list's ownership survived — the ticket's own stated requirement). 49/49 web tests
       passing (up from 34), 17/17 business-logic, verified in a clean Docker build too.
 
 - [ ] **3.7 #14 — Custom filtering.** 3-toggle UI for `ListFilter`
@@ -611,6 +630,20 @@ even if the `3.X` task order below does.
 
 - **Social features.** Explicitly "way at the end" per the user — not to be considered until
   everything above is in a good place. No design thinking done on this yet, intentionally.
+
+- **Polished create-list dialog.** User request (2026-08-28): the plain `fixed inset-0 bg-black/40`
+  overlay + centered box in `ListSwitcher.tsx` (added this same session, replacing an always-visible
+  inline input) is explicitly a placeholder — "por ahora, un simple dialogo es suficiente" but
+  wants a genuinely polished one eventually: real backdrop dim/blur transition, open/close
+  animation, general visual quality matching a real design system rather than a bare div. Whoever
+  picks this up should decide whether to keep the hand-rolled overlay (add CSS transitions/
+  `@starting-style` for enter/exit) or adopt a dialog primitive (native `<dialog>` + `::backdrop`,
+  or a small headless library) — no decision made yet, left open on purpose.
+
+- **Sprite loading shimmer.** User request (2026-08-28): a loading placeholder/shimmer effect for
+  sprite `<img>`s while they load, instead of blank space. Would touch `Sprite` in `HomePage.tsx` —
+  likely an `onLoad`-tracked "loaded" boolean per image, with a skeleton/shimmer shown until then.
+  No design work done on the exact visual treatment yet.
 
 - **"Line Form" tier — breeding-based family completion.** User's idea (2026-08-27): a new tier
   with the same row set as Living Lite (no final-stage requirement — every distinct catchable

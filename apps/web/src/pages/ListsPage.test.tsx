@@ -19,14 +19,32 @@ function renderListsPage() {
   )
 }
 
+// Opens the create-list dialog, fills the name, and submits — the "+" button's accessible
+// name is "Create new list" (from its aria-label) so it never collides with the dialog's
+// own "Create" submit button, matched with an anchored regex for the same reason.
+function createListViaDialog(name: string) {
+  fireEvent.click(screen.getByRole('button', { name: /create new list/i }))
+  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: name } })
+  fireEvent.click(screen.getByRole('button', { name: /^create$/i }))
+}
+
 test('shows an empty-state prompt when there are no lists yet', () => {
   renderListsPage()
 
   expect(screen.getByText(/don't have any lists yet/i)).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: /create my first list/i })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /create new list/i })).toBeInTheDocument()
 })
 
-test('creating a list shows it and marks it active', async () => {
+test('the create dialog is closed until the "+" button is clicked', () => {
+  renderListsPage()
+
+  expect(screen.queryByLabelText(/new list name/i)).not.toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: /create new list/i }))
+  expect(screen.getByLabelText(/new list name/i)).toBeInTheDocument()
+})
+
+test('creating a list shows it, marks it active, and closes the dialog', async () => {
   renderListsPage()
 
   // UserStateProvider hydrates from storage asynchronously; mutating before that resolves
@@ -35,13 +53,13 @@ test('creating a list shows it and marks it active', async () => {
   // for why this is left as-is for now).
   await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
 
-  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'Shinies' } })
-  fireEvent.click(screen.getByRole('button', { name: /create my first list/i }))
+  createListViaDialog('Shinies')
 
   await waitFor(() => expect(screen.getByText('Shinies')).toBeInTheDocument())
   // Query and assert in the same statement — see HomePage.test.tsx for why (TanStack's own
   // row rendering isn't at play here, but a re-render on state change can still replace nodes).
   expect(screen.getByText('Shinies').closest('li')).toHaveClass('bg-brand/15')
+  expect(screen.queryByLabelText(/new list name/i)).not.toBeInTheDocument()
 })
 
 test('clicking a different list switches which one is marked active', async () => {
@@ -49,12 +67,10 @@ test('clicking a different list switches which one is marked active', async () =
 
   await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
 
-  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'First' } })
-  fireEvent.click(screen.getByRole('button', { name: /create my first list/i }))
+  createListViaDialog('First')
   await waitFor(() => expect(screen.getByText('First')).toBeInTheDocument())
 
-  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'Second' } })
-  fireEvent.click(screen.getByRole('button', { name: /create list/i }))
+  createListViaDialog('Second')
   await waitFor(() => expect(screen.getByText('Second')).toBeInTheDocument())
 
   // Second is active right after creation; First is not.
@@ -73,8 +89,7 @@ test('deleting a list removes it after confirming', async () => {
 
   await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
 
-  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'Shinies' } })
-  fireEvent.click(screen.getByRole('button', { name: /create my first list/i }))
+  createListViaDialog('Shinies')
   await waitFor(() => expect(screen.getByText('Shinies')).toBeInTheDocument())
 
   fireEvent.click(screen.getByRole('button', { name: /delete shinies/i }))
@@ -92,8 +107,7 @@ test('declining the confirmation keeps the list', async () => {
 
   await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
 
-  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'Shinies' } })
-  fireEvent.click(screen.getByRole('button', { name: /create my first list/i }))
+  createListViaDialog('Shinies')
   await waitFor(() => expect(screen.getByText('Shinies')).toBeInTheDocument())
 
   fireEvent.click(screen.getByRole('button', { name: /delete shinies/i }))
@@ -110,12 +124,10 @@ test('clicking delete does not also switch the active list via the row handler',
 
   await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
 
-  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'First' } })
-  fireEvent.click(screen.getByRole('button', { name: /create my first list/i }))
+  createListViaDialog('First')
   await waitFor(() => expect(screen.getByText('First')).toBeInTheDocument())
 
-  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'Second' } })
-  fireEvent.click(screen.getByRole('button', { name: /create list/i }))
+  createListViaDialog('Second')
   await waitFor(() => expect(screen.getByText('Second').closest('li')).toHaveClass('bg-brand/15'))
 
   // Clicking First's delete button (declined) must not switch active to First via bubbling.

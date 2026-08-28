@@ -194,12 +194,13 @@ test('clicking the checkbox directly does not double-toggle via the row handler'
   })
 })
 
-test('optional columns are hidden by default', async () => {
+test('Dex # is visible by default; other optional columns start hidden', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
   renderHomePage()
 
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
-  expect(screen.queryByText('0001')).not.toBeInTheDocument()
+  expect(screen.getByText('0001')).toBeInTheDocument()
+  expect(screen.queryByText(/^pre$/i)).not.toBeInTheDocument()
 })
 
 test('toggling a column in the menu shows and hides it', async () => {
@@ -208,14 +209,14 @@ test('toggling a column in the menu shows and hides it', async () => {
 
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
-  const dexCheckbox = screen.getByRole('checkbox', { name: 'Dex #' })
-  expect(dexCheckbox).not.toBeChecked()
+  const stageCheckbox = screen.getByRole('checkbox', { name: 'Stage' })
+  expect(stageCheckbox).not.toBeChecked()
 
-  fireEvent.click(dexCheckbox)
-  await waitFor(() => expect(screen.getByText('0001')).toBeInTheDocument())
+  fireEvent.click(stageCheckbox)
+  await waitFor(() => expect(screen.getByText(/^pre$/i)).toBeInTheDocument())
 
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Dex #' }))
-  await waitFor(() => expect(screen.queryByText('0001')).not.toBeInTheDocument())
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Stage' }))
+  await waitFor(() => expect(screen.queryByText(/^pre$/i)).not.toBeInTheDocument())
 })
 
 test('column visibility survives a reload (3.5 — persisted, not just in-session state)', async () => {
@@ -223,8 +224,8 @@ test('column visibility survives a reload (3.5 — persisted, not just in-sessio
   const { unmount } = renderHomePage()
 
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Dex #' }))
-  await waitFor(() => expect(screen.getByText('0001')).toBeInTheDocument())
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Stage' }))
+  await waitFor(() => expect(screen.getByText(/^pre$/i)).toBeInTheDocument())
 
   // Simulates a reload: a brand new HomePage/UserStateProvider instance, reading
   // whatever localStorage the unmounted instance left behind.
@@ -232,7 +233,7 @@ test('column visibility survives a reload (3.5 — persisted, not just in-sessio
   renderHomePage()
 
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
-  expect(screen.getByText('0001')).toBeInTheDocument()
+  expect(screen.getByText(/^pre$/i)).toBeInTheDocument()
 })
 
 test('always-visible columns are not offered in the column menu', async () => {
@@ -293,8 +294,9 @@ test('switching the active list (via HomePage\'s own sidebar) changes which owne
 
   // Create a second list right from HomePage's own sidebar (ListSwitcher) — no navigation
   // to /lists needed, per the follow-up request that switching refresh the table in place.
+  fireEvent.click(screen.getByRole('button', { name: /create new list/i }))
   fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'List B' } })
-  fireEvent.click(screen.getByRole('button', { name: /create list/i }))
+  fireEvent.click(screen.getByRole('button', { name: /^create$/i }))
 
   // A fresh list has nothing owned, even though the same Bulbasaur row is showing.
   await waitFor(() => expect(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i })).not.toBeChecked())

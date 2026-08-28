@@ -11,10 +11,10 @@ afterEach(() => {
   window.localStorage.clear()
 })
 
-test('all hideable columns start hidden by default', () => {
+test('dex starts visible by default; every other hideable column starts hidden', () => {
   const { result } = renderHook(() => useColumnVisibility(), { wrapper: UserStateProvider })
   expect(result.current.columnVisibility).toEqual({
-    dex: false,
+    dex: true,
     generation: false,
     region: false,
     evolutionStage: false,
@@ -41,7 +41,7 @@ test('setColumnVisibility accepts an updater function, as TanStack\'s column.tog
 
   await waitFor(() => expect(result.current.columnVisibility.region).toBe(true))
   // Untouched columns keep their previous (hidden) state.
-  expect(result.current.columnVisibility.dex).toBe(false)
+  expect(result.current.columnVisibility.generation).toBe(false)
 })
 
 test('visibility persists to localStorage and survives a fresh hook instance', async () => {
@@ -55,7 +55,8 @@ test('visibility persists to localStorage and survives a fresh hook instance', a
   act(() => result.current.setColumnVisibility((prev) => ({ ...prev, generation: true })))
   await waitFor(() => {
     const stored = JSON.parse(window.localStorage.getItem('living-dex:user-state') ?? '{}')
-    expect(stored.preferences.visibleColumns).toEqual(['generation'])
+    // dex is already true by default, so it's included alongside the newly-toggled column.
+    expect(stored.preferences.visibleColumns).toEqual(['dex', 'generation'])
   })
   unmount()
 

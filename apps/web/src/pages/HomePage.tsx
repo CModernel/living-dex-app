@@ -7,7 +7,8 @@ import {
 import { TIERS, type TierId } from '@cmodernel/living-dex-tiers'
 import { flexRender, useTable } from '@tanstack/react-table'
 import { columnVisibilityFeature, createColumnHelper, tableFeatures, type ColumnDef, type Row } from '@tanstack/table-core'
-import { memo, useMemo, useState } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
 import ListSwitcher from '../components/ListSwitcher'
 import TypeBadge from '../components/TypeBadge'
@@ -53,6 +54,13 @@ function Sprite({ dataset, entry }: { dataset: PokemonDataset; entry: PokemonEnt
   // re-renders rows in place, so one Sprite instance can end up showing a different
   // entry, and a boolean would strand that new entry on the fallback.
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  // The tooltip renders through a portal (below) rather than as an absolutely-positioned
+  // sibling, because the table's rounded-corner wrapper clips overflow — a plain
+  // group-hover sibling gets cut off at the table's own top/bottom edge instead of
+  // floating above the row it belongs to. Storing the anchor rect (read once, on hover
+  // start) rather than recomputing on every render avoids layout thrashing.
+  const imgRef = useRef<HTMLImageElement>(null)
+  const [hoverRect, setHoverRect] = useState<DOMRect | null>(null)
 
   const usePokeJungle = pokeJungleUrl !== null && failedUrl !== pokeJungleUrl
   const spriteUrl = (usePokeJungle ? pokeJungleUrl : pokeApiUrl) ?? undefined
@@ -62,22 +70,36 @@ function Sprite({ dataset, entry }: { dataset: PokemonDataset; entry: PokemonEnt
   const hoverSize = SPRITE_SIZE * SPRITE_HOVER_ZOOM
 
   return (
-    <div className="group relative inline-block">
+    <div className="inline-block">
       <img
+        ref={imgRef}
         src={spriteUrl}
         alt=""
         loading="lazy"
         onError={handleError}
+        onMouseEnter={() => setHoverRect(imgRef.current?.getBoundingClientRect() ?? null)}
+        onMouseLeave={() => setHoverRect(null)}
         style={{ width: SPRITE_SIZE, height: SPRITE_SIZE, maxWidth: 'none' }}
       />
-      <div className="pointer-events-none absolute top-1/2 left-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 rounded border border-border bg-background p-2 shadow-lg group-hover:block">
-        <img
-          src={spriteUrl}
-          alt=""
-          onError={handleError}
-          style={{ width: hoverSize, height: hoverSize, maxWidth: 'none' }}
-        />
-      </div>
+      {hoverRect &&
+        createPortal(
+          <div
+            className="pointer-events-none fixed z-50 rounded border border-border bg-background p-2 shadow-lg"
+            style={{
+              left: hoverRect.left + hoverRect.width / 2,
+              top: hoverRect.top + hoverRect.height / 2,
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            <img
+              src={spriteUrl}
+              alt=""
+              onError={handleError}
+              style={{ width: hoverSize, height: hoverSize, maxWidth: 'none' }}
+            />
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }
@@ -105,7 +127,9 @@ const TableRow = memo(function TableRow({
   return (
     <tr
       onClick={() => onToggle(row.original.slug)}
-      className={`cursor-pointer border-b border-border last:border-b-0 hover:bg-border/20 ${owned ? 'bg-brand/15' : ''}`}
+      // No hover tint for an already-owned row — it would sit on top of and wash out the
+      // owned highlight, hiding the very state the highlight exists to show.
+      className={`cursor-pointer border-b border-border last:border-b-0 ${owned ? 'bg-brand/15' : 'hover:bg-border/20'}`}
     >
       {row.getVisibleCells().map((cell) =>
         cell.column.id === 'owned' ? (
@@ -153,7 +177,7 @@ function HomePage() {
       [
         columnHelper.display({
           id: 'sprite',
-          header: '',
+          header: 'Sprite',
           enableHiding: false,
           cell: (ctx) => (dataset ? <Sprite dataset={dataset} entry={ctx.row.original} /> : null),
         }),
