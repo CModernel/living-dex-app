@@ -70,3 +70,71 @@ test('lists stay in creation order', async () => {
 
   expect(result.current.lists.map((l) => l.name)).toEqual(['First', 'Second', 'Third'])
 })
+
+test('deleteList removes a non-active list without touching the active one', async () => {
+  const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
+
+  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
+
+  act(() => result.current.createNewList('First'))
+  await waitFor(() => expect(result.current.lists).toHaveLength(1))
+  act(() => result.current.createNewList('Second'))
+  await waitFor(() => expect(result.current.lists).toHaveLength(2))
+
+  const [first, second] = result.current.lists
+  expect(result.current.activeListId).toBe(second.id)
+
+  act(() => result.current.deleteList(first.id))
+
+  await waitFor(() => expect(result.current.lists).toHaveLength(1))
+  expect(result.current.lists[0].id).toBe(second.id)
+  expect(result.current.activeListId).toBe(second.id)
+})
+
+test('deleting the active list falls back to another remaining one', async () => {
+  const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
+
+  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
+
+  act(() => result.current.createNewList('First'))
+  await waitFor(() => expect(result.current.lists).toHaveLength(1))
+  act(() => result.current.createNewList('Second'))
+  await waitFor(() => expect(result.current.lists).toHaveLength(2))
+
+  const [first, second] = result.current.lists
+  expect(result.current.activeListId).toBe(second.id)
+
+  // Second is active; deleting it must not leave activeListId dangling when First is
+  // still right there — no reason to force useActiveList's bootstrap to spin up a new one.
+  act(() => result.current.deleteList(second.id))
+
+  await waitFor(() => expect(result.current.lists).toHaveLength(1))
+  expect(result.current.activeListId).toBe(first.id)
+})
+
+test('deleting the last remaining list nulls activeListId', async () => {
+  const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
+
+  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
+
+  act(() => result.current.createNewList('Only'))
+  await waitFor(() => expect(result.current.lists).toHaveLength(1))
+  const only = result.current.lists[0]
+
+  act(() => result.current.deleteList(only.id))
+
+  await waitFor(() => expect(result.current.lists).toHaveLength(0))
+  expect(result.current.activeListId).toBeNull()
+})
+
+test('deleteList no-ops for an unknown id', async () => {
+  const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
+
+  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
+
+  act(() => result.current.createNewList('Only'))
+  await waitFor(() => expect(result.current.lists).toHaveLength(1))
+
+  act(() => result.current.deleteList('does-not-exist'))
+  expect(result.current.lists).toHaveLength(1)
+})

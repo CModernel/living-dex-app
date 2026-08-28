@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type MouseEvent } from 'react'
 import { useLists } from '../hooks/useLists'
 
 // Shared by ListsPage (full-page management) and HomePage's left sidebar (3.6 follow-up:
@@ -6,8 +6,13 @@ import { useLists } from '../hooks/useLists'
 // contexts want the exact same list-of-lists + create-form behavior, just wrapped
 // differently, so this owns the shared behavior and neither page duplicates it.
 function ListSwitcher() {
-  const { lists, activeListId, createNewList, switchTo } = useLists()
+  const { lists, activeListId, createNewList, switchTo, deleteList } = useLists()
   const [newListName, setNewListName] = useState('')
+
+  function handleDelete(e: MouseEvent, id: string, name: string) {
+    e.stopPropagation() // Don't also trigger the row's own switchTo click handler.
+    if (window.confirm(`Delete "${name}"? This can't be undone.`)) deleteList(id)
+  }
 
   function handleCreate(e: FormEvent) {
     e.preventDefault()
@@ -31,7 +36,17 @@ function ListSwitcher() {
             }`}
           >
             <span className="truncate">{list.name}</span>
-            <span className="shrink-0 text-sm text-muted">{list.ownedIds.length} owned</span>
+            <span className="flex shrink-0 items-center gap-2">
+              <span className="text-sm text-muted">{list.ownedIds.length} owned</span>
+              <button
+                type="button"
+                onClick={(e) => handleDelete(e, list.id, list.name)}
+                aria-label={`Delete ${list.name}`}
+                className="cursor-pointer rounded px-1 text-muted hover:text-foreground"
+              >
+                ✕
+              </button>
+            </span>
           </li>
         ))}
       </ul>

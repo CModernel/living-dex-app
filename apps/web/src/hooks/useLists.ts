@@ -35,7 +35,7 @@ export function useLists() {
   )
 
   // No-ops for an unknown id rather than throwing — defensive against a stale id (e.g. a list
-  // deleted in another tab, once deletion exists).
+  // deleted in another tab).
   const switchTo = useCallback(
     (id: string) => {
       setState((prev) => (prev.lists[id] ? { ...prev, activeListId: id } : prev))
@@ -43,5 +43,23 @@ export function useLists() {
     [setState],
   )
 
-  return { lists, activeListId: state.activeListId, createNewList, switchTo }
+  const deleteList = useCallback(
+    (id: string) => {
+      setState((prev) => {
+        if (!prev.lists[id]) return prev
+        const { [id]: _removed, ...rest } = prev.lists
+        // Deleting the active list falls back to another remaining one (whichever was
+        // created first) rather than nulling activeListId outright — no reason to force
+        // useActiveList's bootstrap to spin up a brand new default list when a perfectly
+        // good one is already sitting right there. Only truly empty falls back to null,
+        // which useActiveList's own bootstrap effect handles the next time Home renders.
+        const remainingIds = Object.keys(rest)
+        const activeListId = prev.activeListId !== id ? prev.activeListId : (remainingIds[0] ?? null)
+        return { ...prev, lists: rest, activeListId }
+      })
+    },
+    [setState],
+  )
+
+  return { lists, activeListId: state.activeListId, createNewList, switchTo, deleteList }
 }

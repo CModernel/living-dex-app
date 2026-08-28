@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, expect, test } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { UserStateProvider } from '../state/UserStateContext'
 import ListsPage from './ListsPage'
 
@@ -65,4 +65,63 @@ test('clicking a different list switches which one is marked active', async () =
 
   await waitFor(() => expect(screen.getByText('First').closest('li')).toHaveClass('bg-brand/15'))
   expect(screen.getByText('Second').closest('li')).not.toHaveClass('bg-brand/15')
+})
+
+test('deleting a list removes it after confirming', async () => {
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+  renderListsPage()
+
+  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
+
+  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'Shinies' } })
+  fireEvent.click(screen.getByRole('button', { name: /create my first list/i }))
+  await waitFor(() => expect(screen.getByText('Shinies')).toBeInTheDocument())
+
+  fireEvent.click(screen.getByRole('button', { name: /delete shinies/i }))
+
+  expect(confirmSpy).toHaveBeenCalled()
+  await waitFor(() => expect(screen.queryByText('Shinies')).not.toBeInTheDocument())
+  expect(screen.getByText(/don't have any lists yet/i)).toBeInTheDocument()
+
+  confirmSpy.mockRestore()
+})
+
+test('declining the confirmation keeps the list', async () => {
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  renderListsPage()
+
+  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
+
+  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'Shinies' } })
+  fireEvent.click(screen.getByRole('button', { name: /create my first list/i }))
+  await waitFor(() => expect(screen.getByText('Shinies')).toBeInTheDocument())
+
+  fireEvent.click(screen.getByRole('button', { name: /delete shinies/i }))
+
+  expect(confirmSpy).toHaveBeenCalled()
+  expect(screen.getByText('Shinies')).toBeInTheDocument()
+
+  confirmSpy.mockRestore()
+})
+
+test('clicking delete does not also switch the active list via the row handler', async () => {
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  renderListsPage()
+
+  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
+
+  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'First' } })
+  fireEvent.click(screen.getByRole('button', { name: /create my first list/i }))
+  await waitFor(() => expect(screen.getByText('First')).toBeInTheDocument())
+
+  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'Second' } })
+  fireEvent.click(screen.getByRole('button', { name: /create list/i }))
+  await waitFor(() => expect(screen.getByText('Second').closest('li')).toHaveClass('bg-brand/15'))
+
+  // Clicking First's delete button (declined) must not switch active to First via bubbling.
+  fireEvent.click(screen.getByRole('button', { name: /delete first/i }))
+  expect(screen.getByText('Second').closest('li')).toHaveClass('bg-brand/15')
+  expect(screen.getByText('First').closest('li')).not.toHaveClass('bg-brand/15')
+
+  confirmSpy.mockRestore()
 })

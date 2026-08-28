@@ -446,6 +446,14 @@ even if the `3.X` task order below does.
       implicit single default list with real UI. Scope decided upfront: **switch + create only**
       (no delete/rename — trivial to add later since `UserState.lists`/`activeListId` were
       already multi-list-shaped from the start, so this needed no schema change at all).
+      **Delete added as a same-day follow-up** (user request): `useLists()` gained `deleteList(id)`
+      — deleting the active list falls back to another remaining list (whichever was created
+      first) rather than nulling `activeListId` outright, so `useActiveList`'s bootstrap only
+      spins up a brand-new default list when there's truly nothing left to fall back to.
+      `ListSwitcher.tsx` gained a per-row "✕" delete button (`stopPropagation` so it doesn't also
+      trigger the row's switch handler) behind a `window.confirm` — verified live that deleting
+      the last remaining list correctly falls through to the bootstrap-created default. Rename
+      still deliberately out of scope.
       - New `apps/web/src/hooks/useLists.ts`: exports `createList(name)` (moved out of
       `useActiveList.ts`, which now imports it instead of keeping its own duplicate factory) and
       `useLists()` (`lists` in creation order, `createNewList(name)` — adds and immediately
@@ -474,11 +482,13 @@ even if the `3.X` task order below does.
       confirmed the owned-count on `/lists` updated live, confirmed switching lists on `/lists`
       correctly changed Home's checked state both ways (isolation, not just switching away).
       **Tests: Unit** (`useLists.test.ts`: starts empty, create-then-active, `switchTo`'s
-      unknown-id no-op, creation-order stability) **+ UI** (`ListsPage.test.tsx`, rewritten from
-      the placeholder-only test: empty state, create-and-activate, switching between two lists)
+      unknown-id no-op, creation-order stability, `deleteList`'s active-list-fallback /
+      last-list-nulls-active / unknown-id-no-op cases) **+ UI** (`ListsPage.test.tsx`, rewritten
+      from the placeholder-only test: empty state, create-and-activate, switching between two
+      lists, delete-after-confirm, decline-keeps-the-list, delete-doesn't-bubble-into-switch)
       **+ Integration** (new `HomePage.test.tsx` test: owning a Pokémon on the default list,
       creating a second list, confirming it starts unowned, switching back and confirming the
-      first list's ownership survived — the ticket's own stated requirement). 41/41 web tests
+      first list's ownership survived — the ticket's own stated requirement). 48/48 web tests
       passing (up from 34), 17/17 business-logic, verified in a clean Docker build too.
 
 - [ ] **3.7 #14 — Custom filtering.** 3-toggle UI for `ListFilter`
