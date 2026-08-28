@@ -455,9 +455,16 @@ even if the `3.X` task order below does.
       depending on `useActiveList`'s bootstrap having run first. Otherwise lists as rows
       (name + owned count), click-anywhere-in-row to switch (matching 3.3b's row-click
       language), active one highlighted with the same `bg-brand/15` HomePage uses for owned rows.
-      - **Zero changes needed in `HomePage.tsx`** — it already derives `activeList` from
-      `state.activeListId` via the shared `UserStateContext`, so switching lists elsewhere in the
-      tree reactively updates which `ownedIds` it reads/writes with no code change there at all.
+      - **Follow-up (same session, user feedback):** the switcher first landed on `/lists` only,
+      requiring a page trip to switch and see the effect. Moved to a left-sidebar panel directly
+      on `HomePage.tsx` instead, per explicit request — switching there refreshes the table in
+      place with no navigation. Extracted the list-rows-plus-create-form UI into a shared
+      `apps/web/src/components/ListSwitcher.tsx` (both `HomePage.tsx`'s new sidebar and
+      `ListsPage.tsx` now render it, rather than duplicating the same markup/logic twice) — the
+      original "zero changes needed in `HomePage.tsx`" was true for wiring `activeListId`
+      reactivity (still true, still no change needed there), but not for *placement* of the
+      switcher UI itself. `ListsPage.tsx`/`/lists` intentionally kept, unchanged in behavior, as a
+      second, full-page entry point to the exact same `useLists()` state.
       - Found the **same async-hydration race from 3.5** here too, now proven to bite even a
       *single* mutation immediately after render under load (not just consecutive ones as first
       suspected) — confirmed by intermittent failures in a full-suite run that passed reliably in

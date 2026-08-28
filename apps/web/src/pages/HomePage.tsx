@@ -9,6 +9,7 @@ import { flexRender, useTable } from '@tanstack/react-table'
 import { columnVisibilityFeature, createColumnHelper, tableFeatures, type ColumnDef, type Row } from '@tanstack/table-core'
 import { memo, useMemo, useState } from 'react'
 import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
+import ListSwitcher from '../components/ListSwitcher'
 import TypeBadge from '../components/TypeBadge'
 import { useActiveList } from '../hooks/useActiveList'
 import { useColumnVisibility } from '../hooks/useColumnVisibility'
@@ -198,14 +199,6 @@ function HomePage() {
     (state) => ({ columnVisibility: state.columnVisibility }),
   )
 
-  if (result.loading) {
-    return <p className="text-muted">Loading Pokémon data…</p>
-  }
-
-  if (result.error) {
-    return <p className="text-muted">Failed to load dataset: {result.error.message}</p>
-  }
-
   const hideableColumns = table
     .getAllColumns()
     .filter((column) => column.getCanHide())
@@ -216,52 +209,68 @@ function HomePage() {
       toggle: () => column.toggleVisibility(),
     }))
 
+  // Lives on HomePage itself, not just /lists, so switching lists refreshes the table right
+  // here instead of requiring a trip to another page.
   return (
-    <div className="w-full">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Living Dex</h1>
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm">
-            Tier
-            <select
-              value={tierId}
-              onChange={(e) => setTierId(e.target.value as TierId)}
-              className="cursor-pointer rounded border border-border bg-background px-2 py-1"
-            >
-              {(Object.keys(TIER_LABELS) as TierId[]).map((id) => (
-                <option key={id} value={id}>
-                  {TIER_LABELS[id]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <ColumnVisibilityMenu columns={hideableColumns} />
-        </div>
+    <div className="flex w-full gap-6">
+      <aside className="w-48 shrink-0">
+        <h2 className="mb-2 text-sm font-semibold text-muted">Lists</h2>
+        <ListSwitcher />
+      </aside>
+      <div className="min-w-0 flex-1">
+        {result.loading && <p className="text-muted">Loading Pokémon data…</p>}
+        {result.error && <p className="text-muted">Failed to load dataset: {result.error.message}</p>}
+        {!result.loading && !result.error && (
+          <>
+            <div className="mb-4 flex items-center justify-between">
+              <h1 className="text-2xl font-semibold">Living Dex</h1>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-sm">
+                  Tier
+                  <select
+                    value={tierId}
+                    onChange={(e) => setTierId(e.target.value as TierId)}
+                    className="cursor-pointer rounded border border-border bg-background px-2 py-1"
+                  >
+                    {(Object.keys(TIER_LABELS) as TierId[]).map((id) => (
+                      <option key={id} value={id}>
+                        {TIER_LABELS[id]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <ColumnVisibilityMenu columns={hideableColumns} />
+              </div>
+            </div>
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id} className="border-b border-border text-left">
+                    {headerGroup.headers.map((header) => (
+                      <th key={header.id} className={`p-2 ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody>
+                {table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    row={row}
+                    owned={ownedIds.has(row.original.slug)}
+                    onToggle={toggleOwned}
+                    columnVisibility={table.state.columnVisibility}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
       </div>
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id} className="border-b border-border text-left">
-              {headerGroup.headers.map((header) => (
-                <th key={header.id} className={`p-2 ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}>
-                  {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow
-              key={row.id}
-              row={row}
-              owned={ownedIds.has(row.original.slug)}
-              onToggle={toggleOwned}
-              columnVisibility={table.state.columnVisibility}
-            />
-          ))}
-        </tbody>
-      </table>
     </div>
   )
 }
