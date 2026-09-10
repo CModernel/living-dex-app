@@ -515,6 +515,23 @@ even if the `3.X` task order below does.
       predicate.
       **Tests: Unit** (filter-combination logic) **+ UI**.
 
+- [ ] **3.7b `#XY` Notes per Pokémon.** A user-facing, per-list text field that lets a user attach
+      a short **note to a Pokémon** (e.g. "has it in Black 2, in SSC, on Alolan island"),
+      stored alongside each list rather than as a global table. Read and written from the active
+      list's state (same shape as `ownedIds`/`filter`), so it stays per-list and survives reload.
+      Scope guard: the note field is intentionally capped (both in validation and ideally in
+      storage) — not a free-form journal. Start with a sensible single-entry ceiling (e.g. ~200
+      chars) and keep the storage slab size bounded so a user can't abuse it; revisit the
+      ceiling/rules only if the feature proves useful as-is.
+
+      **Test shape still TBD** (added as a TODO marker, not yet a scheduled task for execution):
+      decide and write the note test cases — unit tests for the note schema/caps + a UI test for
+      the note input/display shown on a Pokémon row or card. Not queued as a built task yet.
+
+      Design note: keep this a small, bounded field for now (no rich text, no app-wide comment
+      feed, no cross-list merging) — that is the explicit carve-out so this does not drift into a
+      heavier social/notes feature. If it later wants to grow, treat growth as a separate step.
+
 ### Polish (web)
 - [x] **3.4f Table styling refinements.** ✅ User-requested (2026-08-27), small/mechanical:
       - Sprite size: `SPRITE_SIZE` (`HomePage.tsx`) 64px → 56px, a small reduction (not back to
@@ -592,6 +609,31 @@ even if the `3.X` task order below does.
 
 ## Ideas / Future (optional, not scheduled)
 
+- **"Available in" games column.** User request (2026-09-10): show which games a Pokémon/form can
+  be obtained in (e.g. "Legends: Arceus", "Legends: Z-A", "Emerald") as a column, similar to
+  Region/Stage. User later shared external research on PokeAPI fields for this — checked each
+  claim directly against the live API rather than trusting it, since some of it didn't hold up.
+  **Confirmed usable**: `/pokemon/{id}/`'s `game_indices` lists every game version a form has an
+  internal index in — verified for `treecko` (`ruby`, `emerald`, `legends-arceus`, `scarlet`,
+  `legends-za`, ...), matching the user's own examples, but **only for a species' default form**.
+  **The decisive gap**: every alternate/regional form checked returns an **empty** `game_indices`
+  array — `rattata-alola` → `[]`, `growlithe-hisui` → `[]`. Since this dataset already tracks
+  every regional/alternate form as its own entry (267 of them), `game_indices` alone would
+  silently render empty/wrong for exactly the rows a user would care about most (which games is
+  *Alolan* Rattata in, not base Rattata). **Correction to the shared research**: `pokemon-species`
+  (suggested as "more efficient") has **no `game_indices` field at all** — confirmed by listing
+  its keys; that endpoint does carry `pokedex_numbers` (regional dex membership, e.g. `kanto`,
+  `alola`), a possible alternate signal, but it's per-species not per-form, so it can't by itself
+  tell which region's dex a *specific* regional form belongs to when a species has several —
+  unverified, not assumed to work. Separately, `location_area_encounters` →
+  `/pokemon/{id}/encounters` is a **different, narrower** question (wild-encounter locations, not
+  "which games it's in") — confirmed via `iron-leaves`, which has real Scarlet/Violet/Legends Z-A
+  `game_indices` entries but an empty `encounters` list (raid-only, not wild-walkable) — worth
+  keeping distinct if this ever gets built. **Not implementing yet**: the regional/alternate-form
+  gap is the majority of what makes this column interesting, and nothing found so far solves it —
+  needs its own verification pass (same rigor as the PokeJungle sprite-id work) before this
+  becomes a real ticket.
+
 - **Publish `@cmodernel/living-dex-tiers` to npm.** Currently a `file:` dependency on the sibling
   `living-dex-organizer` repo, which required checking that repo out as a second step in CI (see
   `.github/workflows/deploy-web.yml`) since GitHub Actions only checks out one repo by default.
@@ -641,6 +683,7 @@ even if the `3.X` task order below does.
   or a small headless library) — no decision made yet, left open on purpose.
 
 - **Sprite loading shimmer.** User request (2026-08-28): a loading placeholder/shimmer effect for
+
   sprite `<img>`s while they load, instead of blank space. Would touch `Sprite` in `HomePage.tsx` —
   likely an `onLoad`-tracked "loaded" boolean per image, with a skeleton/shimmer shown until then.
   No design work done on the exact visual treatment yet.
