@@ -510,6 +510,26 @@ even if the `3.X` task order below does.
       first list's ownership survived — the ticket's own stated requirement). 49/49 web tests
       passing (up from 34), 17/17 business-logic, verified in a clean Docker build too.
 
+- [ ] **3.6c Missing cosmetically-distinct gender variants (e.g. Venusaur ♀).** **HIGH PRIORITY —
+      resolve before continuing 3.7+.** User-reported (2026-09-11): Venusaur's female form (visibly
+      different flower) doesn't appear in the default "Living Form" view, per a different reference
+      ("Alex's list") that expects it to. **Root cause found**: `venusaur-f` genuinely exists in the
+      dataset (`isGenderVariant: true`, `sortIndex: 3`, right after `venusaur`) — it's not missing
+      data, it's filtered out. The `living-form` tier's predicate
+      (`packages/tiers/index.js` in the organizer repo) is `e => !e.isGenderVariant`, i.e. it
+      excludes **every** gender-variant entry unconditionally, matching Austin John's own "Living
+      Form" sheet, which apparently doesn't list separate female rows regardless of whether the
+      difference is purely cosmetic or visually significant.
+      **Open question, not yet resolved**: "Alex's list" is a different source than Austin John's
+      sheet and apparently expects cosmetically-distinct females (Venusaur, likely others —
+      Pyroar/Meowstic/Frillish-family are mechanically separate-sex forms already handled
+      elsewhere, but *cosmetic-only* cases like Venusaur/Butterfree/Rattata aren't) to get their
+      own row even in the base "Living Form" tier. Need to: (1) see/get "Alex's list" to know its
+      actual scope, (2) decide whether this becomes a tier-predicate change (in the organizer repo,
+      alongside its own tier tests/verify.js) or a display-only toggle, and how that interacts with
+      3.7's planned `hideGenderVariants` `ListFilter` toggle (a related but different axis — a
+      per-list user preference, not a tier-definition question).
+
 - [ ] **3.7 #14 — Custom filtering.** 3-toggle UI for `ListFilter`
       (`finalStageOnly`/`regionalFormsOnly`/`hideGenderVariants`), applied on top of 3.3's tier
       predicate.
@@ -581,6 +601,21 @@ even if the `3.X` task order below does.
       is keyed by region, so it'd need its own region selector — real complexity, not a quick add).
       An "owned date" column isn't feasible from current data at all — `ownedIds` has no
       timestamp; that's a `PokemonList` data-model change, not a column, if ever wanted.
+      - **"Number" column** (user request, 2026-09-11): a plain sequential position in the
+      current filtered/sorted list (1, 2, 3, ...), **not** the National Dex number. Naming TBD —
+      candidates: `#`, `Number`, `List #`, `Position`. Needs a decision at implementation time:
+      is this the same thing as **Slot** above (which resets every 30 within a Box), or a
+      separate *absolute* position that counts straight through the whole list without
+      resetting? If both are wanted, they're two different derived columns from the same
+      `sortIndex`, not one.
+
+- [ ] **3.8c Reorderable/draggable columns.** User request (2026-09-11): let a user drag columns
+      into their preferred order (web: drag-and-drop is straightforward — TanStack Table's
+      column-ordering feature, alongside 3.4's `columnVisibilityFeature`, persisted the same way
+      as `visibleColumns`). **Mobile needs its own interaction** — user's own note: dragging with
+      tap-and-hold might not translate well to mobile, worth considering a dedicated
+      reorder dialog (move columns up/down via buttons) instead of true drag gestures. No
+      design decided yet for the mobile side; web can likely proceed independently once reached.
 
 ### Data & Mobile
 - [ ] **3.9 #15 — Export/import.**
