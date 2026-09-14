@@ -17,6 +17,7 @@ import { useColumnVisibility } from '../hooks/useColumnVisibility'
 import { useDataset } from '../hooks/useDataset'
 
 const TIER_LABELS: Record<TierId, string> = {
+  'living-form-full': 'Living Form Full',
   'living-form': 'Living Form',
   'living-lite': 'Living Lite',
   'final-form-full': 'Final Form Full',

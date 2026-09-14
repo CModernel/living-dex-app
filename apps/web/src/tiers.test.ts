@@ -8,5 +8,6 @@ test('can import and use TIERS from living-dex-tiers package', () => {
   assert.ok(tierNames.includes('living-lite'))
   assert.ok(tierNames.includes('final-form-full'))
   assert.ok(tierNames.includes('final-form'))
-  assert.equal(tierNames.length, 4)
+  assert.ok(tierNames.includes('living-form-full'))
+  assert.equal(tierNames.length, 5)
 })

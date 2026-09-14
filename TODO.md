@@ -510,25 +510,25 @@ even if the `3.X` task order below does.
       first list's ownership survived — the ticket's own stated requirement). 49/49 web tests
       passing (up from 34), 17/17 business-logic, verified in a clean Docker build too.
 
-- [ ] **3.6c Missing cosmetically-distinct gender variants (e.g. Venusaur ♀).** **HIGH PRIORITY —
-      resolve before continuing 3.7+.** User-reported (2026-09-11): Venusaur's female form (visibly
-      different flower) doesn't appear in the default "Living Form" view, per a different reference
-      ("Alex's list") that expects it to. **Root cause found**: `venusaur-f` genuinely exists in the
-      dataset (`isGenderVariant: true`, `sortIndex: 3`, right after `venusaur`) — it's not missing
-      data, it's filtered out. The `living-form` tier's predicate
-      (`packages/tiers/index.js` in the organizer repo) is `e => !e.isGenderVariant`, i.e. it
-      excludes **every** gender-variant entry unconditionally, matching Austin John's own "Living
-      Form" sheet, which apparently doesn't list separate female rows regardless of whether the
-      difference is purely cosmetic or visually significant.
-      **Open question, not yet resolved**: "Alex's list" is a different source than Austin John's
-      sheet and apparently expects cosmetically-distinct females (Venusaur, likely others —
-      Pyroar/Meowstic/Frillish-family are mechanically separate-sex forms already handled
-      elsewhere, but *cosmetic-only* cases like Venusaur/Butterfree/Rattata aren't) to get their
-      own row even in the base "Living Form" tier. Need to: (1) see/get "Alex's list" to know its
-      actual scope, (2) decide whether this becomes a tier-predicate change (in the organizer repo,
-      alongside its own tier tests/verify.js) or a display-only toggle, and how that interacts with
-      3.7's planned `hideGenderVariants` `ListFilter` toggle (a related but different axis — a
-      per-list user preference, not a tier-definition question).
+- [x] **3.6c Missing cosmetically-distinct gender variants (e.g. Venusaur ♀).** User-reported
+      (2026-09-11): Venusaur's female form (visibly different flower) doesn't appear in the
+      default "Living Form" view, per a different reference ("Alex's list") that expects it to.
+      **Root cause**: `venusaur-f` genuinely exists in the dataset (`isGenderVariant: true`), but
+      **all four** existing tiers (`living-form`/`living-lite`/`final-form-full`/`final-form`) in
+      `packages/tiers/index.js` (organizer repo) exclude every `isGenderVariant` entry
+      unconditionally — faithfully matching Austin John's own sheets (`Living Form.csv` has zero
+      real female rows; its 9 `-f,` matches are Alcremie's "Ribbon" sweet, same false-friend as
+      `pokejungle-sprite.js`). Confirmed "Alex's list" = `sheets/Living Form Full.csv`
+      (already in the organizer repo), which 1:1 matches the full 1387-entry dataset and includes
+      all 103 real gender variants — cross-checked against PokeAPI's `has_gender_differences` flag,
+      all genuinely distinct, no trivial subset to filter further.
+      **Resolved by adding a 5th tier**, `living-form-full` (predicate `e => true`, no manual
+      curation needed), rather than changing the 4 curated tiers — lowest risk, keeps existing
+      behavior intact. `npm run verify` (organizer) confirms a perfect 1387/1387 match. Wired into
+      the app's `TierId` union and `HomePage.tsx`'s tier dropdown.
+      **Note for 3.7**: its planned `hideGenderVariants` `ListFilter` toggle is a no-op against the
+      4 existing tiers (nothing left to hide once the tier itself already excludes gender
+      variants) — it will only have something to act on against this new `living-form-full` tier.
 
 - [ ] **3.7 #14 — Custom filtering.** 3-toggle UI for `ListFilter`
       (`finalStageOnly`/`regionalFormsOnly`/`hideGenderVariants`), applied on top of 3.3's tier

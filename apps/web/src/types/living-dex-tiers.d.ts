@@ -3,7 +3,7 @@
 declare module '@cmodernel/living-dex-tiers' {
   import type { PokemonEntry } from '@living-dex/business-logic'
 
-  export type TierId = 'living-form' | 'living-lite' | 'final-form-full' | 'final-form'
+  export type TierId = 'living-form' | 'living-lite' | 'final-form-full' | 'final-form' | 'living-form-full'
 
   export const TIERS: Record<
     TierId,
