@@ -530,10 +530,42 @@ even if the `3.X` task order below does.
       4 existing tiers (nothing left to hide once the tier itself already excludes gender
       variants) — it will only have something to act on against this new `living-form-full` tier.
 
-- [ ] **3.7 #14 — Custom filtering.** 3-toggle UI for `ListFilter`
-      (`finalStageOnly`/`regionalFormsOnly`/`hideGenderVariants`), applied on top of 3.3's tier
-      predicate.
-      **Tests: Unit** (filter-combination logic) **+ UI**.
+- [x] **3.7 #14 — Custom filtering.** ✅ 3-toggle UI for `ListFilter`
+      (`finalStageOnly`/`regionalFormsOnly`/`hideGenderVariants`), composed with 3.3's tier
+      predicate. Implementation plan from `obsidian/3.7-Custom-Filtering-Plan.md` followed as
+      scoped.
+      - New `packages/business-logic/src/filter.ts`: `applyListFilter(base, filter)` reconstructs
+      the orphaned `dist/filter.js` logic found stale in the working tree (never committed) —
+      composes all three toggles on top of a base tier predicate.
+      - New `apps/web/src/hooks/useListFilter.ts`: reads/writes the *active list's* `filter`
+      (per-list, same family as `ownedIds`/`toggleOwned` — not per-user like
+      `visibleColumns`/`darkMode`), same inline-create-if-missing pattern as `useActiveList`'s
+      `toggleOwned` so a toggle can't land before the bootstrap effect creates the first list.
+      - New `apps/web/src/components/FilterMenu.tsx`: same `<details>/<summary>`
+      dropdown-of-checkboxes idiom as `ColumnVisibilityMenu.tsx`, placed next to it in
+      `HomePage.tsx`'s toolbar.
+      - `HomePage.tsx`'s `entries` memo now filters via
+      `applyListFilter(TIERS[tierId].predicate, activeList.filter)` instead of the bare tier
+      predicate; `activeList?.filter` added to the memo's deps. Ownership stays out of this memo
+      as before (per the existing row-memoization discipline).
+      - Verified the 3.6c interaction explicitly in tests: `hideGenderVariants` is a no-op under
+      the 4 curated tiers (they already exclude gender variants themselves) and only has a real
+      effect under `living-form-full`.
+      - **Found and fixed an unrelated, pre-existing portability bug** while running the clean
+      build check: `packages/business-logic`'s `test` script used `node --test dist/**/*.test.js`,
+      which only works because zsh/bash-with-globstar expand `**` recursively at the shell level —
+      it silently resolves to zero files under `sh`/dash (Docker's `node:20`/`node:22` images,
+      and likely CI), reporting "Could not find" and failing the whole script. Fixed to
+      `node --test dist/*.test.js` (a plain, POSIX-portable glob — sufficient since none of
+      `dist`'s test files are nested in subdirectories). Confirmed 26/26 tests still pass under
+      `sh` directly and in a clean Docker run.
+      **Tests: Unit** (`packages/business-logic/src/filter.test.ts` — default no-op, each toggle
+      alone, composition, non-mutation, and the 3.6c living-form vs. living-form-full interaction,
+      using the real `@cmodernel/living-dex-tiers` predicates) **+ UI**
+      (`FilterMenu.test.tsx`; `HomePage.test.tsx` — toggling `finalStageOnly` narrows visible
+      rows, and each list keeps its own filter state independently across a switch). 55/55
+      business-logic-package-local + web tests passing (26 + 52 across both workspaces),
+      `tsc -b` clean, verified in a clean Docker (`node:22`, `npm ci`) build too.
 
 - [ ] **3.7b `#XY` Notes per Pokémon.** A user-facing, per-list text field that lets a user attach
       a short **note to a Pokémon** (e.g. "has it in Black 2, in SSC, on Alolan island"),

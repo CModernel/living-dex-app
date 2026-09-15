@@ -1,4 +1,5 @@
 import {
+  applyListFilter,
   getPokeJungleSpriteUrl,
   getSpriteUrl,
   type PokemonEntry,
@@ -10,11 +11,13 @@ import { columnVisibilityFeature, createColumnHelper, tableFeatures, type Column
 import { memo, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
+import FilterMenu from '../components/FilterMenu'
 import ListSwitcher from '../components/ListSwitcher'
 import TypeBadge from '../components/TypeBadge'
 import { useActiveList } from '../hooks/useActiveList'
 import { useColumnVisibility } from '../hooks/useColumnVisibility'
 import { useDataset } from '../hooks/useDataset'
+import { useListFilter } from '../hooks/useListFilter'
 
 const TIER_LABELS: Record<TierId, string> = {
   'living-form-full': 'Living Form Full',
@@ -158,15 +161,16 @@ function HomePage() {
   const result = useDataset()
   const { activeList, toggleOwned } = useActiveList()
   const { columnVisibility, setColumnVisibility } = useColumnVisibility()
+  const { filter, toggleFinalStageOnly, toggleRegionalFormsOnly, toggleHideGenderVariants } = useListFilter()
   const [tierId, setTierId] = useState<TierId>('living-form')
 
   const dataset = result.loading || result.error ? null : result.dataset
   const entries = useMemo(() => {
     if (!dataset) return []
     return Object.values(dataset.pokemon)
-      .filter(TIERS[tierId].predicate)
+      .filter(applyListFilter(TIERS[tierId].predicate, filter))
       .sort((a, b) => a.sortIndex - b.sortIndex)
-  }, [dataset, tierId])
+  }, [dataset, tierId, filter])
   const ownedIds = useMemo(() => new Set(activeList?.ownedIds ?? []), [activeList])
 
   // Deliberately does NOT depend on ownedIds/toggleOwned — TableRow renders the "owned" cell
@@ -265,6 +269,13 @@ function HomePage() {
                   </select>
                 </label>
                 <ColumnVisibilityMenu columns={hideableColumns} />
+                <FilterMenu
+                  toggles={[
+                    { id: 'finalStageOnly', label: 'Final stage only', checked: filter.finalStageOnly, toggle: toggleFinalStageOnly },
+                    { id: 'regionalFormsOnly', label: 'Regional forms only', checked: filter.regionalFormsOnly, toggle: toggleRegionalFormsOnly },
+                    { id: 'hideGenderVariants', label: 'Hide gender variants', checked: filter.hideGenderVariants, toggle: toggleHideGenderVariants },
+                  ]}
+                />
               </div>
             </div>
             <div className="overflow-hidden rounded-lg border border-border">

@@ -10,6 +10,9 @@
   "files": ["dist"],
   "scripts": {
     "build": "tsc",
-    "test": "npm run build && node --test dist/**/*.test.js"
+    "test": "npm run build && node --test dist/*.test.js"
+  },
+  "devDependencies": {
+    "@cmodernel/living-dex-tiers": "file:../../../living-dex-organizer/packages/tiers"
   }
 }

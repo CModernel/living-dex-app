@@ -306,3 +306,41 @@ test('switching the active list (via HomePage\'s own sidebar) changes which owne
   fireEvent.click(screen.getByText('My Living Dex'))
   await waitFor(() => expect(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i })).toBeChecked())
 })
+
+test('toggling finalStageOnly narrows the visible rows (3.7)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+  expect(screen.getByText('Charizard')).toBeInTheDocument()
+
+  fireEvent.click(screen.getByText('Filters'))
+  fireEvent.click(screen.getByRole('checkbox', { name: /final stage only/i }))
+
+  // Bulbasaur (evolutionStage: 'pre') doesn't survive; Charizard (evolutionStage: 'final') does.
+  await waitFor(() => expect(screen.queryByText('Bulbasaur')).not.toBeInTheDocument())
+  expect(screen.getByText('Charizard')).toBeInTheDocument()
+})
+
+test('each list keeps its own filter state independently (3.7)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  // Turn on finalStageOnly for the default list — Bulbasaur drops out.
+  fireEvent.click(screen.getByText('Filters'))
+  fireEvent.click(screen.getByRole('checkbox', { name: /final stage only/i }))
+  await waitFor(() => expect(screen.queryByText('Bulbasaur')).not.toBeInTheDocument())
+
+  // Create a second list — it starts with DEFAULT_LIST_FILTER, so Bulbasaur reappears.
+  fireEvent.click(screen.getByRole('button', { name: /create new list/i }))
+  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'List B' } })
+  fireEvent.click(screen.getByRole('button', { name: /^create$/i }))
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  // Switching back to the original list restores its own finalStageOnly toggle.
+  fireEvent.click(screen.getByText('My Living Dex'))
+  await waitFor(() => expect(screen.queryByText('Bulbasaur')).not.toBeInTheDocument())
+})
