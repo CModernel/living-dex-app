@@ -678,6 +678,15 @@ even if the `3.X` task order below does.
       - Tested: unit tests for `useColumnOrder` (default order, updater-fn, persistence), UI tests
         for drag interactions in `HomePage.test.tsx`.
       - Verified locally and in clean Docker build.
+      - **Fix (same day, user-reported):** initial version updated `columnOrder` state correctly
+        on drop but never visually reordered anything — `columnOrderingFeature` only adds state +
+        `getColumnIndexes()`, it doesn't patch `getHeaderGroups()`/`row.getVisibleCells()` to apply
+        ordering automatically (confirmed by reading the installed package's own source, not just
+        its skill doc). Fixed by explicitly sorting both the header row and every body row's cells
+        by `table.getColumnIndexes().all` before rendering. Also added missing `preventDefault()`
+        in `onDrop` and `dataTransfer.setData()` in `onDragStart` for cross-browser correctness.
+        New test drags a header and asserts header + body cell order change together — the gap
+        that let the original version ship broken.
       **Mobile needs its own interaction** (separate ticket) — user's own note: dragging with
       tap-and-hold might not translate well to mobile, worth considering a dedicated
       reorder dialog (move columns up/down via buttons) instead of true drag gestures.
