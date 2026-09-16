@@ -8,7 +8,7 @@ import {
 import { TIERS, type TierId } from '@cmodernel/living-dex-tiers'
 import { flexRender, useTable } from '@tanstack/react-table'
 import { columnOrderingFeature, columnVisibilityFeature, createColumnHelper, tableFeatures, type ColumnDef, type Row } from '@tanstack/table-core'
-import { memo, useMemo, useRef, useState } from 'react'
+import { memo, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
 import FilterMenu from '../components/FilterMenu'
@@ -119,25 +119,23 @@ const TableRow = memo(function TableRow({
   row,
   owned,
   onToggle,
-  orderedColumnIds,
 }: {
   row: Row<typeof features, PokemonEntry>
   owned: boolean
   onToggle: (slug: string) => void
-  // Not read directly — including it in props (a new object each time visibility changes) is
-  // what makes memo correctly re-render when column visibility toggles. `row`'s own reference
-  // doesn't change on a visibility toggle (only data/columns changes affect the row model), so
-  // without this, memo would wrongly skip re-rendering rows after a column show/hide.
+  // Not read directly — including it in props (a new object/array each time visibility or order
+  // changes) is what makes memo correctly re-render when either one changes. `row`'s own
+  // reference doesn't change in either case (only data/columns changes affect the row model), so
+  // without these, memo would wrongly skip re-rendering rows after a column show/hide/reorder —
+  // this bit column *order* specifically: `row.getVisibleCells()` already reflects `columnOrder`
+  // correctly once actually called (confirmed in the installed package's own source —
+  // `columnOrderingFeature` patches `table.getAllLeafColumns()`, which every leaf-column accessor
+  // builds on), but with no order-derived prop, dragging a column changed the header (rendered
+  // directly in HomePage, not memoized) while every row silently kept rendering its old cell
+  // order, since none of TableRow's shallow-compared props had changed identity.
   columnVisibility: Record<string, boolean>
-  // `columnOrderingFeature` doesn't reorder `row.getVisibleCells()` itself (it only exposes
-  // `table.getOrderColumnsFn()` — confirmed in the installed package's own source, not just its
-  // docs), so cells must be explicitly sorted here to match the header's own reordering below,
-  // or the two would drift apart after a drag reorder.
-  orderedColumnIds: string[]
+  columnOrder: string[]
 }) {
-  const cells = [...row.getVisibleCells()].sort(
-    (a, b) => orderedColumnIds.indexOf(a.column.id) - orderedColumnIds.indexOf(b.column.id),
-  )
   return (
     <tr
       onClick={() => onToggle(row.original.slug)}
@@ -145,7 +143,7 @@ const TableRow = memo(function TableRow({
       // owned highlight, hiding the very state the highlight exists to show.
       className={`cursor-pointer border-b border-border last:border-b-0 ${owned ? 'bg-brand/15' : 'hover:bg-border/20'}`}
     >
-      {cells.map((cell) =>
+      {row.getVisibleCells().map((cell) =>
         cell.column.id === 'owned' ? (
           <td key={cell.id} className="p-2.5 text-center">
             <input
@@ -174,7 +172,13 @@ function HomePage() {
   const { columnOrder, setColumnOrder } = useColumnOrder()
   const { filter, toggleFinalStageOnly, toggleRegionalFormsOnly, toggleHideGenderVariants } = useListFilter()
   const [tierId, setTierId] = useState<TierId>('living-form')
+  // Pointer-based column drag (not native HTML5 DnD — draggable/dragstart/drop on table cells is
+  // a well-documented cross-browser reliability sink hole). `draggedColumnId` is the column being
+  // dragged; `hoverColumnId` is whichever header the pointer is currently over, used both for the
+  // drop-target highlight and as the actual drop target on pointerup.
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null)
+  const [hoverColumnId, setHoverColumnId] = useState<string | null>(null)
+  const headerRefs = useRef<Record<string, HTMLTableCellElement | null>>({})
 
   const dataset = result.loading || result.error ? null : result.dataset
   const entries = useMemo(() => {
@@ -241,15 +245,58 @@ function HomePage() {
     (state) => ({ columnVisibility: state.columnVisibility, columnOrder: state.columnOrder }),
   )
 
-  // `getHeaderGroups()`/`row.getVisibleCells()` don't apply `columnOrder` themselves —
-  // confirmed against the installed package's own source: neither `coreHeadersFeature` nor
-  // `columnVisibilityFeature`'s leaf-column getters reference `columnOrder` at all.
-  // `getColumnIndexes().all` (the public API `columnOrderingFeature` exposes for this) maps
-  // each visible column id to its index in the ordered list — used here to derive an ordered id
-  // array, applied to both the header row and every body row's cells below, so they can't
-  // render in different orders after a drag reorder.
-  const columnIndexes = table.getColumnIndexes().all
-  const orderedColumnIds = Object.keys(columnIndexes).sort((a, b) => columnIndexes[a] - columnIndexes[b])
+  // Finalizes a column drag: reorders `columnOrder` so `draggedId` sits at `targetId`'s current
+  // position. Computed against `table.state.columnOrder` directly — the persisted full order,
+  // not just the currently-visible subset — so a hidden column's position is preserved. Uses a
+  // single filter+splice pass against the SAME (already-filtered) array throughout, unlike the
+  // earlier native-DnD attempt, which mixed a pre-filter index with a post-filter array and could
+  // land the drop one slot off.
+  function reorderColumns(draggedId: string, targetId: string) {
+    if (draggedId === targetId) return
+    const current = table.state.columnOrder
+    const next = current.filter((id) => id !== draggedId)
+    const targetIndex = next.indexOf(targetId)
+    if (targetIndex === -1) return
+    next.splice(targetIndex, 0, draggedId)
+    setColumnOrder(next)
+  }
+
+  // A single window-level listener drives the whole drag once started (pointer capture keeps
+  // firing pointermove on the header even once the cursor leaves it, which per-header handlers
+  // alone wouldn't get). Compares the pointer's X position against each header's own
+  // getBoundingClientRect() rather than `document.elementFromPoint`, since the hover-tooltip
+  // portal (Sprite) can sit on top of the table and would otherwise intercept hit-testing.
+  function handleHeaderPointerDown(columnId: string, e: ReactPointerEvent) {
+    e.preventDefault()
+    setDraggedColumnId(columnId)
+    setHoverColumnId(columnId)
+
+    function findColumnUnderPointer(clientX: number): string | null {
+      for (const [id, el] of Object.entries(headerRefs.current)) {
+        if (!el) continue
+        const rect = el.getBoundingClientRect()
+        if (clientX >= rect.left && clientX <= rect.right) return id
+      }
+      return null
+    }
+
+    function onPointerMove(moveEvent: PointerEvent) {
+      const overId = findColumnUnderPointer(moveEvent.clientX)
+      if (overId) setHoverColumnId(overId)
+    }
+
+    function onPointerUp(upEvent: PointerEvent) {
+      const overId = findColumnUnderPointer(upEvent.clientX)
+      if (overId) reorderColumns(columnId, overId)
+      setDraggedColumnId(null)
+      setHoverColumnId(null)
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+    }
+
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup', onPointerUp)
+  }
 
   const hideableColumns = table
     .getAllColumns()
@@ -306,61 +353,39 @@ function HomePage() {
                 <thead>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id} className="border-b border-border bg-surface text-left">
-                      {[...headerGroup.headers]
-                        .sort(
-                          (a, b) =>
-                            orderedColumnIds.indexOf(a.column.id) - orderedColumnIds.indexOf(b.column.id),
+                      {headerGroup.headers.map((header) => {
+                        const isDragging = draggedColumnId === header.column.id
+                        const isDropTarget =
+                          hoverColumnId === header.column.id && draggedColumnId !== null && !isDragging
+                        return (
+                          <th
+                            key={header.id}
+                            ref={(el) => {
+                              headerRefs.current[header.column.id] = el
+                            }}
+                            className={`p-2.5 text-xs font-semibold tracking-wide text-muted uppercase ${
+                              isDragging ? 'opacity-50' : ''
+                            } ${isDropTarget ? 'bg-brand/10' : ''} ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}
+                          >
+                            <div className="flex items-center gap-1">
+                              <span
+                                className="cursor-grab select-none text-xs text-muted active:cursor-grabbing"
+                                onPointerDown={(e) => handleHeaderPointerDown(header.column.id, e)}
+                                aria-label={`Drag to reorder ${
+                                  typeof header.column.columnDef.header === 'string'
+                                    ? header.column.columnDef.header
+                                    : header.column.id
+                                } column`}
+                              >
+                                ⠿
+                              </span>
+                              {header.isPlaceholder
+                                ? null
+                                : flexRender(header.column.columnDef.header, header.getContext())}
+                            </div>
+                          </th>
                         )
-                        .map((header) => {
-                          const isDragging = draggedColumnId === header.column.id
-                          return (
-                            <th
-                              key={header.id}
-                              draggable
-                              onDragStart={(e) => {
-                                setDraggedColumnId(header.column.id)
-                                // Firefox requires setData in dragstart or `drop` never fires;
-                                // Chrome doesn't strictly need it but this keeps behavior
-                                // consistent across browsers.
-                                e.dataTransfer.setData('text/plain', header.column.id)
-                              }}
-                              onDragOver={(e) => {
-                                e.preventDefault()
-                                e.dataTransfer.dropEffect = 'move'
-                              }}
-                              onDrop={(e) => {
-                                // Suppress the browser's default drop action (e.g. navigating
-                                // to dragged text/URI data) — dragOver's preventDefault only
-                                // marks this as a valid drop target, it doesn't suppress drop's
-                                // own default action.
-                                e.preventDefault()
-                                if (draggedColumnId && draggedColumnId !== header.column.id) {
-                                  const current = table.state.columnOrder
-                                  const draggedIndex = current.indexOf(draggedColumnId)
-                                  const targetIndex = current.indexOf(header.column.id)
-                                  if (draggedIndex !== -1 && targetIndex !== -1) {
-                                    const next = current.filter((id: string) => id !== draggedColumnId)
-                                    next.splice(targetIndex, 0, draggedColumnId)
-                                    setColumnOrder(next)
-                                  }
-                                }
-                                setDraggedColumnId(null)
-                              }}
-                              onDragEnd={() => setDraggedColumnId(null)}
-                              className={`p-2.5 text-xs font-semibold tracking-wide text-muted uppercase select-none ${
-                                isDragging ? 'opacity-50 bg-brand/10' : ''
-                              } ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}
-                              style={{ cursor: 'grab' }}
-                            >
-                              <div className="flex items-center gap-1">
-                                <span className="text-xs text-muted">⠿</span>
-                                {header.isPlaceholder
-                                  ? null
-                                  : flexRender(header.column.columnDef.header, header.getContext())}
-                              </div>
-                            </th>
-                          )
-                        })}
+                      })}
                     </tr>
                   ))}
                 </thead>
@@ -372,7 +397,7 @@ function HomePage() {
                       owned={ownedIds.has(row.original.slug)}
                       onToggle={toggleOwned}
                       columnVisibility={table.state.columnVisibility}
-                      orderedColumnIds={orderedColumnIds}
+                      columnOrder={table.state.columnOrder}
                     />
                   ))}
                 </tbody>

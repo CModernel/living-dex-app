@@ -668,25 +668,41 @@ even if the `3.X` task order below does.
       resetting? If both are wanted, they're two different derived columns from the same
       `sortIndex`, not one.
 
-- [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete.
+- [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after two follow-up
+      fixes — see below).
       - TanStack Table v9's `columnOrderingFeature` enabled alongside `columnVisibilityFeature`.
       - New hook `apps/web/src/hooks/useColumnOrder.ts` persists `preferences.columnOrder` the same
         way as `visibleColumns`.
-      - Drag handlers on each `<th>`: native HTML5 drag events (`draggable`, `onDragStart`/`onDragOver`/
-        `onDrop`), no new dependency, visual drag indicator (grip handle `⠿` + opacity on active
-        drag, drop target highlight).
-      - Tested: unit tests for `useColumnOrder` (default order, updater-fn, persistence), UI tests
-        for drag interactions in `HomePage.test.tsx`.
-      - Verified locally and in clean Docker build.
-      - **Fix (same day, user-reported):** initial version updated `columnOrder` state correctly
-        on drop but never visually reordered anything — `columnOrderingFeature` only adds state +
-        `getColumnIndexes()`, it doesn't patch `getHeaderGroups()`/`row.getVisibleCells()` to apply
-        ordering automatically (confirmed by reading the installed package's own source, not just
-        its skill doc). Fixed by explicitly sorting both the header row and every body row's cells
-        by `table.getColumnIndexes().all` before rendering. Also added missing `preventDefault()`
-        in `onDrop` and `dataTransfer.setData()` in `onDragStart` for cross-browser correctness.
-        New test drags a header and asserts header + body cell order change together — the gap
-        that let the original version ship broken.
+      - **Final drag mechanism: Pointer Events, not native HTML5 DnD.** The original version used
+        `draggable`/`onDragStart`/`onDragOver`/`onDrop`, which turned out to never reliably fire a
+        real reorder (see fixes below) — replaced entirely with `onPointerDown` on a grip handle
+        (`⠿`) plus `window`-level `pointermove`/`pointerup` listeners that hit-test each header's
+        `getBoundingClientRect()`. No new dependency either way.
+      - Tested: unit tests for `useColumnOrder` (default order, updater-fn, persistence), UI test
+        in `HomePage.test.tsx` simulating a real pointer drag and asserting header + body row cells
+        reorder together.
+      - Verified locally, in a clean Docker build, and via `npm run test` (57/57 → 59/59 across the
+        two fixes below). Not yet visually confirmed in a real browser session (the Claude-in-Chrome
+        extension wasn't connected during this work) — recommend the user do one manual drag to
+        confirm before considering this fully closed.
+      - **Fix 1 (same day, user-reported "still doesn't work" after first "ship"):** initial
+        version updated `columnOrder` state correctly on drop but never visually reordered the
+        header — traced (incorrectly, see Fix 2) to `getHeaderGroups()`/`row.getVisibleCells()` not
+        applying `columnOrder`; added an explicit `table.getColumnIndexes().all`-based sort.
+      - **Fix 2 (same day, user reported it *still* didn't reorder):** re-investigation found Fix
+        1's diagnosis was itself wrong — `table.getAllLeafColumns()` (and everything built on it,
+        including `getHeaderGroups()`/`getVisibleCells()`) already applies `columnOrder`
+        automatically via `getOrderColumnsFn`, confirmed in
+        `node_modules/@tanstack/table-core/dist/core/columns/coreColumnsFeature.utils.js`. The
+        **real** bug: `TableRow` is wrapped in `React.memo` for perf (3.4b), and none of its props
+        changed reference when only column *order* changed (only `columnVisibility` was passed) —
+        so `memo` silently skipped re-rendering every body row while the (non-memoized) header
+        re-rendered fine. Fixed by adding `columnOrder` as an explicit `TableRow` prop purely so
+        `memo` detects the change (same "columnVisibility` prop exists only for memo, not read
+        directly" pattern the file already documents for 3.4). Also switched off native HTML5 DnD
+        to Pointer Events in the same pass, since native drag-and-drop on table cells is a
+        well-documented cross-browser reliability sink hole and this was the second broken round
+        with it. Removed the now-provably-unnecessary `getColumnIndexes()`-based sort from Fix 1.
       **Mobile needs its own interaction** (separate ticket) — user's own note: dragging with
       tap-and-hold might not translate well to mobile, worth considering a dedicated
       reorder dialog (move columns up/down via buttons) instead of true drag gestures.
