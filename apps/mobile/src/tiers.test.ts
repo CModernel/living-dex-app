@@ -6,5 +6,6 @@ test('can import and use TIERS from living-dex-tiers package', () => {
   expect(tierNames).toContain('living-lite')
   expect(tierNames).toContain('final-form-full')
   expect(tierNames).toContain('final-form')
-  expect(tierNames).toHaveLength(4)
+  expect(tierNames).toContain('living-form-full')
+  expect(tierNames).toHaveLength(5)
 })

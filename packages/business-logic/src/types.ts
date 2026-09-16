@@ -16,6 +16,7 @@ export type PokemonList = {
 
 export type UserPreferences = {
   visibleColumns: string[];
+  columnOrder: string[];
   compactMode: boolean;
   darkMode?: 'system' | 'light' | 'dark';
 };
@@ -35,6 +36,7 @@ export const DEFAULT_USER_STATE: UserState = {
     // apps/web/src/hooks/useColumnVisibility.ts). `dex` starts visible per user request
     // (2026-08-28) — every other hideable column still starts hidden.
     visibleColumns: ['dex'],
+    columnOrder: ['sprite', 'name', 'types', 'dex', 'generation', 'region', 'evolutionStage', 'owned'],
     compactMode: false,
     darkMode: 'system',
   },

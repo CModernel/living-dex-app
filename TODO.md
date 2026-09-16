@@ -567,22 +567,49 @@ even if the `3.X` task order below does.
       business-logic-package-local + web tests passing (26 + 52 across both workspaces),
       `tsc -b` clean, verified in a clean Docker (`node:22`, `npm ci`) build too.
 
-- [ ] **3.7b `#XY` Notes per Pokémon.** A user-facing, per-list text field that lets a user attach
-      a short **note to a Pokémon** (e.g. "has it in Black 2, in SSC, on Alolan island"),
-      stored alongside each list rather than as a global table. Read and written from the active
-      list's state (same shape as `ownedIds`/`filter`), so it stays per-list and survives reload.
-      Scope guard: the note field is intentionally capped (both in validation and ideally in
-      storage) — not a free-form journal. Start with a sensible single-entry ceiling (e.g. ~200
-      chars) and keep the storage slab size bounded so a user can't abuse it; revisit the
-      ceiling/rules only if the feature proves useful as-is.
+- [ ] **3.7b `#XY` Per-game "obtained from" tagging.** ✏️ Redefined (2026-09-16) — no longer a
+      free-text note field (that idea is dropped in favor of something structured and tied to
+      3.8d's per-game availability data: which game(s) a Pokémon was actually obtained in, tracked
+      per entry per list, alongside `ownedIds`).
 
-      **Test shape still TBD** (added as a TODO marker, not yet a scheduled task for execution):
-      decide and write the note test cases — unit tests for the note schema/caps + a UI test for
-      the note input/display shown on a Pokémon row or card. Not queued as a built task yet.
+      **Hard dependency: needs 3.8d landed first** — this requires knowing, per entry, which games
+      it's actually `obtainable`/`conditional` in (the "is this game valid to tag for this
+      Pokémon" question), which is exactly what 3.8d wires up
+      (`availability`/`tokenizeAvailabilityCell()`). Sequence this after 3.8d, not before.
 
-      Design note: keep this a small, bounded field for now (no rich text, no app-wide comment
-      feed, no cross-list merging) — that is the explicit carve-out so this does not drift into a
-      heavier social/notes feature. If it later wants to grow, treat growth as a separate step.
+      **User-specified interaction rules** (2026-09-16), tap-based, owned state and game-tags kept
+      in sync both directions:
+      1. Tap the Pokémon (no game selected) → marks it owned. No game tick changes.
+      2. Tap the Pokémon **and** tap one (or more) of its obtainable games → marks it owned **and**
+         ticks each tapped game as "obtained from."
+      3. Tap only a game (Pokémon not yet owned) → same effect as tapping the Pokémon: marks it
+         owned, **and** ticks that game.
+      4. Tapping the Pokémon again (when owned) resets everything to zero — unowned, no game ticks.
+      5. Tapping a game again only removes that game's tick — doesn't touch the owned state.
+      6. Removing every game tick this way leaves the Pokémon **still owned**, just with no game
+         attributed — owned state and "which game(s)" are independently toggleable, but owned is
+         the union: any game tick implies owned, while owned can exist with zero game ticks.
+
+      **Data model implication**: this is no longer a single string field — it's closer to
+      `ownedGames?: string[]` (sparse, per entry) alongside `ownedIds`, replacing the bounded
+      text-note idea entirely. Needs its own schema design pass (where it lives in `PokemonList` —
+      likely a parallel sparse map keyed by entry id, same shape family as `ownedIds`, not bundled
+      into `ownedIds` itself) before implementation — not decided yet.
+
+      **Open questions, not yet decided:**
+      - UI affordance for "tap a game": likely an expandable per-row list of that entry's
+        obtainable games (from 3.8d's data) with per-game tap targets — exact layout (inline
+        chips vs. an expand-to-see-games row) undecided.
+      - What happens when 3.8d's "obtainable only" game selection changes (a game gets
+        deselected) while it's already ticked as an obtained-from source on some entries? Likely:
+        the tick and owned state persist regardless (this is a historical "how I got it" record,
+        not the same thing as the obtainable-games *filter*) — but not confirmed with the user.
+      - Whether multiple game ticks on one entry is the common case or a rare one shapes whether
+        the UI should default to single-select-feeling or clearly multi-select.
+
+      **Test shape still TBD** (marker only, not a scheduled task yet): unit tests for the
+      owned/game-tag sync rules above (all 6 cases, including the "untick last game keeps owned"
+      case) + UI tests for the tap interactions once the affordance is designed.
 
 ### Polish (web)
 - [x] **3.4f Table styling refinements.** ✅ User-requested (2026-08-27), small/mechanical:
@@ -641,13 +668,39 @@ even if the `3.X` task order below does.
       resetting? If both are wanted, they're two different derived columns from the same
       `sortIndex`, not one.
 
-- [ ] **3.8c Reorderable/draggable columns.** User request (2026-09-11): let a user drag columns
-      into their preferred order (web: drag-and-drop is straightforward — TanStack Table's
-      column-ordering feature, alongside 3.4's `columnVisibilityFeature`, persisted the same way
-      as `visibleColumns`). **Mobile needs its own interaction** — user's own note: dragging with
+- [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete.
+      - TanStack Table v9's `columnOrderingFeature` enabled alongside `columnVisibilityFeature`.
+      - New hook `apps/web/src/hooks/useColumnOrder.ts` persists `preferences.columnOrder` the same
+        way as `visibleColumns`.
+      - Drag handlers on each `<th>`: native HTML5 drag events (`draggable`, `onDragStart`/`onDragOver`/
+        `onDrop`), no new dependency, visual drag indicator (grip handle `⠿` + opacity on active
+        drag, drop target highlight).
+      - Tested: unit tests for `useColumnOrder` (default order, updater-fn, persistence), UI tests
+        for drag interactions in `HomePage.test.tsx`.
+      - Verified locally and in clean Docker build.
+      **Mobile needs its own interaction** (separate ticket) — user's own note: dragging with
       tap-and-hold might not translate well to mobile, worth considering a dedicated
-      reorder dialog (move columns up/down via buttons) instead of true drag gestures. No
-      design decided yet for the mobile side; web can likely proceed independently once reached.
+      reorder dialog (move columns up/down via buttons) instead of true drag gestures.
+
+- [ ] **3.8d Consume per-game availability data.** `living-dex-organizer`'s dataset now has a
+      sparse `availability: { [gameId]: rawCode }` field per entry (organizer TODO #31) — needs
+      the `PokemonEntry` type declared in `packages/business-logic` (additive, doesn't break the
+      existing `as PokemonDataset` cast) plus a way to decode `rawCode` on demand via
+      `tokenizeAvailabilityCell()` from the organizer's `scripts/lib/availability.js`. Still to
+      analyze: how to surface this in the table —
+      - An "Availability" column, plus a filter panel to pick which games count as
+        "obtainable" (all 41 selected by default — the user can deselect ones they don't own/play).
+      - A Pokémon is **"inaccessible"** if it's not `obtainable`/`conditional` in *any* of the
+        currently-selected "obtainable only" games. Needs a decision on how conditional-only
+        matches should read (e.g. distinguish "fully native" vs. "event/trade/DLC-only" if that
+        turns out to matter for the UI).
+      - Persisted the same way as `visibleColumns`/3.5's preferences.
+
+- [ ] **3.8e Visual treatment for "inaccessible" Pokémon.** Aesthetic follow-up to 3.8d, once
+      the "obtainable only" game selection exists: when a Pokémon is inaccessible under the
+      current selection, give its row/sprite a distinct desaturated/grayed-out background (paler,
+      less colorful) instead of just relying on the filter — a way to see it in-list rather than
+      only hiding it.
 
 ### Data & Mobile
 - [ ] **3.9 #15 — Export/import.**
@@ -700,6 +753,11 @@ even if the `3.X` task order below does.
   gap is the majority of what makes this column interesting, and nothing found so far solves it —
   needs its own verification pass (same rigor as the PokeJungle sprite-id work) before this
   becomes a real ticket.
+  **Update (2026-09-16)**: `living-dex-organizer` TODO `#31` closes exactly that gap — Bulbapedia's
+  own "List of Pokémon by availability" has a row per regional form (`Rattata ( Alolan Form )`,
+  etc.), and `scripts/lib/availability.js` there parses its per-game codes into a tested
+  `obtainable`/`conditional`/`unobtainable` rules layer. Still not wired into the generated dataset,
+  `PokemonEntry`, or this UI — that's the remaining step before this column can actually be built.
 
 - **Publish `@cmodernel/living-dex-tiers` to npm.** Currently a `file:` dependency on the sibling
   `living-dex-organizer` repo, which required checking that repo out as a second step in CI (see
@@ -755,7 +813,50 @@ even if the `3.X` task order below does.
   likely an `onLoad`-tracked "loaded" boolean per image, with a skeleton/shimmer shown until then.
   No design work done on the exact visual treatment yet.
 
-- **"Line Form" tier — breeding-based family completion.** User's idea (2026-08-27): a new tier
+- **"Line Form" tier — breeding-based family completion.** ✏️ Updated (2026-09-16) — user confirmed
+  this is wanted and did a manual Gen I pass to pin down the real criterion (see below); still not
+  scoped into a ticket, still recommended Opus + plan mode once it is.
+  **Refined criterion** (user's own wording, Gen I worked example): stage is `Base` (first in the
+  family) / `Mid` (intermediate) / `Final` (last) / `Unique` (no evolution, no reproducible family).
+  A Pokémon "can recreate the family" if, starting from that Pokémon alone, breeding can produce an
+  egg that rebuilds the family from its base stage onward, including branch-specific preevolutions
+  where relevant. Male-only lines needing a Ditto partner still count as "yes" if they can produce
+  offspring at all. **Gen I worked exceptions** (cannot fully recreate the family) —
+  Nidoran♀/Nidorina/Nidoqueen (breeds, but only ever produces Nidoran♀ — can't generate the male
+  branch), Nidoran♂/Nidorino/Nidoking (same, mirrored — only ever produces Nidoran♂), Hitmonlee/
+  Hitmonchan (can produce Tyrogue, but not directly reconstruct the other final-stage branch),
+  Kangaskhan/Tauros (`Unique`, no family to reconstruct), Ditto (breeds with almost anything but
+  never produces another Ditto, so can't recreate *its own* one-member family), and the Gen I
+  legendaries/Mewtwo/Mew (`Unique`, not breedable at all).
+  **What's needed from the user to scope this for real**: a CSV, one row per **entry** (species +
+  form, matching this dataset's own row granularity — not just species, since a regional/alternate
+  form may have different breeding availability than its base form), with columns:
+  - `slug` or `pokeapiSlug` — matching the dataset's existing entry identifier, so it can be joined
+    without re-deriving names.
+  - `stage` — `base` / `mid` / `final` / `unique`.
+  - `canRecreateFamily` — `yes` / `no` / `partial` (for cases like Nidoran/Hitmonlee where breeding
+    works but doesn't reach every branch — needs a decision on whether `partial` behaves like `yes`
+    or `no` for the actual ownership-cascade mechanic once that's designed).
+  - `reason` — free text, only for `no`/`partial` rows (documents *why*, same spirit as the Gen I
+    table above — keeps the ruling auditable instead of a bare flag).
+  Gen I (#001–#151) already worked out per the message above — that data, once in this CSV shape,
+  is the starting fixture. Rest of the generations would need the same manual pass repeated
+  (this is inherently a game-mechanics judgment call per family, not something derivable from
+  PokeAPI data alone) before this tier could ship for more than Gen I.
+  **Cascade direction confirmed by the user (2026-09-16)**: marking **any one** entry in a
+  recreatable family (`canRecreateFamily: yes`, and TBD how `partial` behaves — see above) marks
+  **every** member of that family as owned — that's the whole point (own a Wartortle, a
+  Charmeleon, and a Venusaur, and the entire Gen I starter set of 9 reads as owned, no need to
+  chase down a Charizard specifically). **Still open, not decided yet**: whether un-marking one
+  member un-cascades the rest (per-family "any tapped" bookkeeping needed either way, since
+  cascade-marking doesn't mean every member was *individually* tapped) — needs a case-by-case
+  call once this is actually scoped, same spirit as the Gen I exceptions table itself.
+  Whether `ownedIds` gets every family member's slug written in vs. status is computed on the fly
+  by checking family-mates (see the older open question below) still stands as the concrete
+  implementation choice once this is scoped.
+  ---
+  *(Original framing below, still accurate for the mechanic/architecture questions.)*
+  A new tier
   with the same row set as Living Lite (no final-stage requirement — every distinct catchable
   form in a line still gets a row), but a different **ownership** rule: marking any ONE entry in
   an evolution family as owned marks the WHOLE family as owned, on the reasoning that once you

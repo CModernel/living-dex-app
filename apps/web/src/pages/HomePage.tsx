@@ -7,7 +7,7 @@ import {
 } from '@living-dex/business-logic'
 import { TIERS, type TierId } from '@cmodernel/living-dex-tiers'
 import { flexRender, useTable } from '@tanstack/react-table'
-import { columnVisibilityFeature, createColumnHelper, tableFeatures, type ColumnDef, type Row } from '@tanstack/table-core'
+import { columnOrderingFeature, columnVisibilityFeature, createColumnHelper, tableFeatures, type ColumnDef, type Row } from '@tanstack/table-core'
 import { memo, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
@@ -15,6 +15,7 @@ import FilterMenu from '../components/FilterMenu'
 import ListSwitcher from '../components/ListSwitcher'
 import TypeBadge from '../components/TypeBadge'
 import { useActiveList } from '../hooks/useActiveList'
+import { useColumnOrder } from '../hooks/useColumnOrder'
 import { useColumnVisibility } from '../hooks/useColumnVisibility'
 import { useDataset } from '../hooks/useDataset'
 import { useListFilter } from '../hooks/useListFilter'
@@ -28,7 +29,7 @@ const TIER_LABELS: Record<TierId, string> = {
 }
 
 // Module-level: no runtime data dependency, must stay stable across renders.
-const features = tableFeatures({ columnVisibilityFeature })
+const features = tableFeatures({ columnVisibilityFeature, columnOrderingFeature })
 const columnHelper = createColumnHelper<typeof features, PokemonEntry>()
 
 // The hover tooltip keeps this same zoom ratio relative to the base size — bump SPRITE_SIZE
@@ -161,8 +162,10 @@ function HomePage() {
   const result = useDataset()
   const { activeList, toggleOwned } = useActiveList()
   const { columnVisibility, setColumnVisibility } = useColumnVisibility()
+  const { columnOrder, setColumnOrder } = useColumnOrder()
   const { filter, toggleFinalStageOnly, toggleRegionalFormsOnly, toggleHideGenderVariants } = useListFilter()
   const [tierId, setTierId] = useState<TierId>('living-form')
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null)
 
   const dataset = result.loading || result.error ? null : result.dataset
   const entries = useMemo(() => {
@@ -222,10 +225,11 @@ function HomePage() {
       features,
       columns,
       data: entries,
-      state: { columnVisibility },
+      state: { columnVisibility, columnOrder },
       onColumnVisibilityChange: setColumnVisibility,
+      onColumnOrderChange: setColumnOrder,
     },
-    (state) => ({ columnVisibility: state.columnVisibility }),
+    (state) => ({ columnVisibility: state.columnVisibility, columnOrder: state.columnOrder }),
   )
 
   const hideableColumns = table
@@ -283,16 +287,48 @@ function HomePage() {
                 <thead>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id} className="border-b border-border bg-surface text-left">
-                      {headerGroup.headers.map((header) => (
-                        <th
-                          key={header.id}
-                          className={`p-2.5 text-xs font-semibold tracking-wide text-muted uppercase ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}
-                        >
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(header.column.columnDef.header, header.getContext())}
-                        </th>
-                      ))}
+                      {headerGroup.headers.map((header) => {
+                        const isDragging = draggedColumnId === header.column.id
+                        return (
+                          <th
+                            key={header.id}
+                            draggable
+                            onDragStart={() => setDraggedColumnId(header.column.id)}
+                            onDragOver={(e) => {
+                              e.preventDefault()
+                              e.dataTransfer.dropEffect = 'move'
+                            }}
+                            onDragLeave={() => {
+                              // Optional: clear drop indicator on leave
+                            }}
+                            onDrop={() => {
+                              if (draggedColumnId && draggedColumnId !== header.column.id) {
+                                const current = table.state.columnOrder
+                                const draggedIndex = current.indexOf(draggedColumnId)
+                                const targetIndex = current.indexOf(header.column.id)
+                                if (draggedIndex !== -1 && targetIndex !== -1) {
+                                  const next = current.filter((id: string) => id !== draggedColumnId)
+                                  next.splice(targetIndex, 0, draggedColumnId)
+                                  setColumnOrder(next)
+                                }
+                              }
+                              setDraggedColumnId(null)
+                            }}
+                            onDragEnd={() => setDraggedColumnId(null)}
+                            className={`p-2.5 text-xs font-semibold tracking-wide text-muted uppercase select-none ${
+                              isDragging ? 'opacity-50 bg-brand/10' : ''
+                            } ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}
+                            style={{ cursor: 'grab' }}
+                          >
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-muted">⠿</span>
+                              {header.isPlaceholder
+                                ? null
+                                : flexRender(header.column.columnDef.header, header.getContext())}
+                            </div>
+                          </th>
+                        )
+                      })}
                     </tr>
                   ))}
                 </thead>
