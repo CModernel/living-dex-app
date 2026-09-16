@@ -371,21 +371,43 @@ test('dragging a column header (from anywhere on it) reorders the header row and
   fireEvent.pointerMove(window, { clientX: 450, clientY: 15 })
   fireEvent.pointerUp(window, { clientX: 450, clientY: 15 })
 
-  // The dragged column takes the drop target's slot, pushing the target one position over —
-  // Name lands immediately before Owned, not after it.
+  // Dragging rightward (Name started left of Owned) inserts AFTER the target, not before — this
+  // is what makes a one-step-right nudge onto an immediate neighbor a real move instead of a
+  // no-op (inserting "before" an immediate right neighbor just undoes the removal). So Name ends
+  // up last, after Owned.
   const headerTextsAfter = screen.getAllByRole('columnheader').map((h) => h.textContent)
-  expect(headerTextsAfter).toEqual(['⠿Sprite', '⠿Types', '⠿Dex #', '⠿Name', '⠿Owned'])
+  expect(headerTextsAfter).toEqual(['⠿Sprite', '⠿Types', '⠿Dex #', '⠿Owned', '⠿Name'])
 
   // Body cells must reorder identically — otherwise header and data would desync.
   const bulbasaurRow = screen.getByText('Bulbasaur').closest('tr')
   expect(bulbasaurRow).not.toBeNull()
   const cellTextsAfter = Array.from(bulbasaurRow!.querySelectorAll('td')).map((td) => td.textContent)
-  // Sprite cell has no text (an <img>), Types renders badges, Owned is a checkbox — only
-  // 'Bulbasaur' and '0001' (Dex #) are plain text, but the cell *order* is what matters here:
-  // 'Bulbasaur' (Name) must now be second-to-last, immediately before the (textless) Owned cell.
-  // Name (containing 'Bulbasaur') must now render immediately before Owned (the last cell, a
-  // textless checkbox) — i.e. second from the end.
-  expect(cellTextsAfter.indexOf('Bulbasaur')).toBe(cellTextsAfter.length - 2)
+  // Name (containing 'Bulbasaur') must now render last.
+  expect(cellTextsAfter[cellTextsAfter.length - 1]).toBe('Bulbasaur')
+})
+
+test('dragging a column onto its immediate right neighbor swaps them (3.8c — regression: this was previously a no-op)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  screen.getAllByRole('columnheader').forEach((th, i) => {
+    th.getBoundingClientRect = () =>
+      ({ left: i * 100, right: i * 100 + 100, top: 0, bottom: 30, width: 100, height: 30, x: i * 100, y: 0, toJSON: () => {} }) as DOMRect
+  })
+
+  // Name (index 1) onto its immediate right neighbor Types (index 2) — the most common real drag
+  // gesture (a single-step nudge). Always inserting "before" the target was mathematically a
+  // no-op for exactly this case: removing the dragged column shifts the target left by one slot,
+  // so re-inserting it "before" the (now-shifted) target landed it right back where it started.
+  const nameHeader = screen.getByRole('columnheader', { name: '⠿Name' })
+  fireEvent.pointerDown(nameHeader, { clientX: 150, clientY: 15 })
+  fireEvent.pointerMove(window, { clientX: 250, clientY: 15 })
+  fireEvent.pointerUp(window, { clientX: 250, clientY: 15 })
+
+  const headerTextsAfter = screen.getAllByRole('columnheader').map((h) => h.textContent)
+  expect(headerTextsAfter).toEqual(['⠿Sprite', '⠿Types', '⠿Name', '⠿Dex #', '⠿Owned'])
 })
 
 test('dragging past the leftmost header (e.g. into the sidebar) clamps to the first column, not aborting the reorder (3.8c)', async () => {

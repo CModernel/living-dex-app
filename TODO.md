@@ -716,6 +716,21 @@ even if the `3.X` task order below does.
         header into the sidebar, which happens far more often when dragging left (little room
         before running off the table) than right (more table width to land in). Fixed by
         clamping to the nearest column when no header rect directly contains the pointer.
+      - **Fix 4 (user reported the opposite: "right doesn't work, left does"):** browser
+        automation (`left_click_drag` via the Claude-in-Chrome extension) turned out to be
+        unreliable in this environment for reproducing real mouse drags — it sometimes generated
+        no `pointerdown`/`pointerup` at all, just `pointermove` — so this was root-caused instead
+        with directly-dispatched `PointerEvent`s. Found a **real, fifth bug**: `reorderColumns`
+        always inserted the dragged column immediately *before* the target, which is a
+        mathematical no-op specifically when the target is the dragged column's **immediate right
+        neighbor** — removing the dragged column shifts the target left by exactly one slot, so
+        re-inserting "before" it lands back at the start. The identical one-step-left case
+        happened to work (there, "before" is a genuine swap), which is exactly why the two
+        directions looked asymmetric. Fixed by inserting *after* the target when dragging
+        rightward and *before* it when dragging leftward — the dragged column now always lands on
+        the far side of the target from its starting position, symmetric in both directions.
+        Confirmed via directly-dispatched pointer events: a one-step drag onto an immediate
+        neighbor now swaps them correctly in both directions.
       **Mobile needs its own interaction** (separate ticket) — user's own note: dragging with
       tap-and-hold might not translate well to mobile, worth considering a dedicated
       reorder dialog (move columns up/down via buttons) instead of true drag gestures.

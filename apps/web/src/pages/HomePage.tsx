@@ -248,19 +248,30 @@ function HomePage() {
     (state) => ({ columnVisibility: state.columnVisibility, columnOrder: state.columnOrder }),
   )
 
-  // Finalizes a column drag: reorders `columnOrder` so `draggedId` sits at `targetId`'s current
-  // position. Computed against `table.state.columnOrder` directly — the persisted full order,
-  // not just the currently-visible subset — so a hidden column's position is preserved. Uses a
-  // single filter+splice pass against the SAME (already-filtered) array throughout, unlike the
-  // earlier native-DnD attempt, which mixed a pre-filter index with a post-filter array and could
-  // land the drop one slot off.
+  // Finalizes a column drag: reorders `columnOrder` so `draggedId` ends up adjacent to `targetId`,
+  // on the side matching the drag's direction. Computed against `table.state.columnOrder`
+  // directly — the persisted full order, not just the currently-visible subset — so a hidden
+  // column's position is preserved.
+  //
+  // Direction matters, not just "insert before target": always inserting before the target is a
+  // no-op whenever the target is the dragged column's IMMEDIATE right neighbor — removing the
+  // dragged column shifts the target left by exactly one slot, so re-inserting it "before" the
+  // (now-shifted) target lands it right back where it started. That's why a one-step rightward
+  // nudge (the most common real drag gesture) silently did nothing, while the same one-step
+  // leftward nudge worked (there, "insert before target" is a genuine swap). Inserting after the
+  // target when dragging rightward (and before it when dragging leftward) fixes this: the dragged
+  // column always ends up on the far side of the target from where it started.
   function reorderColumns(draggedId: string, targetId: string) {
     if (draggedId === targetId) return
     const current = table.state.columnOrder
+    const draggedIndex = current.indexOf(draggedId)
+    const targetIndex = current.indexOf(targetId)
+    if (draggedIndex === -1 || targetIndex === -1) return
+    const movingRight = draggedIndex < targetIndex
     const next = current.filter((id) => id !== draggedId)
-    const targetIndex = next.indexOf(targetId)
-    if (targetIndex === -1) return
-    next.splice(targetIndex, 0, draggedId)
+    const targetIndexInNext = next.indexOf(targetId)
+    const insertIndex = movingRight ? targetIndexInNext + 1 : targetIndexInNext
+    next.splice(insertIndex, 0, draggedId)
     setColumnOrder(next)
   }
 
