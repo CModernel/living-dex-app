@@ -103,6 +103,16 @@ function renderHomePage() {
   )
 }
 
+// jsdom performs no real layout, so the pointer-drag's hit-testing (comparing clientX against
+// each header's getBoundingClientRect()) needs a stub — assigns each header a distinct 100px
+// slot in on-screen (definition) order, matching how a real browser would lay them out.
+function stubHeaderLayout() {
+  screen.getAllByRole('columnheader').forEach((th, i) => {
+    th.getBoundingClientRect = () =>
+      ({ left: i * 100, right: i * 100 + 100, top: 0, bottom: 30, width: 100, height: 30, x: i * 100, y: 0, toJSON: () => {} }) as DOMRect
+  })
+}
+
 test('shows a loading state before the dataset resolves', () => {
   global.fetch = vi.fn(() => new Promise(() => {}))
   renderHomePage()
@@ -356,13 +366,7 @@ test('dragging a column header (from anywhere on it) reorders the header row and
   // hidden per HIDEABLE_COLUMN_IDS' default).
   expect(headerTextsBefore).toEqual(['⠿Sprite', '⠿Name', '⠿Types', '⠿Dex #', '⠿Owned'])
 
-  // jsdom performs no real layout, so the pointer-drag's hit-testing (comparing clientX against
-  // each header's getBoundingClientRect()) needs a stub — assigns each header a distinct 100px
-  // slot in on-screen (definition) order, matching how a real browser would lay them out.
-  screen.getAllByRole('columnheader').forEach((th, i) => {
-    th.getBoundingClientRect = () =>
-      ({ left: i * 100, right: i * 100 + 100, top: 0, bottom: 30, width: 100, height: 30, x: i * 100, y: 0, toJSON: () => {} }) as DOMRect
-  })
+  stubHeaderLayout()
 
   // Draggable from anywhere on the header, not just the grip icon.
   const nameHeader = screen.getByRole('columnheader', { name: '⠿Name' })
@@ -392,10 +396,7 @@ test('dragging a column onto its immediate right neighbor swaps them (3.8c — r
 
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
-  screen.getAllByRole('columnheader').forEach((th, i) => {
-    th.getBoundingClientRect = () =>
-      ({ left: i * 100, right: i * 100 + 100, top: 0, bottom: 30, width: 100, height: 30, x: i * 100, y: 0, toJSON: () => {} }) as DOMRect
-  })
+  stubHeaderLayout()
 
   // Name (index 1) onto its immediate right neighbor Types (index 2) — the most common real drag
   // gesture (a single-step nudge). Always inserting "before" the target was mathematically a
@@ -416,10 +417,7 @@ test('dragging past the leftmost header (e.g. into the sidebar) clamps to the fi
 
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
-  screen.getAllByRole('columnheader').forEach((th, i) => {
-    th.getBoundingClientRect = () =>
-      ({ left: i * 100, right: i * 100 + 100, top: 0, bottom: 30, width: 100, height: 30, x: i * 100, y: 0, toJSON: () => {} }) as DOMRect
-  })
+  stubHeaderLayout()
 
   // Drag Types (index 2, x range [200,300)) to a negative clientX — well past every header's
   // left edge, simulating the pointer overshooting into the sidebar to the left of the table.

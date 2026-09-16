@@ -36,6 +36,10 @@ export const DEFAULT_USER_STATE: UserState = {
     // apps/web/src/hooks/useColumnVisibility.ts). `dex` starts visible per user request
     // (2026-08-28) — every other hideable column still starts hidden.
     visibleColumns: ['dex'],
+    // Deliberately NOT `[]` even though TanStack's columnOrderingFeature treats an empty array
+    // as "natural definition order" for rendering purposes — HomePage's own `reorderColumns`
+    // logic reads and rewrites this array directly (so a hidden column's position is preserved
+    // across a drag), and needs real ids to compute indices against, not an empty list.
     columnOrder: ['sprite', 'name', 'types', 'dex', 'generation', 'region', 'evolutionStage', 'owned'],
     compactMode: false,
     darkMode: 'system',

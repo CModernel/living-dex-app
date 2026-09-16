@@ -109,6 +109,36 @@ function Sprite({ dataset, entry }: { dataset: PokemonDataset; entry: PokemonEnt
   )
 }
 
+// Reorders `order` so `draggedId` sits immediately next to `targetId`, on the side matching the
+// original drag direction — inserting at `targetId`'s ORIGINAL index (not its post-removal index)
+// naturally does this without a direction check: if targetId was to the right of draggedId, its
+// original index already accounts for the slot draggedId is vacating.
+function reorderColumnIds(order: string[], draggedId: string, targetId: string): string[] {
+  if (draggedId === targetId) return order
+  const targetIndex = order.indexOf(targetId)
+  if (targetIndex === -1 || order.indexOf(draggedId) === -1) return order
+  const next = order.filter((id) => id !== draggedId)
+  next.splice(targetIndex, 0, draggedId)
+  return next
+}
+
+// Finds the column whose header is closest to `clientX`, clamping to the nearest edge column
+// when the pointer overshoots past the table (e.g. dragging into the sidebar to the left of the
+// leftmost header). Takes a precomputed, left-to-right-agnostic list of header rects rather than
+// reading the DOM itself, so a drag's per-move hit-testing does no layout work.
+function findNearestColumn(rects: { id: string; left: number; right: number }[], clientX: number): string | null {
+  let closestId: string | null = null
+  let closestDistance = Infinity
+  for (const { id, left, right } of rects) {
+    const distance = clientX < left ? left - clientX : clientX > right ? clientX - right : 0
+    if (distance < closestDistance) {
+      closestDistance = distance
+      closestId = id
+    }
+  }
+  return closestId
+}
+
 // Memoized and given only stable-ish props (row from TanStack's cached row model, plus a plain
 // `owned` boolean) so toggling ONE row doesn't force React to re-render all ~1387 rows' cells
 // (sprites, type badges, etc.) — before this, a single click took 100-270ms because the whole
@@ -123,18 +153,10 @@ const TableRow = memo(function TableRow({
   row: Row<typeof features, PokemonEntry>
   owned: boolean
   onToggle: (slug: string) => void
-  // Not read directly — including it in props (a new object/array each time visibility or order
-  // changes) is what makes memo correctly re-render when either one changes. `row`'s own
-  // reference doesn't change in either case (only data/columns changes affect the row model), so
-  // without these, memo would wrongly skip re-rendering rows after a column show/hide/reorder —
-  // this bit column *order* specifically: `row.getVisibleCells()` already reflects `columnOrder`
-  // correctly once actually called (confirmed in the installed package's own source —
-  // `columnOrderingFeature` patches `table.getAllLeafColumns()`, which every leaf-column accessor
-  // builds on), but with no order-derived prop, dragging a column changed the header (rendered
-  // directly in HomePage, not memoized) while every row silently kept rendering its old cell
-  // order, since none of TableRow's shallow-compared props had changed identity.
-  columnVisibility: Record<string, boolean>
-  columnOrder: string[]
+  // Unread — `row.getVisibleCells()` already reflects the current visibility/order. Passed only
+  // so its identity change makes `memo` re-render the row after a column show/hide/reorder, since
+  // `row`'s own reference doesn't change in either case.
+  columnsKey: string
 }) {
   return (
     <tr
@@ -173,14 +195,14 @@ function HomePage() {
   const { filter, toggleFinalStageOnly, toggleRegionalFormsOnly, toggleHideGenderVariants } = useListFilter()
   const [tierId, setTierId] = useState<TierId>('living-form')
   // Pointer-based column drag (not native HTML5 DnD — draggable/dragstart/drop on table cells is
-  // a well-documented cross-browser reliability sink hole). `draggedColumnId` is the column being
-  // dragged; `hoverColumnId` is whichever header the pointer is currently over, used both for the
-  // drop-target highlight and as the actual drop target on pointerup. `dragPreview` drives the
-  // floating label that follows the cursor while dragging (native HTML5 DnD's default drag-ghost
-  // equivalent, since Pointer Events don't provide one for free).
-  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null)
-  const [hoverColumnId, setHoverColumnId] = useState<string | null>(null)
-  const [dragPreview, setDragPreview] = useState<{ label: string; x: number; y: number } | null>(null)
+  // a well-documented cross-browser reliability sink hole). `columnId`/`label` identify the
+  // dragged column; `hoverColumnId` is whichever header the pointer is currently over, used for
+  // the drop-target highlight and as the drop target on pointerup. The preview label's on-screen
+  // position is NOT in this state — it's updated imperatively (see `previewRef` below) so
+  // following the cursor doesn't re-render the whole ~1387-row table on every pointermove.
+  const [drag, setDrag] = useState<{ columnId: string; label: string; hoverColumnId: string } | null>(null)
+  const previewRef = useRef<HTMLDivElement>(null)
+  const previewPosRef = useRef({ x: 0, y: 0 })
   const headerRefs = useRef<Record<string, HTMLTableCellElement | null>>({})
 
   const dataset = result.loading || result.error ? null : result.dataset
@@ -248,91 +270,62 @@ function HomePage() {
     (state) => ({ columnVisibility: state.columnVisibility, columnOrder: state.columnOrder }),
   )
 
-  // Finalizes a column drag: reorders `columnOrder` so `draggedId` ends up adjacent to `targetId`,
-  // on the side matching the drag's direction. Computed against `table.state.columnOrder`
-  // directly — the persisted full order, not just the currently-visible subset — so a hidden
-  // column's position is preserved.
-  //
-  // Direction matters, not just "insert before target": always inserting before the target is a
-  // no-op whenever the target is the dragged column's IMMEDIATE right neighbor — removing the
-  // dragged column shifts the target left by exactly one slot, so re-inserting it "before" the
-  // (now-shifted) target lands it right back where it started. That's why a one-step rightward
-  // nudge (the most common real drag gesture) silently did nothing, while the same one-step
-  // leftward nudge worked (there, "insert before target" is a genuine swap). Inserting after the
-  // target when dragging rightward (and before it when dragging leftward) fixes this: the dragged
-  // column always ends up on the far side of the target from where it started.
-  function reorderColumns(draggedId: string, targetId: string) {
-    if (draggedId === targetId) return
-    const current = table.state.columnOrder
-    const draggedIndex = current.indexOf(draggedId)
-    const targetIndex = current.indexOf(targetId)
-    if (draggedIndex === -1 || targetIndex === -1) return
-    const movingRight = draggedIndex < targetIndex
-    const next = current.filter((id) => id !== draggedId)
-    const targetIndexInNext = next.indexOf(targetId)
-    const insertIndex = movingRight ? targetIndexInNext + 1 : targetIndexInNext
-    next.splice(insertIndex, 0, draggedId)
-    setColumnOrder(next)
+  function updatePreviewPosition(x: number, y: number) {
+    previewPosRef.current = { x, y }
+    if (previewRef.current) {
+      previewRef.current.style.left = `${x}px`
+      previewRef.current.style.top = `${y}px`
+    }
   }
 
-  // A single window-level listener drives the whole drag once started (pointer capture keeps
-  // firing pointermove on the header even once the cursor leaves it, which per-header handlers
-  // alone wouldn't get). Compares the pointer's X position against each header's own
-  // getBoundingClientRect() rather than `document.elementFromPoint`, since the hover-tooltip
-  // portal (Sprite) can sit on top of the table and would otherwise intercept hit-testing.
   function handleHeaderPointerDown(columnId: string, label: string, e: ReactPointerEvent) {
-    // Ignore drags started from an interactive control inside the header (none exist today, but
-    // this keeps the whole-header drag area from swallowing clicks on anything added later, e.g.
-    // a future sort toggle) — only left-button presses start a drag.
     if (e.button !== 0) return
     e.preventDefault()
-    setDraggedColumnId(columnId)
-    setHoverColumnId(columnId)
-    setDragPreview({ label, x: e.clientX, y: e.clientY })
 
-    // Clamps to the nearest edge column when the pointer overshoots past the table (e.g.
-    // dragging into the sidebar to the left of the leftmost header, or past the right edge) —
-    // without this, a natural "drag all the way to the start/end" gesture landed outside every
-    // header's exact rect and silently found no drop target, aborting the reorder. This is why
-    // dragging left (toward the sidebar) looked broken while dragging right (toward more table)
-    // did not: there's much less room to overshoot on the right before running out of viewport.
-    function findColumnUnderPointer(clientX: number): string | null {
-      const entries = Object.entries(headerRefs.current).filter(
-        (entry): entry is [string, HTMLTableCellElement] => entry[1] !== null,
-      )
-      if (entries.length === 0) return null
-      let closestId: string | null = null
-      let closestDistance = Infinity
-      for (const [id, el] of entries) {
+    // Snapshotted once per drag rather than measured on every pointermove — header positions
+    // can't change mid-drag (no resizing/reflow happens until the drop), so repeated
+    // getBoundingClientRect() calls on every move would just be forced-layout work for the same
+    // answer, on a page with a ~1387-row table in its layout tree.
+    const rects = Object.entries(headerRefs.current)
+      .filter((entry): entry is [string, HTMLTableCellElement] => entry[1] !== null)
+      .map(([id, el]) => {
         const rect = el.getBoundingClientRect()
-        if (clientX >= rect.left && clientX <= rect.right) return id
-        const distance = clientX < rect.left ? rect.left - clientX : clientX - rect.right
-        if (distance < closestDistance) {
-          closestDistance = distance
-          closestId = id
-        }
-      }
-      return closestId
-    }
+        return { id, left: rect.left, right: rect.right }
+      })
+
+    updatePreviewPosition(e.clientX, e.clientY)
+    setDrag({ columnId, label, hoverColumnId: columnId })
+
+    // Tracks the last hovered column outside React state so a render is only triggered when the
+    // hovered column actually changes (once per column boundary crossed), not on every pointer
+    // event.
+    let lastHoverId = columnId
+    const controller = new AbortController()
 
     function onPointerMove(moveEvent: PointerEvent) {
-      const overId = findColumnUnderPointer(moveEvent.clientX)
-      if (overId) setHoverColumnId(overId)
-      setDragPreview((prev) => (prev ? { ...prev, x: moveEvent.clientX, y: moveEvent.clientY } : prev))
+      updatePreviewPosition(moveEvent.clientX, moveEvent.clientY)
+      const overId = findNearestColumn(rects, moveEvent.clientX)
+      if (overId && overId !== lastHoverId) {
+        lastHoverId = overId
+        setDrag((prev) => (prev ? { ...prev, hoverColumnId: overId } : prev))
+      }
     }
 
-    function onPointerUp(upEvent: PointerEvent) {
-      const overId = findColumnUnderPointer(upEvent.clientX)
-      if (overId) reorderColumns(columnId, overId)
-      setDraggedColumnId(null)
-      setHoverColumnId(null)
-      setDragPreview(null)
-      window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('pointerup', onPointerUp)
+    function endDrag(finalClientX: number | null) {
+      if (finalClientX !== null) {
+        const overId = findNearestColumn(rects, finalClientX)
+        if (overId) setColumnOrder((current) => reorderColumnIds(current, columnId, overId))
+      }
+      setDrag(null)
+      controller.abort()
     }
 
-    window.addEventListener('pointermove', onPointerMove)
-    window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('pointermove', onPointerMove, { signal: controller.signal })
+    window.addEventListener('pointerup', (upEvent) => endDrag(upEvent.clientX), { signal: controller.signal })
+    // A cancelled gesture (e.g. the browser taking over for a touch scroll) still needs to clear
+    // drag state and detach the listeners — without this they'd stay attached (and `endDrag`
+    // would never run) for any drag that doesn't end in a plain pointerup.
+    window.addEventListener('pointercancel', () => endDrag(null), { signal: controller.signal })
   }
 
   const hideableColumns = table
@@ -344,6 +337,14 @@ function HomePage() {
       isVisible: column.getIsVisible(),
       toggle: () => column.toggleVisibility(),
     }))
+
+  // The single value TableRow's memo actually needs to react to: which columns are visible, and
+  // in what order. A primitive so the shallow-compare that drives memoization is exact rather
+  // than relying on TanStack handing back a fresh object/array identity.
+  const columnsKey = table
+    .getVisibleLeafColumns()
+    .map((column) => column.id)
+    .join('|')
 
   // Lives on HomePage itself, not just /lists, so switching lists refreshes the table right
   // here instead of requiring a trip to another page.
@@ -391,9 +392,8 @@ function HomePage() {
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id} className="border-b border-border bg-surface text-left">
                       {headerGroup.headers.map((header) => {
-                        const isDragging = draggedColumnId === header.column.id
-                        const isDropTarget =
-                          hoverColumnId === header.column.id && draggedColumnId !== null && !isDragging
+                        const isDragging = drag?.columnId === header.column.id
+                        const isDropTarget = drag !== null && drag.hoverColumnId === header.column.id && !isDragging
                         const headerLabel =
                           typeof header.column.columnDef.header === 'string'
                             ? header.column.columnDef.header
@@ -428,8 +428,7 @@ function HomePage() {
                       row={row}
                       owned={ownedIds.has(row.original.slug)}
                       onToggle={toggleOwned}
-                      columnVisibility={table.state.columnVisibility}
-                      columnOrder={table.state.columnOrder}
+                      columnsKey={columnsKey}
                     />
                   ))}
                 </tbody>
@@ -438,13 +437,14 @@ function HomePage() {
           </>
         )}
       </div>
-      {dragPreview &&
+      {drag &&
         createPortal(
           <div
+            ref={previewRef}
             className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-1/2 rounded border border-border bg-surface px-3 py-1.5 text-xs font-semibold tracking-wide text-muted uppercase shadow-lg"
-            style={{ left: dragPreview.x, top: dragPreview.y }}
+            style={{ left: previewPosRef.current.x, top: previewPosRef.current.y }}
           >
-            {dragPreview.label}
+            {drag.label}
           </div>,
           document.body,
         )}

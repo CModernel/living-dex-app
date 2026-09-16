@@ -1,5 +1,5 @@
 import { functionalUpdate, type Updater } from '@tanstack/table-core'
-import { useCallback, useMemo } from 'react'
+import { useCallback } from 'react'
 import { useUserState } from '../state/UserStateContext'
 
 type ColumnOrderState = string[]
@@ -17,10 +17,7 @@ type ColumnOrderState = string[]
 export function useColumnOrder() {
   const [state, setState] = useUserState()
 
-  const columnOrder = useMemo(
-    () => state.preferences.columnOrder,
-    [state.preferences.columnOrder],
-  )
+  const columnOrder = state.preferences.columnOrder
 
   const setColumnOrder = useCallback(
     (updater: Updater<ColumnOrderState>) => {

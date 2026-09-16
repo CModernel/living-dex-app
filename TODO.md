@@ -731,6 +731,27 @@ even if the `3.X` task order below does.
         the far side of the target from its starting position, symmetric in both directions.
         Confirmed via directly-dispatched pointer events: a one-step drag onto an immediate
         neighbor now swaps them correctly in both directions.
+      - **Post-hoc simplification pass** (4 parallel review agents — reuse/simplification/
+        efficiency/altitude — then applied fixes): `reorderColumns`'s direction-branching logic
+        was replaceable with a simpler direction-agnostic `reorderColumnIds(order, draggedId,
+        targetId)` pure function — inserting at the target's *original* index into the
+        already-filtered array produces the identical (correct) result without any "movingRight"
+        check. `findColumnUnderPointer` now snapshots header rects once per drag (`pointerdown`)
+        instead of calling `getBoundingClientRect()` on every `pointermove` — the previous
+        version forced a synchronous layout recalculation on a ~1387-row table on every pointer
+        event. The drag-preview label's on-screen position moved out of React state entirely
+        (updated imperatively via a ref) since it was re-rendering the whole row list on every
+        pointermove just to move a small floating label. `draggedColumnId`/`hoverColumnId`/
+        `dragPreview` (3 states) collapsed into one `drag` object; hover state now only updates
+        when the hovered column actually changes (was firing a no-op state update on every pointer
+        event). Drag listeners now use an `AbortController` and also handle `pointercancel`, so a
+        cancelled gesture (or a future unmount mid-drag) can't leak window listeners holding the
+        whole row model alive. `TableRow`'s two memo-only props (`columnVisibility`+`columnOrder`)
+        collapsed into one `columnsKey` string (the actual thing the memo needs to react to —
+        which columns are visible, in what order), which is also a primitive so the shallow
+        comparison is exact. `useColumnOrder`'s pointless `useMemo` (memoizing a value on a dep of
+        itself) removed. Verified live in Brave again after this pass (one-step-right drag still
+        swaps correctly, no console errors) and via `npm run test` (59/59) + a clean Docker build.
       **Mobile needs its own interaction** (separate ticket) — user's own note: dragging with
       tap-and-hold might not translate well to mobile, worth considering a dedicated
       reorder dialog (move columns up/down via buttons) instead of true drag gestures.
