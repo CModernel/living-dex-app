@@ -668,29 +668,30 @@ even if the `3.X` task order below does.
       resetting? If both are wanted, they're two different derived columns from the same
       `sortIndex`, not one.
 
-- [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after two follow-up
-      fixes — see below).
+- [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after three
+      follow-up fixes — see below). **Visually confirmed working in a real browser** (Brave, via
+      the Claude-in-Chrome extension) — dragged multiple columns both left and right, header +
+      body cells moved together, order survived a reload.
       - TanStack Table v9's `columnOrderingFeature` enabled alongside `columnVisibilityFeature`.
       - New hook `apps/web/src/hooks/useColumnOrder.ts` persists `preferences.columnOrder` the same
         way as `visibleColumns`.
-      - **Final drag mechanism: Pointer Events, not native HTML5 DnD.** The original version used
-        `draggable`/`onDragStart`/`onDragOver`/`onDrop`, which turned out to never reliably fire a
-        real reorder (see fixes below) — replaced entirely with `onPointerDown` on a grip handle
-        (`⠿`) plus `window`-level `pointermove`/`pointerup` listeners that hit-test each header's
-        `getBoundingClientRect()`. No new dependency either way.
-      - Tested: unit tests for `useColumnOrder` (default order, updater-fn, persistence), UI test
-        in `HomePage.test.tsx` simulating a real pointer drag and asserting header + body row cells
-        reorder together.
-      - Verified locally, in a clean Docker build, and via `npm run test` (57/57 → 59/59 across the
-        two fixes below). Not yet visually confirmed in a real browser session (the Claude-in-Chrome
-        extension wasn't connected during this work) — recommend the user do one manual drag to
-        confirm before considering this fully closed.
-      - **Fix 1 (same day, user-reported "still doesn't work" after first "ship"):** initial
-        version updated `columnOrder` state correctly on drop but never visually reordered the
-        header — traced (incorrectly, see Fix 2) to `getHeaderGroups()`/`row.getVisibleCells()` not
-        applying `columnOrder`; added an explicit `table.getColumnIndexes().all`-based sort.
-      - **Fix 2 (same day, user reported it *still* didn't reorder):** re-investigation found Fix
-        1's diagnosis was itself wrong — `table.getAllLeafColumns()` (and everything built on it,
+      - **Final drag mechanism: Pointer Events, not native HTML5 DnD.** `onPointerDown` on the
+        entire header cell (draggable from anywhere on it, not just an icon) plus `window`-level
+        `pointermove`/`pointerup` listeners that hit-test each header's `getBoundingClientRect()`,
+        clamping to the nearest edge column when the pointer overshoots past the table. A floating
+        label (portal to `document.body`) follows the cursor while dragging, replacing native
+        HTML5 DnD's default drag-ghost image. No new dependency.
+      - Tested: unit tests for `useColumnOrder` (default order, updater-fn, persistence); UI tests
+        in `HomePage.test.tsx` for a full-header drag reordering header + body cells together, and
+        for the overshoot-clamp behavior.
+      - Verified locally, in a clean Docker build, via `npm run test` (57/57 → 60/60 across the
+        fixes below), and live in Brave.
+      - **Fix 1 (user-reported "still doesn't work" after first "ship"):** initial version updated
+        `columnOrder` state correctly on drop but never visually reordered the header — traced
+        (incorrectly, see Fix 2) to `getHeaderGroups()`/`row.getVisibleCells()` not applying
+        `columnOrder`; added an explicit `table.getColumnIndexes().all`-based sort.
+      - **Fix 2 (user reported it *still* didn't reorder):** re-investigation found Fix 1's
+        diagnosis was itself wrong — `table.getAllLeafColumns()` (and everything built on it,
         including `getHeaderGroups()`/`getVisibleCells()`) already applies `columnOrder`
         automatically via `getOrderColumnsFn`, confirmed in
         `node_modules/@tanstack/table-core/dist/core/columns/coreColumnsFeature.utils.js`. The
@@ -698,11 +699,23 @@ even if the `3.X` task order below does.
         changed reference when only column *order* changed (only `columnVisibility` was passed) —
         so `memo` silently skipped re-rendering every body row while the (non-memoized) header
         re-rendered fine. Fixed by adding `columnOrder` as an explicit `TableRow` prop purely so
-        `memo` detects the change (same "columnVisibility` prop exists only for memo, not read
+        `memo` detects the change (same "`columnVisibility` prop exists only for memo, not read
         directly" pattern the file already documents for 3.4). Also switched off native HTML5 DnD
         to Pointer Events in the same pass, since native drag-and-drop on table cells is a
         well-documented cross-browser reliability sink hole and this was the second broken round
         with it. Removed the now-provably-unnecessary `getColumnIndexes()`-based sort from Fix 1.
+        **Verified live in Brave** after this fix — reordering worked, but only from the grip
+        icon, with no drag preview.
+      - **Fix 3 (user feedback after live testing):** two UX regressions vs. an earlier native-DnD
+        attempt from several prompts prior — (1) drag only started from the tiny `⠿` grip icon,
+        not anywhere on the header, and (2) no floating preview of the column being dragged.
+        Fixed both (whole-header `onPointerDown` + a portal-rendered floating label following the
+        cursor). While testing this, found and fixed a **fourth, real, directional bug**: the
+        user reported "can drag right but not left" — root cause was `findColumnUnderPointer`
+        returning `null` (aborting the reorder) whenever the pointer overshot past the leftmost
+        header into the sidebar, which happens far more often when dragging left (little room
+        before running off the table) than right (more table width to land in). Fixed by
+        clamping to the nearest column when no header rect directly contains the pointer.
       **Mobile needs its own interaction** (separate ticket) — user's own note: dragging with
       tap-and-hold might not translate well to mobile, worth considering a dedicated
       reorder dialog (move columns up/down via buttons) instead of true drag gestures.

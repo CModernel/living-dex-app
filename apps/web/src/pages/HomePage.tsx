@@ -175,9 +175,12 @@ function HomePage() {
   // Pointer-based column drag (not native HTML5 DnD — draggable/dragstart/drop on table cells is
   // a well-documented cross-browser reliability sink hole). `draggedColumnId` is the column being
   // dragged; `hoverColumnId` is whichever header the pointer is currently over, used both for the
-  // drop-target highlight and as the actual drop target on pointerup.
+  // drop-target highlight and as the actual drop target on pointerup. `dragPreview` drives the
+  // floating label that follows the cursor while dragging (native HTML5 DnD's default drag-ghost
+  // equivalent, since Pointer Events don't provide one for free).
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null)
   const [hoverColumnId, setHoverColumnId] = useState<string | null>(null)
+  const [dragPreview, setDragPreview] = useState<{ label: string; x: number; y: number } | null>(null)
   const headerRefs = useRef<Record<string, HTMLTableCellElement | null>>({})
 
   const dataset = result.loading || result.error ? null : result.dataset
@@ -266,23 +269,45 @@ function HomePage() {
   // alone wouldn't get). Compares the pointer's X position against each header's own
   // getBoundingClientRect() rather than `document.elementFromPoint`, since the hover-tooltip
   // portal (Sprite) can sit on top of the table and would otherwise intercept hit-testing.
-  function handleHeaderPointerDown(columnId: string, e: ReactPointerEvent) {
+  function handleHeaderPointerDown(columnId: string, label: string, e: ReactPointerEvent) {
+    // Ignore drags started from an interactive control inside the header (none exist today, but
+    // this keeps the whole-header drag area from swallowing clicks on anything added later, e.g.
+    // a future sort toggle) — only left-button presses start a drag.
+    if (e.button !== 0) return
     e.preventDefault()
     setDraggedColumnId(columnId)
     setHoverColumnId(columnId)
+    setDragPreview({ label, x: e.clientX, y: e.clientY })
 
+    // Clamps to the nearest edge column when the pointer overshoots past the table (e.g.
+    // dragging into the sidebar to the left of the leftmost header, or past the right edge) —
+    // without this, a natural "drag all the way to the start/end" gesture landed outside every
+    // header's exact rect and silently found no drop target, aborting the reorder. This is why
+    // dragging left (toward the sidebar) looked broken while dragging right (toward more table)
+    // did not: there's much less room to overshoot on the right before running out of viewport.
     function findColumnUnderPointer(clientX: number): string | null {
-      for (const [id, el] of Object.entries(headerRefs.current)) {
-        if (!el) continue
+      const entries = Object.entries(headerRefs.current).filter(
+        (entry): entry is [string, HTMLTableCellElement] => entry[1] !== null,
+      )
+      if (entries.length === 0) return null
+      let closestId: string | null = null
+      let closestDistance = Infinity
+      for (const [id, el] of entries) {
         const rect = el.getBoundingClientRect()
         if (clientX >= rect.left && clientX <= rect.right) return id
+        const distance = clientX < rect.left ? rect.left - clientX : clientX - rect.right
+        if (distance < closestDistance) {
+          closestDistance = distance
+          closestId = id
+        }
       }
-      return null
+      return closestId
     }
 
     function onPointerMove(moveEvent: PointerEvent) {
       const overId = findColumnUnderPointer(moveEvent.clientX)
       if (overId) setHoverColumnId(overId)
+      setDragPreview((prev) => (prev ? { ...prev, x: moveEvent.clientX, y: moveEvent.clientY } : prev))
     }
 
     function onPointerUp(upEvent: PointerEvent) {
@@ -290,6 +315,7 @@ function HomePage() {
       if (overId) reorderColumns(columnId, overId)
       setDraggedColumnId(null)
       setHoverColumnId(null)
+      setDragPreview(null)
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup', onPointerUp)
     }
@@ -357,31 +383,26 @@ function HomePage() {
                         const isDragging = draggedColumnId === header.column.id
                         const isDropTarget =
                           hoverColumnId === header.column.id && draggedColumnId !== null && !isDragging
+                        const headerLabel =
+                          typeof header.column.columnDef.header === 'string'
+                            ? header.column.columnDef.header
+                            : header.column.id
                         return (
                           <th
                             key={header.id}
                             ref={(el) => {
                               headerRefs.current[header.column.id] = el
                             }}
-                            className={`p-2.5 text-xs font-semibold tracking-wide text-muted uppercase ${
-                              isDragging ? 'opacity-50' : ''
+                            // Draggable from anywhere on the header, not just the grip icon — the
+                            // icon is a visual affordance, not the only hit target.
+                            onPointerDown={(e) => handleHeaderPointerDown(header.column.id, headerLabel, e)}
+                            className={`cursor-grab p-2.5 text-xs font-semibold tracking-wide text-muted uppercase select-none active:cursor-grabbing ${
+                              isDragging ? 'opacity-30' : ''
                             } ${isDropTarget ? 'bg-brand/10' : ''} ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}
                           >
                             <div className="flex items-center gap-1">
-                              <span
-                                className="cursor-grab select-none text-xs text-muted active:cursor-grabbing"
-                                onPointerDown={(e) => handleHeaderPointerDown(header.column.id, e)}
-                                aria-label={`Drag to reorder ${
-                                  typeof header.column.columnDef.header === 'string'
-                                    ? header.column.columnDef.header
-                                    : header.column.id
-                                } column`}
-                              >
-                                ⠿
-                              </span>
-                              {header.isPlaceholder
-                                ? null
-                                : flexRender(header.column.columnDef.header, header.getContext())}
+                              <span className="text-xs text-muted">⠿</span>
+                              {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                             </div>
                           </th>
                         )
@@ -406,6 +427,16 @@ function HomePage() {
           </>
         )}
       </div>
+      {dragPreview &&
+        createPortal(
+          <div
+            className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-1/2 rounded border border-border bg-surface px-3 py-1.5 text-xs font-semibold tracking-wide text-muted uppercase shadow-lg"
+            style={{ left: dragPreview.x, top: dragPreview.y }}
+          >
+            {dragPreview.label}
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }

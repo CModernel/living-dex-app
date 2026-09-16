@@ -345,7 +345,7 @@ test('each list keeps its own filter state independently (3.7)', async () => {
   await waitFor(() => expect(screen.queryByText('Bulbasaur')).not.toBeInTheDocument())
 })
 
-test('dragging a column header (via its grip handle) reorders the header row and every body row (3.8c)', async () => {
+test('dragging a column header (from anywhere on it) reorders the header row and every body row (3.8c)', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
   renderHomePage()
 
@@ -364,9 +364,10 @@ test('dragging a column header (via its grip handle) reorders the header row and
       ({ left: i * 100, right: i * 100 + 100, top: 0, bottom: 30, width: 100, height: 30, x: i * 100, y: 0, toJSON: () => {} }) as DOMRect
   })
 
-  const nameGrip = screen.getByLabelText('Drag to reorder Name column')
+  // Draggable from anywhere on the header, not just the grip icon.
+  const nameHeader = screen.getByRole('columnheader', { name: '⠿Name' })
   // Name is at index 1 (x range [100,200)); Owned is at index 4 (x range [400,500)).
-  fireEvent.pointerDown(nameGrip, { clientX: 150, clientY: 15 })
+  fireEvent.pointerDown(nameHeader, { clientX: 150, clientY: 15 })
   fireEvent.pointerMove(window, { clientX: 450, clientY: 15 })
   fireEvent.pointerUp(window, { clientX: 450, clientY: 15 })
 
@@ -385,4 +386,27 @@ test('dragging a column header (via its grip handle) reorders the header row and
   // Name (containing 'Bulbasaur') must now render immediately before Owned (the last cell, a
   // textless checkbox) — i.e. second from the end.
   expect(cellTextsAfter.indexOf('Bulbasaur')).toBe(cellTextsAfter.length - 2)
+})
+
+test('dragging past the leftmost header (e.g. into the sidebar) clamps to the first column, not aborting the reorder (3.8c)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  screen.getAllByRole('columnheader').forEach((th, i) => {
+    th.getBoundingClientRect = () =>
+      ({ left: i * 100, right: i * 100 + 100, top: 0, bottom: 30, width: 100, height: 30, x: i * 100, y: 0, toJSON: () => {} }) as DOMRect
+  })
+
+  // Drag Types (index 2, x range [200,300)) to a negative clientX — well past every header's
+  // left edge, simulating the pointer overshooting into the sidebar to the left of the table.
+  const typesHeader = screen.getByRole('columnheader', { name: '⠿Types' })
+  fireEvent.pointerDown(typesHeader, { clientX: 250, clientY: 15 })
+  fireEvent.pointerMove(window, { clientX: -500, clientY: 15 })
+  fireEvent.pointerUp(window, { clientX: -500, clientY: 15 })
+
+  // Clamped to the nearest (leftmost, Sprite) column rather than finding no target and aborting.
+  const headerTextsAfter = screen.getAllByRole('columnheader').map((h) => h.textContent)
+  expect(headerTextsAfter).toEqual(['⠿Types', '⠿Sprite', '⠿Name', '⠿Dex #', '⠿Owned'])
 })
