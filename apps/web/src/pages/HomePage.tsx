@@ -119,6 +119,7 @@ const TableRow = memo(function TableRow({
   row,
   owned,
   onToggle,
+  orderedColumnIds,
 }: {
   row: Row<typeof features, PokemonEntry>
   owned: boolean
@@ -128,7 +129,15 @@ const TableRow = memo(function TableRow({
   // doesn't change on a visibility toggle (only data/columns changes affect the row model), so
   // without this, memo would wrongly skip re-rendering rows after a column show/hide.
   columnVisibility: Record<string, boolean>
+  // `columnOrderingFeature` doesn't reorder `row.getVisibleCells()` itself (it only exposes
+  // `table.getOrderColumnsFn()` — confirmed in the installed package's own source, not just its
+  // docs), so cells must be explicitly sorted here to match the header's own reordering below,
+  // or the two would drift apart after a drag reorder.
+  orderedColumnIds: string[]
 }) {
+  const cells = [...row.getVisibleCells()].sort(
+    (a, b) => orderedColumnIds.indexOf(a.column.id) - orderedColumnIds.indexOf(b.column.id),
+  )
   return (
     <tr
       onClick={() => onToggle(row.original.slug)}
@@ -136,7 +145,7 @@ const TableRow = memo(function TableRow({
       // owned highlight, hiding the very state the highlight exists to show.
       className={`cursor-pointer border-b border-border last:border-b-0 ${owned ? 'bg-brand/15' : 'hover:bg-border/20'}`}
     >
-      {row.getVisibleCells().map((cell) =>
+      {cells.map((cell) =>
         cell.column.id === 'owned' ? (
           <td key={cell.id} className="p-2.5 text-center">
             <input
@@ -232,6 +241,16 @@ function HomePage() {
     (state) => ({ columnVisibility: state.columnVisibility, columnOrder: state.columnOrder }),
   )
 
+  // `getHeaderGroups()`/`row.getVisibleCells()` don't apply `columnOrder` themselves —
+  // confirmed against the installed package's own source: neither `coreHeadersFeature` nor
+  // `columnVisibilityFeature`'s leaf-column getters reference `columnOrder` at all.
+  // `getColumnIndexes().all` (the public API `columnOrderingFeature` exposes for this) maps
+  // each visible column id to its index in the ordered list — used here to derive an ordered id
+  // array, applied to both the header row and every body row's cells below, so they can't
+  // render in different orders after a drag reorder.
+  const columnIndexes = table.getColumnIndexes().all
+  const orderedColumnIds = Object.keys(columnIndexes).sort((a, b) => columnIndexes[a] - columnIndexes[b])
+
   const hideableColumns = table
     .getAllColumns()
     .filter((column) => column.getCanHide())
@@ -287,48 +306,61 @@ function HomePage() {
                 <thead>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id} className="border-b border-border bg-surface text-left">
-                      {headerGroup.headers.map((header) => {
-                        const isDragging = draggedColumnId === header.column.id
-                        return (
-                          <th
-                            key={header.id}
-                            draggable
-                            onDragStart={() => setDraggedColumnId(header.column.id)}
-                            onDragOver={(e) => {
-                              e.preventDefault()
-                              e.dataTransfer.dropEffect = 'move'
-                            }}
-                            onDragLeave={() => {
-                              // Optional: clear drop indicator on leave
-                            }}
-                            onDrop={() => {
-                              if (draggedColumnId && draggedColumnId !== header.column.id) {
-                                const current = table.state.columnOrder
-                                const draggedIndex = current.indexOf(draggedColumnId)
-                                const targetIndex = current.indexOf(header.column.id)
-                                if (draggedIndex !== -1 && targetIndex !== -1) {
-                                  const next = current.filter((id: string) => id !== draggedColumnId)
-                                  next.splice(targetIndex, 0, draggedColumnId)
-                                  setColumnOrder(next)
-                                }
-                              }
-                              setDraggedColumnId(null)
-                            }}
-                            onDragEnd={() => setDraggedColumnId(null)}
-                            className={`p-2.5 text-xs font-semibold tracking-wide text-muted uppercase select-none ${
-                              isDragging ? 'opacity-50 bg-brand/10' : ''
-                            } ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}
-                            style={{ cursor: 'grab' }}
-                          >
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs text-muted">⠿</span>
-                              {header.isPlaceholder
-                                ? null
-                                : flexRender(header.column.columnDef.header, header.getContext())}
-                            </div>
-                          </th>
+                      {[...headerGroup.headers]
+                        .sort(
+                          (a, b) =>
+                            orderedColumnIds.indexOf(a.column.id) - orderedColumnIds.indexOf(b.column.id),
                         )
-                      })}
+                        .map((header) => {
+                          const isDragging = draggedColumnId === header.column.id
+                          return (
+                            <th
+                              key={header.id}
+                              draggable
+                              onDragStart={(e) => {
+                                setDraggedColumnId(header.column.id)
+                                // Firefox requires setData in dragstart or `drop` never fires;
+                                // Chrome doesn't strictly need it but this keeps behavior
+                                // consistent across browsers.
+                                e.dataTransfer.setData('text/plain', header.column.id)
+                              }}
+                              onDragOver={(e) => {
+                                e.preventDefault()
+                                e.dataTransfer.dropEffect = 'move'
+                              }}
+                              onDrop={(e) => {
+                                // Suppress the browser's default drop action (e.g. navigating
+                                // to dragged text/URI data) — dragOver's preventDefault only
+                                // marks this as a valid drop target, it doesn't suppress drop's
+                                // own default action.
+                                e.preventDefault()
+                                if (draggedColumnId && draggedColumnId !== header.column.id) {
+                                  const current = table.state.columnOrder
+                                  const draggedIndex = current.indexOf(draggedColumnId)
+                                  const targetIndex = current.indexOf(header.column.id)
+                                  if (draggedIndex !== -1 && targetIndex !== -1) {
+                                    const next = current.filter((id: string) => id !== draggedColumnId)
+                                    next.splice(targetIndex, 0, draggedColumnId)
+                                    setColumnOrder(next)
+                                  }
+                                }
+                                setDraggedColumnId(null)
+                              }}
+                              onDragEnd={() => setDraggedColumnId(null)}
+                              className={`p-2.5 text-xs font-semibold tracking-wide text-muted uppercase select-none ${
+                                isDragging ? 'opacity-50 bg-brand/10' : ''
+                              } ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}
+                              style={{ cursor: 'grab' }}
+                            >
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs text-muted">⠿</span>
+                                {header.isPlaceholder
+                                  ? null
+                                  : flexRender(header.column.columnDef.header, header.getContext())}
+                              </div>
+                            </th>
+                          )
+                        })}
                     </tr>
                   ))}
                 </thead>
@@ -340,6 +372,7 @@ function HomePage() {
                       owned={ownedIds.has(row.original.slug)}
                       onToggle={toggleOwned}
                       columnVisibility={table.state.columnVisibility}
+                      orderedColumnIds={orderedColumnIds}
                     />
                   ))}
                 </tbody>

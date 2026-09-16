@@ -344,3 +344,35 @@ test('each list keeps its own filter state independently (3.7)', async () => {
   fireEvent.click(screen.getByText('My Living Dex'))
   await waitFor(() => expect(screen.queryByText('Bulbasaur')).not.toBeInTheDocument())
 })
+
+test('dragging a column header reorders both the header row and every body row (3.8c)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  const headerTextsBefore = screen.getAllByRole('columnheader').map((h) => h.textContent)
+  // Default visible order: Sprite, Name, Types, Dex #, Owned (other hideable columns start
+  // hidden per HIDEABLE_COLUMN_IDS' default).
+  expect(headerTextsBefore).toEqual(['⠿Sprite', '⠿Name', '⠿Types', '⠿Dex #', '⠿Owned'])
+
+  const nameHeader = screen.getByRole('columnheader', { name: '⠿Name' })
+  const ownedHeader = screen.getByRole('columnheader', { name: '⠿Owned' })
+
+  const dataTransfer = { setData: vi.fn(), dropEffect: '' }
+  fireEvent.dragStart(nameHeader, { dataTransfer })
+  fireEvent.dragOver(ownedHeader, { dataTransfer })
+  fireEvent.drop(ownedHeader, { dataTransfer })
+
+  const headerTextsAfter = screen.getAllByRole('columnheader').map((h) => h.textContent)
+  expect(headerTextsAfter).toEqual(['⠿Sprite', '⠿Types', '⠿Dex #', '⠿Owned', '⠿Name'])
+
+  // Body cells must reorder identically — otherwise header and data would desync.
+  const bulbasaurRow = screen.getByText('Bulbasaur').closest('tr')
+  expect(bulbasaurRow).not.toBeNull()
+  const cellTextsAfter = Array.from(bulbasaurRow!.querySelectorAll('td')).map((td) => td.textContent)
+  // Sprite cell has no text (an <img>), Types renders badges, Owned is a checkbox — only
+  // 'Bulbasaur' and '0001' (Dex #) are plain text, but the cell *order* is what matters here:
+  // 'Bulbasaur' (Name) must now be last, matching the header's new order.
+  expect(cellTextsAfter[cellTextsAfter.length - 1]).toBe('Bulbasaur')
+})
