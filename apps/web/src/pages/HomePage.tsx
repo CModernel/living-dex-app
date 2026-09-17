@@ -90,7 +90,10 @@ function Sprite({ dataset, entry }: { dataset: PokemonDataset; entry: PokemonEnt
   const hoverSize = SPRITE_SIZE * SPRITE_HOVER_ZOOM
 
   return (
-    <div className="inline-block">
+    <div className="w-full">
+      {/* Scales down with the column when it's resized (3.8f follow-up) — capped at SPRITE_SIZE
+          as its natural/maximum size, the same "shrink to fit, capped at a max" rule any image
+          cell would get, rather than sprite-specific logic. */}
       <img
         ref={imgRef}
         src={spriteUrl}
@@ -99,7 +102,8 @@ function Sprite({ dataset, entry }: { dataset: PokemonDataset; entry: PokemonEnt
         onError={handleError}
         onMouseEnter={() => setHoverRect(imgRef.current?.getBoundingClientRect() ?? null)}
         onMouseLeave={() => setHoverRect(null)}
-        style={{ width: SPRITE_SIZE, height: SPRITE_SIZE, maxWidth: 'none' }}
+        className="block h-auto w-full object-contain"
+        style={{ maxWidth: SPRITE_SIZE }}
       />
       {hoverRect &&
         createPortal(
@@ -241,41 +245,46 @@ function HomePage() {
   const columns = useMemo(
     () =>
       [
+        // `minSize: 40` is deliberately the same across every column below — one small,
+        // uniform margin rather than a value reasoned about per column. Content within each
+        // cell (text, the sprite image, type badges) shrinks/truncates/wraps itself down to
+        // that width via generic CSS (see `Sprite`, the Types cell, and TableRow's shared
+        // `overflow-hidden`/`truncate` wrapper) rather than any column-specific logic here.
         columnHelper.display({
           id: 'sprite',
           header: 'Sprite',
           enableHiding: false,
           size: 72,
-          minSize: 56,
+          minSize: 40,
           maxSize: 150,
           cell: (ctx) => (dataset ? <Sprite dataset={dataset} entry={ctx.row.original} /> : null),
         }),
-        columnHelper.accessor('name', { header: 'Name', enableHiding: false, size: 200, minSize: 100, maxSize: 400 }),
+        columnHelper.accessor('name', { header: 'Name', enableHiding: false, size: 200, minSize: 40, maxSize: 400 }),
         columnHelper.display({
           id: 'types',
           header: 'Types',
           enableHiding: false,
           size: 140,
-          minSize: 80,
+          minSize: 40,
           maxSize: 250,
           cell: (ctx) => (
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               {ctx.row.original.types.map((type) => (
                 <TypeBadge key={type} type={type} />
               ))}
             </div>
           ),
         }),
-        columnHelper.accessor('dex', { header: 'Dex #', size: 80, minSize: 50, maxSize: 120 }),
-        columnHelper.accessor('generation', { header: 'Generation', size: 100, minSize: 60, maxSize: 160 }),
+        columnHelper.accessor('dex', { header: 'Dex #', size: 80, minSize: 40, maxSize: 120 }),
+        columnHelper.accessor('generation', { header: 'Generation', size: 100, minSize: 40, maxSize: 160 }),
         columnHelper.accessor((row) => row.region ?? '—', {
           id: 'region',
           header: 'Region',
           size: 100,
-          minSize: 60,
+          minSize: 40,
           maxSize: 160,
         }),
-        columnHelper.accessor('evolutionStage', { header: 'Stage', size: 80, minSize: 50, maxSize: 120 }),
+        columnHelper.accessor('evolutionStage', { header: 'Stage', size: 80, minSize: 40, maxSize: 120 }),
         // Rendered directly in TableRow instead — this cell definition is never invoked, it
         // only exists so the column shows up in the header row and the visibility menu.
         columnHelper.display({
@@ -283,7 +292,7 @@ function HomePage() {
           header: 'Owned',
           enableHiding: false,
           size: 80,
-          minSize: 56,
+          minSize: 40,
           maxSize: 120,
           cell: () => null,
         }),

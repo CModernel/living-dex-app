@@ -752,6 +752,28 @@ even if the `3.X` task order below does.
         sequence, truncation confirmed via computed styles (`overflow: hidden`,
         `text-overflow: ellipsis`, `white-space: nowrap`) on both header and cell content, no
         console errors, 66/66 tests, clean Docker build.
+      - **Follow-up (same day, user feedback on the shrink behavior itself):** explicitly asked
+        for **one shared behavior across columns, not per-column special-casing** — content
+        should shrink/truncate/wrap generically rather than each column getting bespoke logic.
+        - `minSize` unified to `40` across all 8 columns (previously 50-100, inconsistent per
+          column) — "a small margin," not a value reasoned about per column.
+        - Sprite's `<img>` switched from a fixed `SPRITE_SIZE` (56px) to responsive
+          (`w-full h-auto object-contain`, capped at `maxWidth: SPRITE_SIZE`) — scales down with
+          the column like any image would, not sprite-specific logic. Hover-zoom preview
+          untouched (stays fixed-size, independent of the inline image's width).
+        - Types cell's `flex gap-1` → `flex flex-wrap gap-1` — standard flexbox wrapping stacks
+          badges onto new lines when the column narrows, the same generic mechanism any wrapping
+          flex content gets.
+        - **Found and fixed a real bug while verifying this live**: `TypeBadge` had a fixed
+          `w-20` width, so once the Types column got narrow enough, the parent `<td>`'s
+          `overflow-hidden` hard-clipped badge text mid-letter (no ellipsis) instead of the badge
+          shrinking gracefully. Fixed by giving `TypeBadge` itself `max-w-full truncate` (+
+          `min-w-0`, needed to override the flex-item default of never shrinking below content
+          size) so each badge truncates its own label — a generic badge-level fix, not a
+          Types-column special case.
+        - Verified live in Brave: shrank Sprite to ~36-49px (renders cleanly scaled, no
+          distortion), shrank Types until badges wrapped to two lines with each one showing a
+          clean `GR…`/`POI…` ellipsis instead of a jagged cut. 66/66 tests, clean Docker build.
 
 - [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after three
       follow-up fixes — see below). **Visually confirmed working in a real browser** (Brave, via
