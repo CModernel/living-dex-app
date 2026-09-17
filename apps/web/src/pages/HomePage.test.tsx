@@ -386,12 +386,8 @@ test('dragging a column header (from anywhere on it) reorders the header row and
   const bulbasaurRow = screen.getByText('Bulbasaur').closest('tr')
   expect(bulbasaurRow).not.toBeNull()
   const cellTextsAfter = Array.from(bulbasaurRow!.querySelectorAll('td')).map((td) => td.textContent)
-  // Name (containing 'Bulbasaur') must now render last among the real columns — second-to-last
-  // overall, since every row also ends with an empty filler `<td>` (matching the header's
-  // filler `<th>`/`<col>`, which is what lets the table fill all available width without
-  // diluting a resize's effect across every *real* column — see the `<colgroup>` comment above).
-  expect(cellTextsAfter[cellTextsAfter.length - 2]).toBe('Bulbasaur')
-  expect(cellTextsAfter[cellTextsAfter.length - 1]).toBe('')
+  // Name (containing 'Bulbasaur') must now render last.
+  expect(cellTextsAfter[cellTextsAfter.length - 1]).toBe('Bulbasaur')
 })
 
 test('dragging a column onto its immediate right neighbor swaps them (3.8c — regression: this was previously a no-op)', async () => {

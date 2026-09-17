@@ -206,9 +206,6 @@ const TableRow = memo(function TableRow({
           </td>
         ),
       )}
-      {/* Matches the header's filler <th>/<col> — keeps this row's cell count in sync with the
-          filler column so nothing shifts out of alignment. */}
-      <td aria-hidden="true" />
     </tr>
   )
 })
@@ -468,27 +465,35 @@ function HomePage() {
               <table className="w-full table-fixed border-collapse text-sm">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <colgroup key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <col key={header.id} style={{ width: header.getSize() }} />
-                    ))}
-                    {/* Filler column with NO declared width — this is what lets the table both
-                        fill the full container (`w-full` above) AND keep every *other* column at
-                        its exact resized pixel width. `table-layout: fixed` only redistributes
-                        leftover space onto columns that DON'T have an explicit width; without
-                        this, a `w-full` table with every column explicitly sized proportionally
-                        rescales ALL of them to fill 100%, which is exactly why shrinking Sprite
-                        alone previously appeared to do nothing (the freed space flowed right back
-                        into it, and every other column, to refill the container). With this
-                        filler present, it — not the real columns — absorbs the leftover width. */}
-                    <col />
+                    {headerGroup.headers.map((header, index) => {
+                      const isLastColumn = index === headerGroup.headers.length - 1
+                      // The last column gets NO declared width — `table-layout: fixed` gives any
+                      // column without one the leftover space after every other (explicitly
+                      // sized) column, which is what lets the table fill its container
+                      // (`w-full` below) while every OTHER column keeps its exact resized pixel
+                      // width. (A separate invisible filler column after all real columns did
+                      // this too, but visually read as a broken empty extra column — this reuses
+                      // the same mechanism on a real, visible column instead.) Whichever column
+                      // ends up last (this updates automatically on reorder/hide) absorbs the
+                      // slack — uncapped, since `<col>` doesn't reliably honor `max-width`.
+                      return isLastColumn ? (
+                        <col key={header.id} />
+                      ) : (
+                        <col key={header.id} style={{ width: header.getSize() }} />
+                      )
+                    })}
                   </colgroup>
                 ))}
                 <thead>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id} className="border-b border-border bg-surface text-left">
-                      {headerGroup.headers.map((header) => {
+                      {headerGroup.headers.map((header, index) => {
                         const isDragging = drag?.columnId === header.column.id
                         const isDropTarget = drag !== null && drag.hoverColumnId === header.column.id && !isDragging
+                        // The last column has no declared width (see the <colgroup> above — it
+                        // auto-fills the container's leftover space instead), so there's nothing
+                        // meaningful for a resize handle to do there.
+                        const isLastHeader = index === headerGroup.headers.length - 1
                         const headerLabel =
                           typeof header.column.columnDef.header === 'string'
                             ? header.column.columnDef.header
@@ -514,11 +519,8 @@ function HomePage() {
                                 {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                               </span>
                             </div>
-                            {/* Every real column gets a handle now, including the last one —
-                                the invisible filler column after it (see the <colgroup> above)
-                                gives it a legitimate right edge to resize against, unlike before
-                                the filler existed, when there was nothing there to resize into. */}
-                            <div
+                            {!isLastHeader && (
+                              <div
                                 // `pointerdown` fires (and bubbles to the `<th>`'s own
                                 // `onPointerDown`, which starts a column-REORDER drag) *before*
                                 // `mousedown`/`touchstart` — stopping propagation only in the
@@ -576,13 +578,10 @@ function HomePage() {
                                   }`}
                                 />
                               </div>
+                            )}
                           </th>
                         )
                       })}
-                      {/* Matches the filler <col> above — an empty header cell so the row stays
-                          rectangular (same cell count as <col> elements) and the filler column
-                          still gets the row's bottom border. */}
-                      <th aria-hidden="true" />
                     </tr>
                   ))}
                 </thead>

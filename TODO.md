@@ -865,6 +865,29 @@ even if the `3.X` task order below does.
         several targeted attempts (growing a column to its max, forcing Types to wrap, growing
         the previously-handle-less Owned column) — asked the user for a screenshot/repro instead
         of guessing further. 66/66 tests, clean Docker build.
+      - **Follow-up 6 (same day, user reported this made it *worse*: "you added an extra column
+        at the end" — confirmed live, they were right):** the filler column from Follow-up 3,
+        seen with fresh eyes on an actually-clean `localStorage`, is an unmistakable dead empty
+        strip after Owned — not "invisible" at all, it reads exactly like a broken extra column.
+        User asked to stop patching and step back. Replaced the whole filler-column mechanism
+        with a different application of the *same* underlying mechanism (an unspecified-width
+        `<col>` absorbs `table-layout: fixed`'s leftover space — already empirically confirmed
+        this session): instead of a separate manufactured column after all real ones, the
+        **last real column itself** (whichever one is currently last — updates automatically on
+        reorder/hide) simply doesn't get a declared width on its own `<col>`, and stretches to
+        fill the leftover space directly. No phantom column, no dead strip — the extra space now
+        visibly belongs to a real, labeled column. Removed the filler `<col>`/`<th>`/`<td>`
+        entirely; restored the `isLastHeader` check to skip the resize handle only on the last
+        column (it has no fixed size of its own to resize). Flagged one known, accepted trade-off
+        up front rather than discovering it the hard way again: whichever column is last stretches
+        *uncapped* (`<col>` doesn't reliably honor `max-width`), so it can end up wider than its
+        own `maxSize` — acceptable for a checkbox/short-value column (Owned, Dex), revisit only if
+        a wordier column ends up last and looks bad in practice.
+        Verified live in Brave (looked this time, not just measured): default load shows no
+        gap/dead strip, Owned's checkbox sits centered in a wider-but-reasonable column; shrinking
+        Sprite still shrinks only Sprite (table width constant, Name untouched); reordering so Dex
+        becomes the new last column correctly moves the stretch behavior to Dex, and Owned
+        (now second-to-last) gets a normal fixed width back. 66/66 tests, clean Docker build.
 
 - [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after three
       follow-up fixes — see below). **Visually confirmed working in a real browser** (Brave, via
