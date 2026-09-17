@@ -278,7 +278,11 @@ function HomePage() {
             </div>
           ),
         }),
-        columnHelper.accessor('dex', { header: 'Dex #', size: 80, minSize: 40, maxSize: 120 }),
+        // Shortened from "Dex #" — that label alone needed ~75px just to avoid truncating
+        // (measured live), forcing this column noticeably wider than its actual content ("0001"
+        // needs ~57px) ever does. "Dex" fits comfortably in a tighter default that matches the
+        // content instead of the wordier label.
+        columnHelper.accessor('dex', { header: 'Dex', size: 64, minSize: 40, maxSize: 120 }),
         columnHelper.accessor('generation', { header: 'Generation', size: 100, minSize: 40, maxSize: 160 }),
         columnHelper.accessor((row) => row.region ?? '—', {
           id: 'region',
@@ -294,7 +298,9 @@ function HomePage() {
           id: 'owned',
           header: 'Owned',
           enableHiding: false,
-          size: 80,
+          // "Owned" (+ the grip icon + padding) measured at ~84px minimum to render without
+          // truncating — 80 was juuust short of that, hence the "OWN…" ellipsis by default.
+          size: 90,
           minSize: 40,
           maxSize: 120,
           cell: () => null,

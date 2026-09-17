@@ -831,6 +831,20 @@ even if the `3.X` task order below does.
           filler column visibly absorbs the difference; `document.body.style.cursor` confirmed
           `'grabbing'` throughout a real `pointerdown → pointermove → pointerup` reorder-drag
           sequence and cleared after. 66/66 tests, clean Docker build.
+      - **Follow-up 4 (same day, user feedback on default column sizes):** Dex and Owned's
+        default `size: 80` looked wrong in two different ways — Dex left a lot of visibly wasted
+        space around its short "0001"-style content, while Owned's "OWN…" header was truncating.
+        Measured both live in Brave rather than guessing: "Owned" (+ grip icon + padding) needs
+        ~84px to render untruncated (80 was just short of that); "Dex #"'s own label needs ~75px
+        just for the header, while the actual cell content ("0001") only needs ~57px — the gap
+        between those two numbers *is* the wasted-space feeling, and no single `size` value can
+        satisfy both a wordy header and short content at once. Fixed by shortening the header
+        label itself: **"Dex #" → "Dex"** (needs only ~61px), letting `size` drop to a tight `64`
+        that suits the actual data instead of the label. Owned's `size` bumped to `90` (a
+        comfortable margin over its measured ~84px minimum) so its label never truncates by
+        default. Updated the handful of existing tests that asserted on the literal "Dex #" text.
+        Verified live in Brave: both headers render fully untruncated, Dex's column noticeably
+        tighter around its actual content, no console errors. 66/66 tests, clean Docker build.
 
 - [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after three
       follow-up fixes — see below). **Visually confirmed working in a real browser** (Brave, via

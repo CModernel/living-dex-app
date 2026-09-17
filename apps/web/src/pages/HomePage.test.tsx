@@ -204,7 +204,7 @@ test('clicking the checkbox directly does not double-toggle via the row handler'
   })
 })
 
-test('Dex # is visible by default; other optional columns start hidden', async () => {
+test('Dex is visible by default; other optional columns start hidden', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
   renderHomePage()
 
@@ -362,9 +362,9 @@ test('dragging a column header (from anywhere on it) reorders the header row and
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
   const headerTextsBefore = screen.getAllByRole('columnheader').map((h) => h.textContent)
-  // Default visible order: Sprite, Name, Types, Dex #, Owned (other hideable columns start
+  // Default visible order: Sprite, Name, Types, Dex, Owned (other hideable columns start
   // hidden per HIDEABLE_COLUMN_IDS' default).
-  expect(headerTextsBefore).toEqual(['⠿Sprite', '⠿Name', '⠿Types', '⠿Dex #', '⠿Owned'])
+  expect(headerTextsBefore).toEqual(['⠿Sprite', '⠿Name', '⠿Types', '⠿Dex', '⠿Owned'])
 
   stubHeaderLayout()
 
@@ -380,7 +380,7 @@ test('dragging a column header (from anywhere on it) reorders the header row and
   // no-op (inserting "before" an immediate right neighbor just undoes the removal). So Name ends
   // up last, after Owned.
   const headerTextsAfter = screen.getAllByRole('columnheader').map((h) => h.textContent)
-  expect(headerTextsAfter).toEqual(['⠿Sprite', '⠿Types', '⠿Dex #', '⠿Owned', '⠿Name'])
+  expect(headerTextsAfter).toEqual(['⠿Sprite', '⠿Types', '⠿Dex', '⠿Owned', '⠿Name'])
 
   // Body cells must reorder identically — otherwise header and data would desync.
   const bulbasaurRow = screen.getByText('Bulbasaur').closest('tr')
@@ -412,7 +412,7 @@ test('dragging a column onto its immediate right neighbor swaps them (3.8c — r
   fireEvent.pointerUp(window, { clientX: 250, clientY: 15 })
 
   const headerTextsAfter = screen.getAllByRole('columnheader').map((h) => h.textContent)
-  expect(headerTextsAfter).toEqual(['⠿Sprite', '⠿Types', '⠿Name', '⠿Dex #', '⠿Owned'])
+  expect(headerTextsAfter).toEqual(['⠿Sprite', '⠿Types', '⠿Name', '⠿Dex', '⠿Owned'])
 })
 
 test('dragging past the leftmost header (e.g. into the sidebar) clamps to the first column, not aborting the reorder (3.8c)', async () => {
@@ -432,7 +432,7 @@ test('dragging past the leftmost header (e.g. into the sidebar) clamps to the fi
 
   // Clamped to the nearest (leftmost, Sprite) column rather than finding no target and aborting.
   const headerTextsAfter = screen.getAllByRole('columnheader').map((h) => h.textContent)
-  expect(headerTextsAfter).toEqual(['⠿Types', '⠿Sprite', '⠿Name', '⠿Dex #', '⠿Owned'])
+  expect(headerTextsAfter).toEqual(['⠿Types', '⠿Sprite', '⠿Name', '⠿Dex', '⠿Owned'])
 })
 
 test('dragging a column\'s resize handle widens it and persists the size (3.8f)', async () => {
