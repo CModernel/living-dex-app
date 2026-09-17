@@ -193,8 +193,12 @@ const TableRow = memo(function TableRow({
             />
           </td>
         ) : (
-          <td key={cell.id} className={`p-2.5 ${COLUMN_CELL_CLASS[cell.column.id] ?? ''}`}>
-            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+          <td key={cell.id} className={`overflow-hidden p-2.5 ${COLUMN_CELL_CLASS[cell.column.id] ?? ''}`}>
+            {/* Truncates instead of overflowing into the next column when a resize (3.8f) shrinks
+                this column below its content's natural width. `block` so `text-overflow: ellipsis`
+                actually applies — a plain inline `span` doesn't respect it. Harmless for non-text
+                cells (Sprite's image, Types' row of badges): `overflow-hidden` alone clips those. */}
+            <span className="block truncate">{flexRender(cell.column.columnDef.cell, cell.getContext())}</span>
           </td>
         ),
       )}
@@ -458,13 +462,17 @@ function HomePage() {
                             // Draggable from anywhere on the header, not just the grip icon — the
                             // icon is a visual affordance, not the only hit target.
                             onPointerDown={(e) => handleHeaderPointerDown(header.column.id, headerLabel, e)}
-                            className={`relative cursor-grab p-2.5 text-xs font-semibold tracking-wide text-muted uppercase select-none active:cursor-grabbing ${
+                            className={`relative cursor-grab overflow-hidden p-2.5 text-xs font-semibold tracking-wide text-muted uppercase select-none active:cursor-grabbing ${
                               isDragging ? 'opacity-30' : ''
                             } ${isDropTarget ? 'bg-brand/10' : ''} ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}
                           >
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs text-muted">⠿</span>
-                              {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                            <div className="flex min-w-0 items-center gap-1">
+                              <span className="shrink-0 text-xs text-muted">⠿</span>
+                              {/* Truncates instead of overflowing into the next header when a
+                                  resize (3.8f) shrinks this column below the label's width. */}
+                              <span className="truncate">
+                                {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                              </span>
                             </div>
                             {!isLastHeader && (
                               <div
@@ -476,6 +484,21 @@ function HomePage() {
                                 onPointerDown={(e) => e.stopPropagation()}
                                 onMouseDown={(e) => {
                                   e.stopPropagation()
+                                  // Browsers freeze the CSS cursor to whatever was under the
+                                  // pointer at mousedown time and don't re-evaluate it against
+                                  // new elements while the button stays down — forcing a cursor
+                                  // directly on `document.body` for the drag's duration is the
+                                  // standard fix (what resizable-panel libraries do), and is what
+                                  // stops it flickering to the header's own `grab` cursor (or the
+                                  // default arrow) as the pointer moves during the resize.
+                                  document.body.style.cursor = 'col-resize'
+                                  document.body.style.userSelect = 'none'
+                                  const restore = () => {
+                                    document.body.style.cursor = ''
+                                    document.body.style.userSelect = ''
+                                    document.removeEventListener('mouseup', restore)
+                                  }
+                                  document.addEventListener('mouseup', restore)
                                   header.getResizeHandler()(e.nativeEvent)
                                 }}
                                 onTouchStart={(e) => {

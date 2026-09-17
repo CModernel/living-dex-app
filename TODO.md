@@ -733,6 +733,25 @@ even if the `3.X` task order below does.
         (`pointer-events-none`). Re-verified with the exact real event order
         (`pointerdown` → `mousedown` → `mousemove` → `mouseup`) this time: resize works, column
         order stays untouched, no console errors.
+      - **Fix 2 (same day, user reported the cursor still looked wrong, plus overlapping text):**
+        the widened hit-area from Fix 1 didn't actually solve the cursor issue — the real cause is
+        a well-known browser quirk: the CSS cursor freezes to whatever was under the pointer at
+        `mousedown` and isn't re-evaluated against new elements while the button stays down, so it
+        doesn't track the handle vs. the header's own `grab` cursor as the mouse moves mid-drag.
+        Fixed the standard way (what resizable-panel libraries do): force
+        `document.body.style.cursor = 'col-resize'` (+ `userSelect: 'none'`) in the handle's own
+        `onMouseDown`, restored via a one-time `document` `mouseup` listener. Separately, shrinking
+        a column below its content's natural width made the content visually overflow into the
+        next column instead of clipping — table cells don't auto-clip on their own. Fixed by
+        adding `overflow-hidden` to every `<th>`/`<td>` and wrapping each cell's rendered content
+        in a `<span className="block truncate">` (`block` because `text-overflow: ellipsis`
+        doesn't apply to inline elements) — text columns now truncate with an ellipsis, and
+        non-text cells (Sprite's image, Types' row of badges) simply get clipped by the same
+        `overflow-hidden`, both per the user's own suggested fix. Verified live in Brave: cursor
+        forced/restored correctly across a real `pointerdown → mousedown → mousemove → mouseup`
+        sequence, truncation confirmed via computed styles (`overflow: hidden`,
+        `text-overflow: ellipsis`, `white-space: nowrap`) on both header and cell content, no
+        console errors, 66/66 tests, clean Docker build.
 
 - [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after three
       follow-up fixes — see below). **Visually confirmed working in a real browser** (Brave, via
