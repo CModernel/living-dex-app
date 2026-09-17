@@ -17,6 +17,7 @@ export type PokemonList = {
 export type UserPreferences = {
   visibleColumns: string[];
   columnOrder: string[];
+  columnSizing: Record<string, number>;
   compactMode: boolean;
   darkMode?: 'system' | 'light' | 'dark';
 };
@@ -41,6 +42,10 @@ export const DEFAULT_USER_STATE: UserState = {
     // logic reads and rewrites this array directly (so a hidden column's position is preserved
     // across a drag), and needs real ids to compute indices against, not an empty list.
     columnOrder: ['sprite', 'name', 'types', 'dex', 'generation', 'region', 'evolutionStage', 'owned'],
+    // Empty is safe here (unlike columnOrder's default above) — nothing in this codebase reads
+    // or rewrites columnSizing directly; a missing entry just falls back to its column's own
+    // declared `size` in HomePage.tsx, exactly like TanStack's own internal default resolution.
+    columnSizing: {},
     compactMode: false,
     darkMode: 'system',
   },

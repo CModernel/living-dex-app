@@ -430,3 +430,34 @@ test('dragging past the leftmost header (e.g. into the sidebar) clamps to the fi
   const headerTextsAfter = screen.getAllByRole('columnheader').map((h) => h.textContent)
   expect(headerTextsAfter).toEqual(['⠿Types', '⠿Sprite', '⠿Name', '⠿Dex #', '⠿Owned'])
 })
+
+test('dragging a column\'s resize handle widens it and persists the size (3.8f)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  // TanStack's resize handler only understands mouse/touch events, not pointer events (it
+  // branches on `event.type === 'touchstart'`; anything else takes the mouse-only path and
+  // attaches its own document-level mousemove/mouseup listeners) — unlike the column-reorder
+  // drag elsewhere in this file, which uses pointer events throughout.
+  const handle = screen.getByTestId('resize-handle-name')
+  fireEvent.mouseDown(handle, { clientX: 0 })
+  // The commit happens on mouseup regardless of any intermediate moves (which are throttled via
+  // requestAnimationFrame internally), so a single mouseDown + mouseUp pair is enough to assert
+  // the final committed size — no need to simulate every frame of the drag.
+  fireEvent.mouseUp(document, { clientX: 60 })
+
+  await waitFor(() => {
+    const stored = JSON.parse(window.localStorage.getItem('living-dex:user-state') ?? '{}')
+    // Name starts at size 200 (HomePage.tsx's columnHelper.accessor('name', ...)) — a 60px
+    // rightward drag should widen it to roughly 260 (TanStack rounds to 2 decimal places).
+    expect(stored.preferences?.columnSizing?.name).toBeGreaterThan(200)
+  })
+
+  // The rendered <col> for Name must reflect the new size too, not just the persisted value.
+  const nameHeader = screen.getByRole('columnheader', { name: '⠿Name' })
+  const headerIndex = screen.getAllByRole('columnheader').indexOf(nameHeader)
+  const cols = document.querySelectorAll('colgroup col')
+  expect(cols[headerIndex]).toHaveStyle({ width: '260px' })
+})

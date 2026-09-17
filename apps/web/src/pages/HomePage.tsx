@@ -7,7 +7,16 @@ import {
 } from '@living-dex/business-logic'
 import { TIERS, type TierId } from '@cmodernel/living-dex-tiers'
 import { flexRender, useTable } from '@tanstack/react-table'
-import { columnOrderingFeature, columnVisibilityFeature, createColumnHelper, tableFeatures, type ColumnDef, type Row } from '@tanstack/table-core'
+import {
+  columnOrderingFeature,
+  columnResizingFeature,
+  columnSizingFeature,
+  columnVisibilityFeature,
+  createColumnHelper,
+  tableFeatures,
+  type ColumnDef,
+  type Row,
+} from '@tanstack/table-core'
 import { memo, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
@@ -16,6 +25,7 @@ import ListSwitcher from '../components/ListSwitcher'
 import TypeBadge from '../components/TypeBadge'
 import { useActiveList } from '../hooks/useActiveList'
 import { useColumnOrder } from '../hooks/useColumnOrder'
+import { useColumnSizing } from '../hooks/useColumnSizing'
 import { useColumnVisibility } from '../hooks/useColumnVisibility'
 import { useDataset } from '../hooks/useDataset'
 import { useListFilter } from '../hooks/useListFilter'
@@ -29,7 +39,12 @@ const TIER_LABELS: Record<TierId, string> = {
 }
 
 // Module-level: no runtime data dependency, must stay stable across renders.
-const features = tableFeatures({ columnVisibilityFeature, columnOrderingFeature })
+const features = tableFeatures({
+  columnVisibilityFeature,
+  columnOrderingFeature,
+  columnSizingFeature,
+  columnResizingFeature,
+})
 const columnHelper = createColumnHelper<typeof features, PokemonEntry>()
 
 // The hover tooltip keeps this same zoom ratio relative to the base size — bump SPRITE_SIZE
@@ -192,6 +207,7 @@ function HomePage() {
   const { activeList, toggleOwned } = useActiveList()
   const { columnVisibility, setColumnVisibility } = useColumnVisibility()
   const { columnOrder, setColumnOrder } = useColumnOrder()
+  const { columnSizing, setColumnSizing } = useColumnSizing()
   const { filter, toggleFinalStageOnly, toggleRegionalFormsOnly, toggleHideGenderVariants } = useListFilter()
   const [tierId, setTierId] = useState<TierId>('living-form')
   // Pointer-based column drag (not native HTML5 DnD — draggable/dragstart/drop on table cells is
@@ -225,13 +241,19 @@ function HomePage() {
           id: 'sprite',
           header: 'Sprite',
           enableHiding: false,
+          size: 72,
+          minSize: 56,
+          maxSize: 150,
           cell: (ctx) => (dataset ? <Sprite dataset={dataset} entry={ctx.row.original} /> : null),
         }),
-        columnHelper.accessor('name', { header: 'Name', enableHiding: false }),
+        columnHelper.accessor('name', { header: 'Name', enableHiding: false, size: 200, minSize: 100, maxSize: 400 }),
         columnHelper.display({
           id: 'types',
           header: 'Types',
           enableHiding: false,
+          size: 140,
+          minSize: 80,
+          maxSize: 250,
           cell: (ctx) => (
             <div className="flex gap-1">
               {ctx.row.original.types.map((type) => (
@@ -240,13 +262,27 @@ function HomePage() {
             </div>
           ),
         }),
-        columnHelper.accessor('dex', { header: 'Dex #' }),
-        columnHelper.accessor('generation', { header: 'Generation' }),
-        columnHelper.accessor((row) => row.region ?? '—', { id: 'region', header: 'Region' }),
-        columnHelper.accessor('evolutionStage', { header: 'Stage' }),
+        columnHelper.accessor('dex', { header: 'Dex #', size: 80, minSize: 50, maxSize: 120 }),
+        columnHelper.accessor('generation', { header: 'Generation', size: 100, minSize: 60, maxSize: 160 }),
+        columnHelper.accessor((row) => row.region ?? '—', {
+          id: 'region',
+          header: 'Region',
+          size: 100,
+          minSize: 60,
+          maxSize: 160,
+        }),
+        columnHelper.accessor('evolutionStage', { header: 'Stage', size: 80, minSize: 50, maxSize: 120 }),
         // Rendered directly in TableRow instead — this cell definition is never invoked, it
         // only exists so the column shows up in the header row and the visibility menu.
-        columnHelper.display({ id: 'owned', header: 'Owned', enableHiding: false, cell: () => null }),
+        columnHelper.display({
+          id: 'owned',
+          header: 'Owned',
+          enableHiding: false,
+          size: 80,
+          minSize: 56,
+          maxSize: 120,
+          cell: () => null,
+        }),
         // TanStack's ColumnDef is invariant in TValue (footer/cell templates appear in both
         // producer and consumer position), so a heterogeneous array (string/number/unknown value
         // columns mixed together) can't structurally satisfy ColumnDef<Features, Data, unknown>[]
@@ -263,11 +299,18 @@ function HomePage() {
       features,
       columns,
       data: entries,
-      state: { columnVisibility, columnOrder },
+      state: { columnVisibility, columnOrder, columnSizing },
       onColumnVisibilityChange: setColumnVisibility,
       onColumnOrderChange: setColumnOrder,
+      onColumnSizingChange: setColumnSizing,
+      // Live-updates `columnSizing` during the drag rather than only on release — cheap here
+      // since widths are applied via a <colgroup> (see the header render below), not per-row
+      // cell styles, so a resize never touches the ~1387-row <tbody>. `columnResizing` (the
+      // transient in-progress-drag offsets) is deliberately left out of `state` — it's not
+      // something to persist, unlike the committed `columnSizing` map.
+      columnResizeMode: 'onChange',
     },
-    (state) => ({ columnVisibility: state.columnVisibility, columnOrder: state.columnOrder }),
+    (state) => ({ columnVisibility: state.columnVisibility, columnOrder: state.columnOrder, columnSizing: state.columnSizing }),
   )
 
   function updatePreviewPosition(x: number, y: number) {
@@ -387,13 +430,21 @@ function HomePage() {
               </div>
             </div>
             <div className="overflow-hidden rounded-lg border border-border">
-              <table className="w-full border-collapse text-sm">
+              <table className="w-full table-fixed border-collapse text-sm">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <colgroup key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <col key={header.id} style={{ width: header.getSize() }} />
+                    ))}
+                  </colgroup>
+                ))}
                 <thead>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id} className="border-b border-border bg-surface text-left">
-                      {headerGroup.headers.map((header) => {
+                      {headerGroup.headers.map((header, index) => {
                         const isDragging = drag?.columnId === header.column.id
                         const isDropTarget = drag !== null && drag.hoverColumnId === header.column.id && !isDragging
+                        const isLastHeader = index === headerGroup.headers.length - 1
                         const headerLabel =
                           typeof header.column.columnDef.header === 'string'
                             ? header.column.columnDef.header
@@ -407,7 +458,7 @@ function HomePage() {
                             // Draggable from anywhere on the header, not just the grip icon — the
                             // icon is a visual affordance, not the only hit target.
                             onPointerDown={(e) => handleHeaderPointerDown(header.column.id, headerLabel, e)}
-                            className={`cursor-grab p-2.5 text-xs font-semibold tracking-wide text-muted uppercase select-none active:cursor-grabbing ${
+                            className={`relative cursor-grab p-2.5 text-xs font-semibold tracking-wide text-muted uppercase select-none active:cursor-grabbing ${
                               isDragging ? 'opacity-30' : ''
                             } ${isDropTarget ? 'bg-brand/10' : ''} ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}
                           >
@@ -415,6 +466,30 @@ function HomePage() {
                               <span className="text-xs text-muted">⠿</span>
                               {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                             </div>
+                            {!isLastHeader && (
+                              <div
+                                onMouseDown={(e) => {
+                                  e.stopPropagation()
+                                  header.getResizeHandler()(e.nativeEvent)
+                                }}
+                                onTouchStart={(e) => {
+                                  e.stopPropagation()
+                                  header.getResizeHandler()(e.nativeEvent)
+                                }}
+                                // Visible at rest (per the request — not just on hover), brand-colored
+                                // and slightly wider while actively resizing this column.
+                                className={`absolute top-0 right-0 h-full cursor-col-resize touch-none select-none ${
+                                  header.column.getIsResizing() ? 'w-1.5 bg-brand' : 'w-1 bg-border'
+                                }`}
+                                // `aria-hidden` rather than a labelled role: a mouse/touch-only
+                                // drag handle has no keyboard interaction to expose, and giving it
+                                // its own `aria-label` would otherwise get folded into the parent
+                                // `<th>`'s accessible name (breaking `getByRole('columnheader', {
+                                // name: ... })` lookups elsewhere in this file and in tests).
+                                aria-hidden="true"
+                                data-testid={`resize-handle-${header.column.id}`}
+                              />
+                            )}
                           </th>
                         )
                       })}

@@ -671,16 +671,51 @@ even if the `3.X` task order below does.
       sentido (nombre, numero, numero dex, etc)" — matches the Sorting proposal above exactly
       (Dex, Name, Generation, Region). No new scope, just re-prioritizing it.
 
-- [ ] **3.8f Resizable columns.** User request (2026-09-17): let the user drag a column boundary
-      to resize it, with a visible separator/handle between header cells (not just a bare border)
-      so the resize affordance is discoverable. TanStack Table v9 ships a `columnSizingFeature`
-      for this (state: `columnSizing: Record<columnId, number>` + a `header.getResizeHandler()`
-      helper) — same "enable the feature, wire controlled state, persist to preferences" shape as
-      3.8c's `columnOrderingFeature`. Persist sizes the same way as `columnOrder`/`visibleColumns`
-      (new `preferences.columnSizing` field). Given 3.8c shipped with the underlying mechanism
-      working correctly but needed several passes to get the interaction layer right (the actual
-      resizing/pointer-tracking, not the state plumbing), budget real time for hands-on testing
-      (including in a real browser, not just jsdom) rather than assuming the first pass works.
+- [x] **3.8f Resizable columns.** ✅ Web implementation complete, verified live in a real browser
+      (Brave) on the first pass — planning ahead using lessons from 3.8c's several broken rounds
+      (reading the actual `@tanstack/table-core` source before writing code, not just its skill
+      docs) paid off here.
+      - Needs **two** TanStack v9 features together, not one: `columnSizingFeature` (static
+        `column.getSize()` + the `columnSizing: Record<columnId, number>` state slice) and
+        `columnResizingFeature` (the interactive part — `header.getResizeHandler()`,
+        `column.getIsResizing()`); omitting either breaks the other silently.
+      - Every column now declares explicit `size`/`minSize`/`maxSize` (previously undeclared,
+        which would have sized everything to a uniform default 150px).
+      - `header.getResizeHandler()` does not understand Pointer Events — it branches on
+        `event.type === 'touchstart'` and otherwise takes a mouse-only path, attaching its own
+        `document`-level `mousemove`/`mouseup` listeners internally (no custom window-listener
+        code needed, unlike 3.8c's reorder-drag). The resize handle is wired to `onMouseDown`/
+        `onTouchStart` specifically (not `onPointerDown`, which the header's existing 3.8c
+        reorder-drag uses) with `e.stopPropagation()` so starting a resize doesn't also start a
+        column-reorder drag on the same `<th>`.
+      - Column widths are applied via a `<colgroup>`/`<col style={{ width }}>` (one `<col>` per
+        rendered header) rather than inline width on every `<th>`/`<td>` — this means `TableRow`
+        needed **zero** changes, since `<col>` widths apply by column position and stay
+        automatically in sync with whatever order/visibility `row.getVisibleCells()` already
+        produces. `table-fixed` added alongside the existing `w-full` so the browser actually
+        honors the declared widths instead of auto-fitting to content.
+      - `columnResizeMode: 'onChange'` (live-updates size during the drag, not just on release) —
+        affordable here specifically because of the `<colgroup>` approach: resizing never touches
+        the ~1387-row `<tbody>`.
+      - Visible separator (not hover-only, per the explicit request): a persistently-visible
+        `bg-border` strip at each header's right edge, thicker/brand-colored while
+        `column.getIsResizing()` is true. Marked `aria-hidden` (a mouse/touch-only handle has no
+        keyboard interaction to expose) — an earlier attempt gave it its own `aria-label`, which
+        got folded into the parent `<th>`'s accessible name and broke 4 existing
+        `getByRole('columnheader', { name: ... })` test lookups; fixed by using `data-testid`
+        instead for test targeting.
+      - New hook `apps/web/src/hooks/useColumnSizing.ts` persists `preferences.columnSizing`,
+        mirroring `useColumnOrder.ts` (a `Record<string, number>` here instead of `string[]`, no
+        shape conversion needed either way). Default `{}` is safe (unlike `columnOrder`'s
+        non-empty default from 3.8c) — nothing in this codebase reads/rewrites `columnSizing`
+        directly; a missing entry just falls back to its column's own declared `size`.
+      - Tested: unit tests for `useColumnSizing` (default, updater-fn, persistence); a
+        `HomePage.test.tsx` test drags a resize handle (`mouseDown`/`mouseUp`, since the handler
+        only understands mouse/touch events) and asserts both the persisted size and the
+        rendered `<col>` width change.
+      - Verified: 64/64 → 66/66 tests, clean Docker build, and live in Brave — dragged a handle by
+        a precise 120px delta and confirmed the exact expected size (200 → 320), confirmed it
+        didn't also trigger a reorder-drag, and confirmed it survived a reload.
 
 - [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after three
       follow-up fixes — see below). **Visually confirmed working in a real browser** (Brave, via
