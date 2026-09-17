@@ -774,6 +774,31 @@ even if the `3.X` task order below does.
         - Verified live in Brave: shrank Sprite to ~36-49px (renders cleanly scaled, no
           distortion), shrank Types until badges wrapped to two lines with each one showing a
           clean `GR…`/`POI…` ellipsis instead of a jagged cut. 66/66 tests, clean Docker build.
+      - **Follow-up 2 (same day, user feedback):** two more issues.
+        - **Sprite "wasn't collapsible" — a real `table-layout: fixed` gotcha, not a sizing
+          bug.** The `<table>` had `w-full` (100% of its container); `table-layout: fixed` only
+          honors `<col>` widths exactly when they already sum to the table's own rendered width —
+          whenever that sum is *less* (the common case here, since there's plenty of container
+          width to spare), the browser proportionally redistributes the leftover space across
+          *every* column to refill 100%. So shrinking Sprite's declared width didn't shrink its
+          rendered width at all — the freed space just flowed straight back into it (and every
+          other column). Fixed by pinning the table's own width to the exact sum
+          (`style={{ width: table.getTotalSize() }}`, dropping `w-full`) — this is the standard
+          fix for resizable-column tables in fixed-layout mode. Introduced a new cosmetic
+          side-effect: the bordered wrapper box (previously `w-full` itself) now showed a dead
+          empty strip to the right whenever the column-width sum was less than the container —
+          fixed by switching the wrapper to `w-fit max-w-full` (hugs the table's actual width,
+          capped at the container so it can't overflow) instead of stretching full width, and
+          `overflow-x-auto` (was `-hidden`) so a table widened past the container via resizing
+          scrolls instead of squishing back down.
+        - **Resize handle hit area widened further** (10px → 16px, `w-2.5` → `w-4`) — still felt
+          too small to reliably grab. Kept fully inside the `<th>`'s own bounds (not straddling
+          the column border via a negative offset) since the header has `overflow-hidden` for
+          truncation, which would otherwise clip a handle extending past its edge.
+        - Verified live in Brave: shrinking Sprite alone now visibly shrinks the whole table
+          (572px → 542px) with every other column's width completely unaffected (Name stayed
+          exactly 200px); wrapper box hugs the table with no empty strip; re-confirmed no console
+          errors. 66/66 tests, clean Docker build.
 
 - [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after three
       follow-up fixes — see below). **Visually confirmed working in a real browser** (Brave, via

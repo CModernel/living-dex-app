@@ -442,8 +442,23 @@ function HomePage() {
                 />
               </div>
             </div>
-            <div className="overflow-hidden rounded-lg border border-border">
-              <table className="w-full table-fixed border-collapse text-sm">
+            {/* `w-fit` (not `w-full`) — this box now hugs the table's own (possibly-narrower-
+                than-container) width instead of stretching full width and leaving a dead empty
+                strip inside the border when total column width < the available area. `max-w-full`
+                caps it back at the container so it can't overflow the page; `overflow-x-auto`
+                (not `-hidden`) lets a table widened past the container scroll instead of
+                squishing back down. */}
+            <div className="w-fit max-w-full overflow-x-auto rounded-lg border border-border">
+              <table
+                className="table-fixed border-collapse text-sm"
+                // `table-layout: fixed` uses <col> widths as-is only when they already sum to
+                // the table's own width; left at the container's 100% (`w-full`), any leftover
+                // space gets redistributed proportionally across every column — which is exactly
+                // why shrinking Sprite alone appeared to do nothing: the freed space just went
+                // back into it (and every other column) to refill 100%. Pinning the table's own
+                // width to the actual sum removes that redistribution entirely.
+                style={{ width: table.getTotalSize() }}
+              >
                 {table.getHeaderGroups().map((headerGroup) => (
                   <colgroup key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
@@ -517,9 +532,14 @@ function HomePage() {
                                 // A wider hit area than the visible line (below) so the cursor
                                 // doesn't flicker between this handle's `col-resize` and the
                                 // header's own `grab` cursor from tiny mouse jitter over a
-                                // too-thin target; `z-10` keeps it above the header content for
-                                // hit-testing at the cell's edge.
-                                className="absolute top-0 right-0 z-10 h-full w-2.5 cursor-col-resize touch-none select-none"
+                                // too-thin target, and so it's actually easy to grab without
+                                // pixel-perfect aim (widened from an initial 10px after it still
+                                // felt too small in practice); `z-10` keeps it above the header
+                                // content for hit-testing at the cell's edge. Kept fully inside
+                                // the `<th>` (not straddling the border via a negative offset)
+                                // since the `<th>` has `overflow-hidden` for truncation — an
+                                // handle extending past its edge would just get clipped.
+                                className="absolute top-0 right-0 z-10 h-full w-4 cursor-col-resize touch-none select-none"
                                 // `aria-hidden` rather than a labelled role: a mouse/touch-only
                                 // drag handle has no keyboard interaction to expose, and giving it
                                 // its own `aria-label` would otherwise get folded into the parent
