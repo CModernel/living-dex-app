@@ -932,6 +932,18 @@ even if the `3.X` task order below does.
           correctly absorbing real leftover space, e.g. 292px in one measurement, not stretched
           via redistribution); re-confirmed shrinking Sprite still only shrinks Sprite. 66/66
           tests, clean Docker build.
+      - **Follow-up 8 (same day, user request):** noticed Owned (the auto-filling last column)
+        had no resize handle at all — unlike every other column (e.g. Dex), which the user
+        specifically liked being able to shrink "almost without limit." Made the last column
+        resizable like any other: it still auto-fills leftover space *by default*, but once the
+        user actually drags its handle, that exact size (clamped to its own `minSize`/`maxSize`,
+        same as every other column) is honored from then on instead of being forced back to
+        "stretch to fill" — checked via `column.id in columnSizing` (present only once a user has
+        actually resized it). Removed the `isLastHeader` handle-skip entirely; every column
+        renders one now. Verified live in Brave: Owned's handle now exists and dragging it shrinks
+        it down to its `40` `minSize` exactly like Dex, with the table narrowing to match (since
+        Owned is no longer auto-filling once manually sized) — the same trade-off Dex's own resize
+        already had. 66/66 tests, clean Docker build.
 
 - [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after three
       follow-up fixes — see below). **Visually confirmed working in a real browser** (Brave, via

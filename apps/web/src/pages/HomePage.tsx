@@ -465,7 +465,16 @@ function HomePage() {
     .reduce((sum, header) => sum + header.getSize(), 0)
   const lastHeader = firstHeaderGroup?.headers[firstHeaderGroup.headers.length - 1]
   const lastColumnMinSize = lastHeader?.column.columnDef.minSize ?? 0
-  const lastColumnWidth = Math.max(lastColumnMinSize, containerWidth - otherColumnsWidth)
+  // Once the user has actually dragged the last column's own handle, honor that exact size like
+  // any other column (via `header.getSize()`, already clamped to its min/maxSize) instead of
+  // forever auto-fitting it to the leftover space — otherwise there'd be no way to shrink it
+  // down (e.g. Owned) the same way every other column already can, since "fill the leftover
+  // space" would just re-stretch it back past whatever the user chose. Only fall back to
+  // auto-fill while it's still at its default (never manually resized).
+  const lastColumnResizedManually = lastHeader !== undefined && lastHeader.column.id in columnSizing
+  const lastColumnWidth = lastColumnResizedManually
+    ? (lastHeader?.getSize() ?? lastColumnMinSize)
+    : Math.max(lastColumnMinSize, containerWidth - otherColumnsWidth)
   const totalTableWidth = otherColumnsWidth + lastColumnWidth
 
   // Lives on HomePage itself, not just /lists, so switching lists refreshes the table right
@@ -526,13 +535,9 @@ function HomePage() {
                 <thead>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id} className="border-b border-border bg-surface text-left">
-                      {headerGroup.headers.map((header, index) => {
+                      {headerGroup.headers.map((header) => {
                         const isDragging = drag?.columnId === header.column.id
                         const isDropTarget = drag !== null && drag.hoverColumnId === header.column.id && !isDragging
-                        // The last column has no declared width (see the <colgroup> above — it
-                        // auto-fills the container's leftover space instead), so there's nothing
-                        // meaningful for a resize handle to do there.
-                        const isLastHeader = index === headerGroup.headers.length - 1
                         const headerLabel =
                           typeof header.column.columnDef.header === 'string'
                             ? header.column.columnDef.header
@@ -558,8 +563,10 @@ function HomePage() {
                                 {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                               </span>
                             </div>
-                            {!isLastHeader && (
-                              <div
+                            {/* Rendered for every column, including the last one — it can be
+                                manually resized too (see `lastColumnResizedManually` above), not
+                                just auto-fit to leftover space. */}
+                            <div
                                 // `pointerdown` fires (and bubbles to the `<th>`'s own
                                 // `onPointerDown`, which starts a column-REORDER drag) *before*
                                 // `mousedown`/`touchstart` — stopping propagation only in the
@@ -617,7 +624,6 @@ function HomePage() {
                                   }`}
                                 />
                               </div>
-                            )}
                           </th>
                         )
                       })}
