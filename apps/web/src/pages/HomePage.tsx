@@ -206,6 +206,9 @@ const TableRow = memo(function TableRow({
           </td>
         ),
       )}
+      {/* Matches the header's filler <th>/<col> — keeps this row's cell count in sync with the
+          filler column so nothing shifts out of alignment. */}
+      <td aria-hidden="true" />
     </tr>
   )
 })
@@ -352,6 +355,14 @@ function HomePage() {
     updatePreviewPosition(e.clientX, e.clientY)
     setDrag({ columnId, label, hoverColumnId: columnId })
 
+    // Same browser quirk as the resize handle below: the CSS cursor freezes to whatever was
+    // under the pointer at `pointerdown` and isn't re-evaluated against new elements while the
+    // button stays down, so the header's own `cursor-grab`/`active:cursor-grabbing` classes
+    // don't reliably track the drag as the pointer crosses other headers/rows. Forcing it on
+    // `document.body` for the drag's duration fixes it the same way.
+    document.body.style.cursor = 'grabbing'
+    document.body.style.userSelect = 'none'
+
     // Tracks the last hovered column outside React state so a render is only triggered when the
     // hovered column actually changes (once per column boundary crossed), not on every pointer
     // event.
@@ -373,6 +384,8 @@ function HomePage() {
         if (overId) setColumnOrder((current) => reorderColumnIds(current, columnId, overId))
       }
       setDrag(null)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
       controller.abort()
     }
 
@@ -442,28 +455,26 @@ function HomePage() {
                 />
               </div>
             </div>
-            {/* `w-fit` (not `w-full`) — this box now hugs the table's own (possibly-narrower-
-                than-container) width instead of stretching full width and leaving a dead empty
-                strip inside the border when total column width < the available area. `max-w-full`
-                caps it back at the container so it can't overflow the page; `overflow-x-auto`
-                (not `-hidden`) lets a table widened past the container scroll instead of
-                squishing back down. */}
-            <div className="w-fit max-w-full overflow-x-auto rounded-lg border border-border">
-              <table
-                className="table-fixed border-collapse text-sm"
-                // `table-layout: fixed` uses <col> widths as-is only when they already sum to
-                // the table's own width; left at the container's 100% (`w-full`), any leftover
-                // space gets redistributed proportionally across every column — which is exactly
-                // why shrinking Sprite alone appeared to do nothing: the freed space just went
-                // back into it (and every other column) to refill 100%. Pinning the table's own
-                // width to the actual sum removes that redistribution entirely.
-                style={{ width: table.getTotalSize() }}
-              >
+            {/* `overflow-x-auto` (not `-hidden`) — if resized columns ever sum past the
+                container's width, this lets the table scroll horizontally instead of squishing
+                back down. */}
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full table-fixed border-collapse text-sm">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <colgroup key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
                       <col key={header.id} style={{ width: header.getSize() }} />
                     ))}
+                    {/* Filler column with NO declared width — this is what lets the table both
+                        fill the full container (`w-full` above) AND keep every *other* column at
+                        its exact resized pixel width. `table-layout: fixed` only redistributes
+                        leftover space onto columns that DON'T have an explicit width; without
+                        this, a `w-full` table with every column explicitly sized proportionally
+                        rescales ALL of them to fill 100%, which is exactly why shrinking Sprite
+                        alone previously appeared to do nothing (the freed space flowed right back
+                        into it, and every other column, to refill the container). With this
+                        filler present, it — not the real columns — absorbs the leftover width. */}
+                    <col />
                   </colgroup>
                 ))}
                 <thead>
@@ -561,6 +572,10 @@ function HomePage() {
                           </th>
                         )
                       })}
+                      {/* Matches the filler <col> above — an empty header cell so the row stays
+                          rectangular (same cell count as <col> elements) and the filler column
+                          still gets the row's bottom border. */}
+                      <th aria-hidden="true" />
                     </tr>
                   ))}
                 </thead>

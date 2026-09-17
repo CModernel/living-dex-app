@@ -799,6 +799,38 @@ even if the `3.X` task order below does.
           (572px → 542px) with every other column's width completely unaffected (Name stayed
           exactly 200px); wrapper box hugs the table with no empty strip; re-confirmed no console
           errors. 66/66 tests, clean Docker build.
+      - **Follow-up 3 (same day, user feedback):** three more rounds of polish.
+        1. **User preferred the table filling all available width** (the `w-fit`/pinned-width
+           fix from Follow-up 2 above technically solved "Sprite can't shrink," but made the
+           table visually start small instead of filling the container, which the user
+           explicitly said they preferred). Root cause of the original bug, re-examined: it's not
+           that the table needs a smaller *fixed* width — `table-layout: fixed` only redistributes
+           leftover space onto columns that *lack* an explicit width. Every real column here has
+           one, so a `w-full` table rescales all of them proportionally to fill 100%. Fixed
+           properly by adding an extra, invisible **filler column** (a trailing `<col>` with no
+           declared width, plus a matching empty `<th aria-hidden>`/`<td aria-hidden>` in every
+           row so cell counts stay in sync) — the filler, not the real columns, now absorbs
+           whatever space is left after every real column's exact size. This gets both properties
+           at once: the table fills the container by default, *and* resizing one real column
+           never redistributes onto any other real column. Reverted the wrapper back to a plain
+           `overflow-x-auto` (dropped the `w-fit`/`max-w-full` band-aid from Follow-up 2, no
+           longer needed).
+        2. **Resize handle hit area confirmed working well** after Follow-up 2's widening (10px
+           → 16px) — user confirmed they can now grab it without pixel-perfect aim. No further
+           change.
+        3. **Cursor still looked wrong while dragging — but it was the *column-reorder* drag, not
+           resize.** Follow-up 2 only forced `document.body.style.cursor` during an active
+           *resize*; the separate column-*reorder* drag (`handleHeaderPointerDown`, whole-header
+           drag from 3.8c) relies purely on the header's own `cursor-grab`/`active:cursor-grabbing`
+           classes, which hit the exact same browser quirk (CSS cursor freezes to whatever was
+           under the pointer at `pointerdown`, not re-evaluated while the button stays down) —
+           unaddressed until now. Fixed the same way: force `document.body.style.cursor =
+           'grabbing'` for the reorder-drag's duration, restored in its existing `endDrag`.
+        - Verified live in Brave: shrinking Sprite (72px → 42px) keeps the table's own width
+          exactly constant (758px before and after) while Name stays untouched at 200px — the
+          filler column visibly absorbs the difference; `document.body.style.cursor` confirmed
+          `'grabbing'` throughout a real `pointerdown → pointermove → pointerup` reorder-drag
+          sequence and cleared after. 66/66 tests, clean Docker build.
 
 - [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after three
       follow-up fixes — see below). **Visually confirmed working in a real browser** (Brave, via
