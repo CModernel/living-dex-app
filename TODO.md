@@ -667,6 +667,20 @@ even if the `3.X` task order below does.
       separate *absolute* position that counts straight through the whole list without
       resetting? If both are wanted, they're two different derived columns from the same
       `sortIndex`, not one.
+      - **Reconfirmed by the user (2026-09-17):** "permitir orden en las columnas que tengan
+      sentido (nombre, numero, numero dex, etc)" — matches the Sorting proposal above exactly
+      (Dex, Name, Generation, Region). No new scope, just re-prioritizing it.
+
+- [ ] **3.8f Resizable columns.** User request (2026-09-17): let the user drag a column boundary
+      to resize it, with a visible separator/handle between header cells (not just a bare border)
+      so the resize affordance is discoverable. TanStack Table v9 ships a `columnSizingFeature`
+      for this (state: `columnSizing: Record<columnId, number>` + a `header.getResizeHandler()`
+      helper) — same "enable the feature, wire controlled state, persist to preferences" shape as
+      3.8c's `columnOrderingFeature`. Persist sizes the same way as `columnOrder`/`visibleColumns`
+      (new `preferences.columnSizing` field). Given 3.8c shipped with the underlying mechanism
+      working correctly but needed several passes to get the interaction layer right (the actual
+      resizing/pointer-tracking, not the state plumbing), budget real time for hands-on testing
+      (including in a real browser, not just jsdom) rather than assuming the first pass works.
 
 - [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after three
       follow-up fixes — see below). **Visually confirmed working in a real browser** (Brave, via
