@@ -845,6 +845,26 @@ even if the `3.X` task order below does.
         default. Updated the handful of existing tests that asserted on the literal "Dex #" text.
         Verified live in Brave: both headers render fully untruncated, Dex's column noticeably
         tighter around its actual content, no console errors. 66/66 tests, clean Docker build.
+      - **Follow-up 5 (same day, user reported "the size fix didn't take" + a column-overflow
+        rendering bug):** the "didn't take" report turned out to be a **test-pollution bug, not a
+        code bug** — `columnSizing` had leftover values from this session's own earlier manual
+        verification passes (`sprite: 84, name: 404, types: 120, dex: 93`, none matching the new
+        defaults) still sitting in the browser's `localStorage`, since a committed size always
+        overrides a column's declared default. Confirmed by reading the actual persisted state
+        live rather than assuming, then cleared it — the "new" defaults were correct all along,
+        just invisible under stale data from testing in the same real browser profile the user
+        uses. Going forward, always clear `columnSizing` from `localStorage` at the *end* of a
+        verification pass, not just the start, so it can't leak into the next session.
+        Separately, found (while trying to reproduce the overflow report) that **Owned — the
+        last real column — had no resize handle at all**: the `isLastHeader` check skipping a
+        handle on the last column predates the filler-column fix (Follow-up 3) and was only ever
+        correct back when there was nothing after the last column to resize against; now that a
+        filler column always follows it, every real column legitimately has a right edge to
+        resize into, so the check was just removed — every column gets a handle now. Could not
+        reproduce the specific "column exceeding the table renders below/underneath" report after
+        several targeted attempts (growing a column to its max, forcing Types to wrap, growing
+        the previously-handle-less Owned column) — asked the user for a screenshot/repro instead
+        of guessing further. 66/66 tests, clean Docker build.
 
 - [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after three
       follow-up fixes — see below). **Visually confirmed working in a real browser** (Brave, via

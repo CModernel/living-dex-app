@@ -486,10 +486,9 @@ function HomePage() {
                 <thead>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id} className="border-b border-border bg-surface text-left">
-                      {headerGroup.headers.map((header, index) => {
+                      {headerGroup.headers.map((header) => {
                         const isDragging = drag?.columnId === header.column.id
                         const isDropTarget = drag !== null && drag.hoverColumnId === header.column.id && !isDragging
-                        const isLastHeader = index === headerGroup.headers.length - 1
                         const headerLabel =
                           typeof header.column.columnDef.header === 'string'
                             ? header.column.columnDef.header
@@ -515,8 +514,11 @@ function HomePage() {
                                 {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                               </span>
                             </div>
-                            {!isLastHeader && (
-                              <div
+                            {/* Every real column gets a handle now, including the last one —
+                                the invisible filler column after it (see the <colgroup> above)
+                                gives it a legitimate right edge to resize against, unlike before
+                                the filler existed, when there was nothing there to resize into. */}
+                            <div
                                 // `pointerdown` fires (and bubbles to the `<th>`'s own
                                 // `onPointerDown`, which starts a column-REORDER drag) *before*
                                 // `mousedown`/`touchstart` — stopping propagation only in the
@@ -574,7 +576,6 @@ function HomePage() {
                                   }`}
                                 />
                               </div>
-                            )}
                           </th>
                         )
                       })}
