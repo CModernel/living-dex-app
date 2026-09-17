@@ -672,9 +672,10 @@ even if the `3.X` task order below does.
       (Dex, Name, Generation, Region). No new scope, just re-prioritizing it.
 
 - [x] **3.8f Resizable columns.** ✅ Web implementation complete, verified live in a real browser
-      (Brave) on the first pass — planning ahead using lessons from 3.8c's several broken rounds
-      (reading the actual `@tanstack/table-core` source before writing code, not just its skill
-      docs) paid off here.
+      (Brave) — after one real user-reported bug, fixed same day (see below). Planning ahead using
+      lessons from 3.8c's several broken rounds (reading the actual `@tanstack/table-core` source
+      before writing code, not just its skill docs) got the underlying mechanism right on the
+      first pass; the bug that did surface was in this repo's own event-wiring, not the library.
       - Needs **two** TanStack v9 features together, not one: `columnSizingFeature` (static
         `column.getSize()` + the `columnSizing: Record<columnId, number>` state slice) and
         `columnResizingFeature` (the interactive part — `header.getResizeHandler()`,
@@ -716,6 +717,22 @@ even if the `3.X` task order below does.
       - Verified: 64/64 → 66/66 tests, clean Docker build, and live in Brave — dragged a handle by
         a precise 120px delta and confirmed the exact expected size (200 → 320), confirmed it
         didn't also trigger a reorder-drag, and confirmed it survived a reload.
+      - **Fix (same day, user-reported):** the resize handle's `mousedown`/`touchstart`
+        `stopPropagation()` was too late — the native `pointerdown` event (which the header's own
+        3.8c reorder-drag listens for) fires and bubbles to the `<th>` *before*
+        `mousedown`/`touchstart` do, so every attempted resize was silently hijacked into a
+        column-reorder drag instead. My own verification pass above missed this because it
+        dispatched `mousedown` directly without a preceding `pointerdown`, which doesn't match
+        real browser event ordering for a mouse press. Fixed by adding a dedicated
+        `onPointerDown={(e) => e.stopPropagation()}` on the handle itself, stopping the bubble at
+        its source. Also reported: the cursor flickered between the header's `grab` cursor and
+        the handle's `col-resize` cursor while hovering near the edge — caused by the visible
+        separator line doubling as the hit target, at only 4-6px wide (easy to jitter in/out of).
+        Split into two elements: a wider (`w-2.5`, ~10px) invisible/transparent hit-area handling
+        pointer events, with the thin visible separator line nested inside it purely for display
+        (`pointer-events-none`). Re-verified with the exact real event order
+        (`pointerdown` → `mousedown` → `mousemove` → `mouseup`) this time: resize works, column
+        order stays untouched, no console errors.
 
 - [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after three
       follow-up fixes — see below). **Visually confirmed working in a real browser** (Brave, via

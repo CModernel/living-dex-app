@@ -468,6 +468,12 @@ function HomePage() {
                             </div>
                             {!isLastHeader && (
                               <div
+                                // `pointerdown` fires (and bubbles to the `<th>`'s own
+                                // `onPointerDown`, which starts a column-REORDER drag) *before*
+                                // `mousedown`/`touchstart` — stopping propagation only in the
+                                // mouse/touch handlers below was too late to prevent that. This is
+                                // what made every resize attempt hijacked into a reorder instead.
+                                onPointerDown={(e) => e.stopPropagation()}
                                 onMouseDown={(e) => {
                                   e.stopPropagation()
                                   header.getResizeHandler()(e.nativeEvent)
@@ -476,11 +482,12 @@ function HomePage() {
                                   e.stopPropagation()
                                   header.getResizeHandler()(e.nativeEvent)
                                 }}
-                                // Visible at rest (per the request — not just on hover), brand-colored
-                                // and slightly wider while actively resizing this column.
-                                className={`absolute top-0 right-0 h-full cursor-col-resize touch-none select-none ${
-                                  header.column.getIsResizing() ? 'w-1.5 bg-brand' : 'w-1 bg-border'
-                                }`}
+                                // A wider hit area than the visible line (below) so the cursor
+                                // doesn't flicker between this handle's `col-resize` and the
+                                // header's own `grab` cursor from tiny mouse jitter over a
+                                // too-thin target; `z-10` keeps it above the header content for
+                                // hit-testing at the cell's edge.
+                                className="absolute top-0 right-0 z-10 h-full w-2.5 cursor-col-resize touch-none select-none"
                                 // `aria-hidden` rather than a labelled role: a mouse/touch-only
                                 // drag handle has no keyboard interaction to expose, and giving it
                                 // its own `aria-label` would otherwise get folded into the parent
@@ -488,7 +495,16 @@ function HomePage() {
                                 // name: ... })` lookups elsewhere in this file and in tests).
                                 aria-hidden="true"
                                 data-testid={`resize-handle-${header.column.id}`}
-                              />
+                              >
+                                {/* The actual visible separator — thin at rest (per the request,
+                                    not hover-only), thicker/brand-colored while this column is
+                                    being resized. Purely visual; the wrapper above is the hit area. */}
+                                <div
+                                  className={`pointer-events-none absolute top-0 right-0 h-full ${
+                                    header.column.getIsResizing() ? 'w-1 bg-brand' : 'w-px bg-border'
+                                  }`}
+                                />
+                              </div>
                             )}
                           </th>
                         )
