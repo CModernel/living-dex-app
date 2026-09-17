@@ -944,6 +944,36 @@ even if the `3.X` task order below does.
         it down to its `40` `minSize` exactly like Dex, with the table narrowing to match (since
         Owned is no longer auto-filling once manually sized) — the same trade-off Dex's own resize
         already had. 66/66 tests, clean Docker build.
+      - **Follow-up 9 (same day, user-reported regression — "revert, it works like shit"):**
+        after Follow-up 8, the user reported the resize handle felt "super small" to click and
+        that Owned "doesn't change at all" when dragged. Root-cause investigation (read-only, no
+        fix attempted until confirmed) found the handle's hit-area markup was completely
+        unchanged (still the same `w-4`, 16px-wide `<div>` every other column already had) — the
+        real, underlying bug was Follow-up 8's `lastColumnResizedManually` flag: the very first
+        time Owned's handle was dragged, it *permanently* switched Owned from "auto-fill leftover
+        space" to "exactly `header.getSize()`, forever" — even after the user later shrank a
+        *different* column and freed up space, Owned no longer stretched to reclaim it, leaving a
+        visible empty gap at the table's right edge (which read to the user as "columns aren't
+        anchored to the table" and, combined with the gap, made a subsequent Owned-handle drag
+        look like it did nothing, since the table's total width had already detached from the
+        wrapper). Fixed by unifying the two modes into one formula:
+        `lastColumnWidth = Math.max(lastHeader.getSize(), containerWidth - otherColumnsWidth)` —
+        Owned's own current size (default or manually dragged) is now only a **floor**; it always
+        stretches to fill any leftover space, and only renders at exactly its own size (allowing
+        the table to scroll) once the other columns alone already consume the full width. This
+        replaced the old permanent on/off flag with something that self-heals whenever the layout
+        changes. Verified live in Brave (synthetic `mousedown`/`mousemove`/`mouseup` sequences,
+        since drag simulation via coordinate-based dragging doesn't reproduce real intermediate
+        mousemove events): shrinking Owned no longer leaves a gap (table stays pinned to the
+        wrapper's exact width); growing another column now visibly shrinks Owned to compensate;
+        growing columns past the container's capacity correctly triggers horizontal scroll instead
+        of a gap or clipped content. Immediately after, per explicit follow-up user request, also
+        removed Owned's `minSize` floor entirely (`40` → `0`) — unlike every other column it only
+        ever holds a checkbox, so unlike the rest it's fine for it to shrink arbitrarily small
+        instead of sharing the other columns' floor. 66/66 tests, clean Docker build (with both
+        this repo and the sibling `living-dex-organizer` repo copied into the container preserving
+        their relative path, required for the `file:../../../living-dex-organizer/...` dependency
+        to resolve).
 
 - [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after three
       follow-up fixes — see below). **Visually confirmed working in a real browser** (Brave, via

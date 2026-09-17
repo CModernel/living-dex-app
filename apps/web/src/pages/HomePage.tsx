@@ -322,8 +322,10 @@ function HomePage() {
           enableHiding: false,
           // Sized to the checkbox it actually holds, not the "Owned" label — the label
           // truncates at this width, which the user explicitly preferred over a wider column.
+          // No minSize floor: unlike every other column, Owned holds just a checkbox, so it's
+          // fine for it to shrink arbitrarily small instead of being held to a shared minimum.
           size: 48,
-          minSize: 40,
+          minSize: 0,
           maxSize: 120,
           cell: () => null,
         }),
@@ -464,17 +466,12 @@ function HomePage() {
     .slice(0, -1)
     .reduce((sum, header) => sum + header.getSize(), 0)
   const lastHeader = firstHeaderGroup?.headers[firstHeaderGroup.headers.length - 1]
-  const lastColumnMinSize = lastHeader?.column.columnDef.minSize ?? 0
-  // Once the user has actually dragged the last column's own handle, honor that exact size like
-  // any other column (via `header.getSize()`, already clamped to its min/maxSize) instead of
-  // forever auto-fitting it to the leftover space — otherwise there'd be no way to shrink it
-  // down (e.g. Owned) the same way every other column already can, since "fill the leftover
-  // space" would just re-stretch it back past whatever the user chose. Only fall back to
-  // auto-fill while it's still at its default (never manually resized).
-  const lastColumnResizedManually = lastHeader !== undefined && lastHeader.column.id in columnSizing
-  const lastColumnWidth = lastColumnResizedManually
-    ? (lastHeader?.getSize() ?? lastColumnMinSize)
-    : Math.max(lastColumnMinSize, containerWidth - otherColumnsWidth)
+  // Its own size (default, or whatever the user last dragged it to) is only a FLOOR — the last
+  // column keeps stretching to soak up any space the other columns don't use, so the table never
+  // ends short of the container leaving a visible empty gap. It only ever renders at exactly its
+  // own size when the other columns alone already fill (or exceed) the container, at which point
+  // there's nothing left to stretch into and the table legitimately scrolls instead.
+  const lastColumnWidth = Math.max(lastHeader?.getSize() ?? 0, containerWidth - otherColumnsWidth)
   const totalTableWidth = otherColumnsWidth + lastColumnWidth
 
   // Lives on HomePage itself, not just /lists, so switching lists refreshes the table right
