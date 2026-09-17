@@ -17,7 +17,7 @@ import {
   type ColumnDef,
   type Row,
 } from '@tanstack/table-core'
-import { memo, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { memo, useCallback, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
 import FilterMenu from '../components/FilterMenu'
@@ -229,6 +229,32 @@ function HomePage() {
   const previewPosRef = useRef({ x: 0, y: 0 })
   const headerRefs = useRef<Record<string, HTMLTableCellElement | null>>({})
 
+  // The table's wrapper width, used to compute the last column's width below (it fills whatever
+  // space the other, exactly-sized columns leave — see that computation for why). A *callback*
+  // ref rather than `useRef` + a `useEffect([])` — the wrapper `<div>` only mounts once the
+  // dataset finishes loading (it's behind `!result.loading && !result.error` below), so an
+  // effect tied to component-mount time (empty deps) would run once while the ref was still
+  // null and never observe anything. A callback ref fires exactly when the DOM node actually
+  // appears (or disappears), regardless of when that happens relative to mount.
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  const [containerWidth, setContainerWidth] = useState(0)
+  const wrapperRef = useCallback((el: HTMLDivElement | null) => {
+    resizeObserverRef.current?.disconnect()
+    resizeObserverRef.current = null
+    if (!el) return
+    // Read the width synchronously up front — ResizeObserver's own first callback always fires
+    // asynchronously (never on the initial `observe()` call), which would otherwise leave
+    // `containerWidth` at its 0 initial value (collapsing the last column to its bare `minSize`)
+    // for one visible frame on every load.
+    setContainerWidth(el.getBoundingClientRect().width)
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width
+      if (width !== undefined) setContainerWidth(width)
+    })
+    observer.observe(el)
+    resizeObserverRef.current = observer
+  }, [])
+
   const dataset = result.loading || result.error ? null : result.dataset
   const entries = useMemo(() => {
     if (!dataset) return []
@@ -275,11 +301,10 @@ function HomePage() {
             </div>
           ),
         }),
-        // Shortened from "Dex #" — that label alone needed ~75px just to avoid truncating
-        // (measured live), forcing this column noticeably wider than its actual content ("0001"
-        // needs ~57px) ever does. "Dex" fits comfortably in a tighter default that matches the
-        // content instead of the wordier label.
-        columnHelper.accessor('dex', { header: 'Dex', size: 64, minSize: 40, maxSize: 120 }),
+        // Shortened from "Dex #" to "Dex" (see below) and sized to the actual content ("0001"
+        // needs ~57px) rather than the label — the label can truncate slightly at this width,
+        // which the user explicitly preferred over a wider column just to fit "Dex" in full.
+        columnHelper.accessor('dex', { header: 'Dex', size: 56, minSize: 40, maxSize: 120 }),
         columnHelper.accessor('generation', { header: 'Generation', size: 100, minSize: 40, maxSize: 160 }),
         columnHelper.accessor((row) => row.region ?? '—', {
           id: 'region',
@@ -295,9 +320,9 @@ function HomePage() {
           id: 'owned',
           header: 'Owned',
           enableHiding: false,
-          // "Owned" (+ the grip icon + padding) measured at ~84px minimum to render without
-          // truncating — 80 was juuust short of that, hence the "OWN…" ellipsis by default.
-          size: 90,
+          // Sized to the checkbox it actually holds, not the "Owned" label — the label
+          // truncates at this width, which the user explicitly preferred over a wider column.
+          size: 48,
           minSize: 40,
           maxSize: 120,
           cell: () => null,
@@ -418,6 +443,31 @@ function HomePage() {
     .map((column) => column.id)
     .join('|')
 
+  // The last column fills whatever space the other, exactly-sized columns leave — computed here
+  // (not left as an unspecified `<col>` width) because that has no floor: `table-layout: fixed`
+  // happily gives an unspecified column 0px once the other columns' widths alone already fill
+  // the container, silently hiding its content (found live: Owned's checkbox measured 0px wide
+  // after growing Name/Types to their max). Clamping to its own `minSize` guarantees it never
+  // disappears — if the other columns genuinely don't leave room even for that minimum, the
+  // table overflows and scrolls instead.
+  //
+  // Critically, the `<table>` itself must be given this exact total as its own width (not
+  // `w-full`) — `table-layout: fixed` only honors every `<col>`'s declared width as literal
+  // pixels when they already sum to the table's own width; a `w-full` table whose `<col>`s sum
+  // to less than that (which giving the last column a *computed*, still-short-of-100%, width
+  // does) makes the browser proportionally rescale ALL of them to fill the container — silently
+  // undoing every other column's exact resized size, the original bug this whole mechanism
+  // exists to prevent. Matching the table's own width to the sum exactly removes any leftover
+  // for the browser to redistribute.
+  const [firstHeaderGroup] = table.getHeaderGroups()
+  const otherColumnsWidth = (firstHeaderGroup?.headers ?? [])
+    .slice(0, -1)
+    .reduce((sum, header) => sum + header.getSize(), 0)
+  const lastHeader = firstHeaderGroup?.headers[firstHeaderGroup.headers.length - 1]
+  const lastColumnMinSize = lastHeader?.column.columnDef.minSize ?? 0
+  const lastColumnWidth = Math.max(lastColumnMinSize, containerWidth - otherColumnsWidth)
+  const totalTableWidth = otherColumnsWidth + lastColumnWidth
+
   // Lives on HomePage itself, not just /lists, so switching lists refreshes the table right
   // here instead of requiring a trip to another page.
   return (
@@ -461,25 +511,14 @@ function HomePage() {
             {/* `overflow-x-auto` (not `-hidden`) — if resized columns ever sum past the
                 container's width, this lets the table scroll horizontally instead of squishing
                 back down. */}
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full table-fixed border-collapse text-sm">
+            <div ref={wrapperRef} className="overflow-x-auto rounded-lg border border-border">
+              <table className="table-fixed border-collapse text-sm" style={{ width: totalTableWidth }}>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <colgroup key={headerGroup.id}>
                     {headerGroup.headers.map((header, index) => {
                       const isLastColumn = index === headerGroup.headers.length - 1
-                      // The last column gets NO declared width — `table-layout: fixed` gives any
-                      // column without one the leftover space after every other (explicitly
-                      // sized) column, which is what lets the table fill its container
-                      // (`w-full` below) while every OTHER column keeps its exact resized pixel
-                      // width. (A separate invisible filler column after all real columns did
-                      // this too, but visually read as a broken empty extra column — this reuses
-                      // the same mechanism on a real, visible column instead.) Whichever column
-                      // ends up last (this updates automatically on reorder/hide) absorbs the
-                      // slack — uncapped, since `<col>` doesn't reliably honor `max-width`.
-                      return isLastColumn ? (
-                        <col key={header.id} />
-                      ) : (
-                        <col key={header.id} style={{ width: header.getSize() }} />
+                      return (
+                        <col key={header.id} style={{ width: isLastColumn ? lastColumnWidth : header.getSize() }} />
                       )
                     })}
                   </colgroup>

@@ -13,6 +13,17 @@ window.matchMedia ??= (query: string) =>
     dispatchEvent: () => false,
   }) as MediaQueryList
 
+// jsdom doesn't implement ResizeObserver either; HomePage's last-column width tracking needs
+// the constructor to exist (it never fires callbacks in tests, which is fine — the initial
+// synchronous getBoundingClientRect() read in the callback ref covers the width jsdom reports).
+if (!window.ResizeObserver) {
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver
+}
+
 // jsdom's default (non-URL-backed) environment doesn't implement localStorage either.
 if (!window.localStorage) {
   const store = new Map<string, string>()

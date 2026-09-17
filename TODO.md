@@ -888,6 +888,50 @@ even if the `3.X` task order below does.
         Sprite still shrinks only Sprite (table width constant, Name untouched); reordering so Dex
         becomes the new last column correctly moves the stretch behavior to Dex, and Owned
         (now second-to-last) gets a normal fixed width back. 66/66 tests, clean Docker build.
+      - **Follow-up 7 (same day, user reported two more issues):** (1) "if a column stretches too
+        much, it gets hidden at the table's edge" and (2) Dex/Owned's defaults (64/90) still felt
+        oversized for a 4-digit number and a small checkbox.
+        - **(1) was a real, confirmed-by-measurement bug**, not a display nitpick: when the
+          *other* (non-last) columns' combined width meets or exceeds the container, the
+          auto-filling last column collapses to **0px** — its content (Owned's checkbox)
+          disappears entirely, squeezed against the edge. Reproduced by growing Name (→400) and
+          Types (→250): `ownedRect.width` measured `0`. Root cause: an unspecified-width `<col>`
+          has no floor — `table-layout: fixed` gives it 0px once other declared widths already
+          fill the container, and `<col>` doesn't honor `min-width` any more than `max-width`.
+          Fixed by computing the last column's width explicitly in JS —
+          `Math.max(itsOwnMinSize, containerWidth - sum of every other column's width)` — instead
+          of leaving it undeclared. This guarantees it never drops below its own `minSize`; if the
+          other columns genuinely don't leave room even for that, the table now visibly overflows
+          and scrolls instead of silently hiding content.
+        - **Needed the wrapper's live width**, tracked via `ResizeObserver` so it stays correct
+          after a browser-window resize, not just our own column-resize state changes. **First
+          implementation had two real bugs of its own**, both caught before calling it done:
+          (a) used `useRef` + `useEffect(() => {...}, [])` to set up the observer — but the
+          wrapper `<div>` only mounts once the dataset finishes loading (behind
+          `!result.loading && !result.error`), so the empty-deps effect ran once at component
+          mount while the ref was still `null` and never observed anything, leaving
+          `containerWidth` stuck at its initial `0` forever. Fixed by switching to a **callback
+          ref**, which fires exactly when the DOM node actually appears (or disappears),
+          independent of mount timing. (b) Giving the last column an explicit (if correctly
+          *computed*) width re-triggered the *original* dilution bug from Follow-up 3: once every
+          column has a declared width again, a `w-full` table whose columns sum to less than 100%
+          gets ALL of them proportionally rescaled by `table-layout: fixed` to fill the
+          container — exactly what the "one unspecified column" trick existed to prevent. Fixed
+          by also giving the `<table>` itself an explicit width (`otherColumnsWidth +
+          lastColumnWidth`, i.e. the exact sum) instead of `w-full` — with the table's own width
+          matching its columns' sum exactly, there's never anything left for the browser to
+          redistribute. Also added a `ResizeObserver` polyfill to the test setup (`src/test/setup.ts`)
+          since jsdom doesn't implement it and the callback ref's constructor call was throwing,
+          breaking 18 unrelated tests.
+        - **(2)**: confirmed with the user this is about the *default* size, not the resize floor
+          (`minSize: 40` stays as-is) — they're fine with the header label truncating if that's
+          the cost of a tight column. `Owned` `size` 90 → **48**; `Dex` `size` 64 → **56**.
+        - Verified live in Brave: reproduced the exact zero-width scenario again post-fix — Owned
+          now clamps to its `40` `minSize` and the table visibly overflows/scrolls instead of
+          hiding content; fresh load shows every column at its exact declared size (Owned
+          correctly absorbing real leftover space, e.g. 292px in one measurement, not stretched
+          via redistribution); re-confirmed shrinking Sprite still only shrinks Sprite. 66/66
+          tests, clean Docker build.
 
 - [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after three
       follow-up fixes — see below). **Visually confirmed working in a real browser** (Brave, via
