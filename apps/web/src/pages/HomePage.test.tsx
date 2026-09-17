@@ -385,7 +385,7 @@ test('dragging a column header (from anywhere on it) reorders the header row and
   // Body cells must reorder identically — otherwise header and data would desync.
   const bulbasaurRow = screen.getByText('Bulbasaur').closest('tr')
   expect(bulbasaurRow).not.toBeNull()
-  const cellTextsAfter = Array.from(bulbasaurRow!.querySelectorAll('td')).map((td) => td.textContent)
+  const cellTextsAfter = Array.from(bulbasaurRow!.querySelectorAll('td:not([aria-hidden])')).map((td) => td.textContent)
   // Name (containing 'Bulbasaur') must now render last.
   expect(cellTextsAfter[cellTextsAfter.length - 1]).toBe('Bulbasaur')
 })

@@ -974,6 +974,31 @@ even if the `3.X` task order below does.
         this repo and the sibling `living-dex-organizer` repo copied into the container preserving
         their relative path, required for the `file:../../../living-dex-organizer/...` dependency
         to resolve).
+      - **Follow-up 10 (same day, user-reported confusion):** user found that dragging the
+        divider *between* Dex and Owned didn't shrink Owned, which read as broken (it worked, just
+        not the way it looked like it should). Root cause: Follow-up 9's fix still made Owned the
+        one auto-filling column, so its own resize handle sat far away, at the table's true right
+        edge — the visible boundary between Dex and Owned actually belonged to *Dex*, and only
+        ever resized Dex; shrinking Owned that way only worked as an indirect side effect (Dex
+        growing ate into Owned's leftover space), capped by Dex's own small `maxSize`. Rather than
+        patch that indirection further, removed the special-casing from Owned entirely — it now
+        has a plain, independent, own-handle-only size exactly like every other column. A
+        dedicated **filler column** (an extra, always-unspecified-width trailing `<col>` /
+        `aria-hidden` `<th>`/`<td>`, invisible and non-interactive) is the only thing that stretches
+        to soak up leftover space now, so no real column's resize can have a side effect on any
+        other real column. This is the same mechanism Follow-up 3 tried and reverted for looking
+        like "an extra broken column" — this time it stays fully inert (no border, no padding, no
+        content) so there's nothing to look broken. Net effect: the boundary between any two
+        adjacent columns, Dex/Owned included, now resizes only the column to its left, matching
+        every other pair; Owned's own handle sits immediately to its own right, directly reachable,
+        and can shrink it to 0 same as before. Also let `wrapperRef`/`containerWidth`/
+        `ResizeObserver` be deleted entirely — filling leftover space is now pure CSS
+        (`table-layout: fixed` with one genuinely unspecified `<col>`), no measured container width
+        needed. Verified live in Brave: dragging Dex's handle now only changes Dex (Owned
+        untouched); dragging Owned's own handle shrinks Owned alone, table still pinned to the
+        wrapper's exact width either way; growing columns past the container's width still
+        triggers horizontal scroll correctly. 66/66 tests (one 3.8c reorder test updated to exclude
+        the new filler `<td>` from its cell-count assertion), clean Docker build.
 
 - [x] **3.8c Reorderable/draggable columns.** ✅ Web implementation complete (after three
       follow-up fixes — see below). **Visually confirmed working in a real browser** (Brave, via
