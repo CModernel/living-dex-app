@@ -27,7 +27,7 @@ import { useColumnSizing } from '../hooks/useColumnSizing'
 import { useColumnVisibility } from '../hooks/useColumnVisibility'
 import { useDataset } from '../hooks/useDataset'
 import { useListFilter } from '../hooks/useListFilter'
-import { getColumnWeight, resizeAdjacentPair } from '../lib/columnWeights'
+import { getColumnMinPx, getColumnWeight, resizeAdjacentPair } from '../lib/columnWeights'
 
 const TIER_LABELS: Record<TierId, string> = {
   'living-form-full': 'Living Form Full',
@@ -407,6 +407,8 @@ function HomePage() {
         visibleWeightSum: sum,
         tablePx,
         deltaPx: moveEvent.clientX - startX,
+        leftMinPx: getColumnMinPx(leftId),
+        rightMinPx: getColumnMinPx(rightId),
       })
       setColumnSizing((prev) => ({ ...prev, [leftId]: left, [rightId]: right }))
     }

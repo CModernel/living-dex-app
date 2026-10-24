@@ -679,7 +679,9 @@ even if the `3.X` task order below does.
       - `preferences.columnSizing` now holds relative **weights** (old pixel values still work as
         weights, no migration); `<col>` widths are percentages that always sum to 100%.
       - Each divider moves the boundary between two adjacent columns (left grows what right
-        loses); the last column has no divider. One uniform `MIN_COLUMN_PX = 24`, no maximums.
+        loses); the last column has no divider. Default minimum `MIN_COLUMN_PX = 24`, no
+        maximums; Sprite alone has a larger minimum (48px, `COLUMN_MIN_PX`) since it turns into a
+        smudge below that.
       - Own Pointer Events handler (`handleResizePointerDown` in `HomePage.tsx`), math in
         `apps/web/src/lib/columnWeights.ts`. TanStack sizing/resizing features, the filler
         column, `ResizeObserver` and the wrapper scroll are all gone.

@@ -535,3 +535,19 @@ test('starting a resize does not start a column reorder (3.8f)', async () => {
     '⠿Owned',
   ])
 })
+
+test('sprite can\'t be dragged below its larger minimum width (3.8f)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  stubTableWidth(516)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  // Sprite (72) | Name (200): dragging far left would shrink Sprite to the default 24 minimum.
+  const handle = screen.getByTestId('resize-handle-sprite')
+  fireEvent.pointerDown(handle, { clientX: 100, clientY: 0, button: 0 })
+  fireEvent.pointerMove(handle, { clientX: -1000, clientY: 0 })
+  fireEvent.pointerUp(handle, { clientX: -1000, clientY: 0 })
+
+  await waitFor(() => expect(storedSizing().sprite).toBe(48))
+  expect(storedSizing().name).toBe(224)
+})

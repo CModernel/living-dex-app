@@ -4,6 +4,16 @@
 
 export const MIN_COLUMN_PX = 24
 
+// Columns whose content gets unreadable below the default minimum. Sprite's image scales with
+// its column, so below ~48px it turns into a smudge.
+export const COLUMN_MIN_PX: Record<string, number> = {
+  sprite: 48,
+}
+
+export function getColumnMinPx(columnId: string): number {
+  return COLUMN_MIN_PX[columnId] ?? MIN_COLUMN_PX
+}
+
 export const DEFAULT_COLUMN_WEIGHTS: Record<string, number> = {
   sprite: 72,
   name: 200,
@@ -24,7 +34,7 @@ export function getColumnWeight(sizing: Record<string, number>, columnId: string
 /**
  * Moves the divider between two adjacent columns by `deltaPx`: the left column grows by that
  * much and the right one shrinks by the same amount (or vice versa when negative), clamped so
- * neither drops below `MIN_COLUMN_PX`. Returns only the two changed weights; their sum is
+ * neither drops below its own minimum (`leftMinPx`/`rightMinPx`, default `MIN_COLUMN_PX`). Returns only the two changed weights; their sum is
  * unchanged, so every other column's share of the table stays exactly where it was.
  */
 export function resizeAdjacentPair(args: {
@@ -33,8 +43,12 @@ export function resizeAdjacentPair(args: {
   visibleWeightSum: number
   tablePx: number
   deltaPx: number
+  leftMinPx?: number
+  rightMinPx?: number
 }): { left: number; right: number } {
   const { leftWeight, rightWeight, visibleWeightSum, tablePx, deltaPx } = args
+  const leftMinPx = args.leftMinPx ?? MIN_COLUMN_PX
+  const rightMinPx = args.rightMinPx ?? MIN_COLUMN_PX
   if (tablePx <= 0 || visibleWeightSum <= 0) return { left: leftWeight, right: rightWeight }
 
   const pxPerWeight = tablePx / visibleWeightSum
@@ -42,8 +56,8 @@ export function resizeAdjacentPair(args: {
   const rightPx = rightWeight * pxPerWeight
 
   // If the pair is already tighter than the minimum combined, don't move anything.
-  const lo = Math.min(0, MIN_COLUMN_PX - leftPx)
-  const hi = Math.max(0, rightPx - MIN_COLUMN_PX)
+  const lo = Math.min(0, leftMinPx - leftPx)
+  const hi = Math.max(0, rightPx - rightMinPx)
   const delta = Math.min(hi, Math.max(lo, deltaPx))
 
   return {

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { getColumnWeight, MIN_COLUMN_PX, resizeAdjacentPair } from './columnWeights'
+import { getColumnMinPx, getColumnWeight, MIN_COLUMN_PX, resizeAdjacentPair } from './columnWeights'
 
 const base = { leftWeight: 100, rightWeight: 100, visibleWeightSum: 400, tablePx: 400 }
 
@@ -33,4 +33,16 @@ test('getColumnWeight prefers the stored value, then the default', () => {
   expect(getColumnWeight({ name: 321 }, 'name')).toBe(321)
   expect(getColumnWeight({}, 'name')).toBe(200)
   expect(getColumnWeight({}, 'unknown')).toBe(100)
+})
+
+test('per-side minimums are honoured (e.g. sprite)', () => {
+  const grow = resizeAdjacentPair({ ...base, rightMinPx: 48, deltaPx: 10_000 })
+  expect(grow.right).toBe(48)
+  const shrink = resizeAdjacentPair({ ...base, leftMinPx: 48, deltaPx: -10_000 })
+  expect(shrink.left).toBe(48)
+})
+
+test('sprite has a larger minimum than the default', () => {
+  expect(getColumnMinPx('sprite')).toBe(48)
+  expect(getColumnMinPx('dex')).toBe(MIN_COLUMN_PX)
 })
