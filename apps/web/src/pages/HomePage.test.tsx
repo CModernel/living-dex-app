@@ -90,6 +90,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.restoreAllMocks()
   global.fetch = originalFetch
   clearDatasetCache()
   window.localStorage.clear()
@@ -385,7 +386,7 @@ test('dragging a column header (from anywhere on it) reorders the header row and
   // Body cells must reorder identically — otherwise header and data would desync.
   const bulbasaurRow = screen.getByText('Bulbasaur').closest('tr')
   expect(bulbasaurRow).not.toBeNull()
-  const cellTextsAfter = Array.from(bulbasaurRow!.querySelectorAll('td:not([aria-hidden])')).map((td) => td.textContent)
+  const cellTextsAfter = Array.from(bulbasaurRow!.querySelectorAll('td')).map((td) => td.textContent)
   // Name (containing 'Bulbasaur') must now render last.
   expect(cellTextsAfter[cellTextsAfter.length - 1]).toBe('Bulbasaur')
 })
@@ -431,33 +432,106 @@ test('dragging past the leftmost header (e.g. into the sidebar) clamps to the fi
   expect(headerTextsAfter).toEqual(['⠿Types', '⠿Sprite', '⠿Name', '⠿Dex', '⠿Owned'])
 })
 
-test('dragging a column\'s resize handle widens it and persists the size (3.8f)', async () => {
-  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
-  renderHomePage()
+function stubTableWidth(width: number) {
+  vi.spyOn(HTMLTableElement.prototype, 'getBoundingClientRect').mockReturnValue({
+    width,
+    height: 0,
+    x: 0,
+    y: 0,
+    top: 0,
+    left: 0,
+    right: width,
+    bottom: 0,
+    toJSON: () => ({}),
+  })
+}
 
+function storedSizing() {
+  return JSON.parse(window.localStorage.getItem('living-dex:user-state') ?? '{}').preferences?.columnSizing ?? {}
+}
+
+function colPercents() {
+  return Array.from(document.querySelectorAll('colgroup col')).map((col) => parseFloat((col as HTMLElement).style.width))
+}
+
+test('dragging a divider moves the boundary: left column grows, right shrinks, others untouched (3.8f)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  stubTableWidth(516) // default weights sum to 516 here, so 1 weight = 1px
+  renderHomePage()
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
-  // TanStack's resize handler only understands mouse/touch events, not pointer events (it
-  // branches on `event.type === 'touchstart'`; anything else takes the mouse-only path and
-  // attaches its own document-level mousemove/mouseup listeners) — unlike the column-reorder
-  // drag elsewhere in this file, which uses pointer events throughout.
   const handle = screen.getByTestId('resize-handle-name')
-  fireEvent.mouseDown(handle, { clientX: 0 })
-  // The commit happens on mouseup regardless of any intermediate moves (which are throttled via
-  // requestAnimationFrame internally), so a single mouseDown + mouseUp pair is enough to assert
-  // the final committed size — no need to simulate every frame of the drag.
-  fireEvent.mouseUp(document, { clientX: 60 })
+  fireEvent.pointerDown(handle, { clientX: 100, clientY: 0, button: 0 })
+  fireEvent.pointerMove(handle, { clientX: 160, clientY: 0 })
+  fireEvent.pointerUp(handle, { clientX: 160, clientY: 0 })
 
   await waitFor(() => {
-    const stored = JSON.parse(window.localStorage.getItem('living-dex:user-state') ?? '{}')
-    // Name starts at size 200 (HomePage.tsx's columnHelper.accessor('name', ...)) — a 60px
-    // rightward drag should widen it to roughly 260 (TanStack rounds to 2 decimal places).
-    expect(stored.preferences?.columnSizing?.name).toBeGreaterThan(200)
+    // Name 200 -> 260, its right neighbour Types 140 -> 80; nothing else is written.
+    expect(storedSizing()).toEqual({ name: 260, types: 80 })
   })
+})
 
-  // The rendered <col> for Name must reflect the new size too, not just the persisted value.
-  const nameHeader = screen.getByRole('columnheader', { name: '⠿Name' })
-  const headerIndex = screen.getAllByRole('columnheader').indexOf(nameHeader)
-  const cols = document.querySelectorAll('colgroup col')
-  expect(cols[headerIndex]).toHaveStyle({ width: '260px' })
+test('the table always fills 100%: <col> widths sum to 100 and there is no filler cell (3.8f)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  stubTableWidth(516)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  const headerCount = screen.getAllByRole('columnheader').length
+  expect(document.querySelectorAll('colgroup col')).toHaveLength(headerCount)
+  const bulbasaurRow = screen.getByText('Bulbasaur').closest('tr')!
+  expect(bulbasaurRow.querySelectorAll('td')).toHaveLength(headerCount)
+  expect(colPercents().reduce((a, b) => a + b, 0)).toBeCloseTo(100, 5)
+
+  const handle = screen.getByTestId('resize-handle-name')
+  fireEvent.pointerDown(handle, { clientX: 100, clientY: 0, button: 0 })
+  fireEvent.pointerMove(handle, { clientX: 160, clientY: 0 })
+  fireEvent.pointerUp(handle, { clientX: 160, clientY: 0 })
+  await waitFor(() => expect(storedSizing().name).toBe(260))
+  expect(colPercents().reduce((a, b) => a + b, 0)).toBeCloseTo(100, 5)
+})
+
+test('the last visible column has no divider (3.8f)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  expect(screen.getByTestId('resize-handle-dex')).toBeInTheDocument()
+  expect(screen.queryByTestId('resize-handle-owned')).not.toBeInTheDocument()
+})
+
+test('a drag can\'t push either neighbour below the minimum width (3.8f)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  stubTableWidth(516)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  // Dex (56) | Owned (48): dragging far right can't take Owned below MIN_COLUMN_PX (24).
+  const handle = screen.getByTestId('resize-handle-dex')
+  fireEvent.pointerDown(handle, { clientX: 0, clientY: 0, button: 0 })
+  fireEvent.pointerMove(handle, { clientX: 1000, clientY: 0 })
+  fireEvent.pointerUp(handle, { clientX: 1000, clientY: 0 })
+
+  await waitFor(() => expect(storedSizing().owned).toBe(24))
+  expect(storedSizing().dex).toBe(80)
+})
+
+test('starting a resize does not start a column reorder (3.8f)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  stubTableWidth(516)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  const handle = screen.getByTestId('resize-handle-name')
+  fireEvent.pointerDown(handle, { clientX: 100, clientY: 0, button: 0 })
+  fireEvent.pointerMove(window, { clientX: 400, clientY: 15 })
+  fireEvent.pointerUp(window, { clientX: 400, clientY: 15 })
+
+  expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
+    '⠿Sprite',
+    '⠿Name',
+    '⠿Types',
+    '⠿Dex',
+    '⠿Owned',
+  ])
 })

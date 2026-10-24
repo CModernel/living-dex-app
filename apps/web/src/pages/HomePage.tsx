@@ -9,8 +9,6 @@ import { TIERS, type TierId } from '@cmodernel/living-dex-tiers'
 import { flexRender, useTable } from '@tanstack/react-table'
 import {
   columnOrderingFeature,
-  columnResizingFeature,
-  columnSizingFeature,
   columnVisibilityFeature,
   createColumnHelper,
   tableFeatures,
@@ -29,6 +27,7 @@ import { useColumnSizing } from '../hooks/useColumnSizing'
 import { useColumnVisibility } from '../hooks/useColumnVisibility'
 import { useDataset } from '../hooks/useDataset'
 import { useListFilter } from '../hooks/useListFilter'
+import { getColumnWeight, resizeAdjacentPair } from '../lib/columnWeights'
 
 const TIER_LABELS: Record<TierId, string> = {
   'living-form-full': 'Living Form Full',
@@ -42,8 +41,6 @@ const TIER_LABELS: Record<TierId, string> = {
 const features = tableFeatures({
   columnVisibilityFeature,
   columnOrderingFeature,
-  columnSizingFeature,
-  columnResizingFeature,
 })
 const columnHelper = createColumnHelper<typeof features, PokemonEntry>()
 
@@ -206,8 +203,6 @@ const TableRow = memo(function TableRow({
           </td>
         ),
       )}
-      {/* Matches the filler `<th>`/`<col>` in the header — see there for why. */}
-      <td aria-hidden="true" className="p-0" />
     </tr>
   )
 })
@@ -230,6 +225,8 @@ function HomePage() {
   const previewRef = useRef<HTMLDivElement>(null)
   const previewPosRef = useRef({ x: 0, y: 0 })
   const headerRefs = useRef<Record<string, HTMLTableCellElement | null>>({})
+  const tableRef = useRef<HTMLTableElement>(null)
+  const [resizingColumnId, setResizingColumnId] = useState<string | null>(null)
 
   const dataset = result.loading || result.error ? null : result.dataset
   const entries = useMemo(() => {
@@ -247,28 +244,21 @@ function HomePage() {
   const columns = useMemo(
     () =>
       [
-        // `minSize: 40` is deliberately the same across every column below — one small,
-        // uniform margin rather than a value reasoned about per column. Content within each
-        // cell (text, the sprite image, type badges) shrinks/truncates/wraps itself down to
-        // that width via generic CSS (see `Sprite`, the Types cell, and TableRow's shared
+        // Widths live in DEFAULT_COLUMN_WEIGHTS / `columnSizing`, not here. Content within each
+        // cell (text, the sprite image, type badges) shrinks/truncates/wraps itself down to a
+        // narrow column via generic CSS (see `Sprite`, the Types cell, and TableRow's shared
         // `overflow-hidden`/`truncate` wrapper) rather than any column-specific logic here.
         columnHelper.display({
           id: 'sprite',
           header: 'Sprite',
           enableHiding: false,
-          size: 72,
-          minSize: 40,
-          maxSize: 150,
           cell: (ctx) => (dataset ? <Sprite dataset={dataset} entry={ctx.row.original} /> : null),
         }),
-        columnHelper.accessor('name', { header: 'Name', enableHiding: false, size: 200, minSize: 40, maxSize: 400 }),
+        columnHelper.accessor('name', { header: 'Name', enableHiding: false }),
         columnHelper.display({
           id: 'types',
           header: 'Types',
           enableHiding: false,
-          size: 140,
-          minSize: 40,
-          maxSize: 250,
           cell: (ctx) => (
             <div className="flex flex-wrap gap-1">
               {ctx.row.original.types.map((type) => (
@@ -277,32 +267,19 @@ function HomePage() {
             </div>
           ),
         }),
-        // Shortened from "Dex #" to "Dex" (see below) and sized to the actual content ("0001"
-        // needs ~57px) rather than the label — the label can truncate slightly at this width,
-        // which the user explicitly preferred over a wider column just to fit "Dex" in full.
-        columnHelper.accessor('dex', { header: 'Dex', size: 56, minSize: 40, maxSize: 120 }),
-        columnHelper.accessor('generation', { header: 'Generation', size: 100, minSize: 40, maxSize: 160 }),
+        columnHelper.accessor('dex', { header: 'Dex' }),
+        columnHelper.accessor('generation', { header: 'Generation' }),
         columnHelper.accessor((row) => row.region ?? '—', {
           id: 'region',
           header: 'Region',
-          size: 100,
-          minSize: 40,
-          maxSize: 160,
         }),
-        columnHelper.accessor('evolutionStage', { header: 'Stage', size: 80, minSize: 40, maxSize: 120 }),
+        columnHelper.accessor('evolutionStage', { header: 'Stage' }),
         // Rendered directly in TableRow instead — this cell definition is never invoked, it
         // only exists so the column shows up in the header row and the visibility menu.
         columnHelper.display({
           id: 'owned',
           header: 'Owned',
           enableHiding: false,
-          // Sized to the checkbox it actually holds, not the "Owned" label — the label
-          // truncates at this width, which the user explicitly preferred over a wider column.
-          // No minSize floor: unlike every other column, Owned holds just a checkbox, so it's
-          // fine for it to shrink arbitrarily small instead of being held to a shared minimum.
-          size: 48,
-          minSize: 0,
-          maxSize: 120,
           cell: () => null,
         }),
         // TanStack's ColumnDef is invariant in TValue (footer/cell templates appear in both
@@ -321,18 +298,11 @@ function HomePage() {
       features,
       columns,
       data: entries,
-      state: { columnVisibility, columnOrder, columnSizing },
+      state: { columnVisibility, columnOrder },
       onColumnVisibilityChange: setColumnVisibility,
       onColumnOrderChange: setColumnOrder,
-      onColumnSizingChange: setColumnSizing,
-      // Live-updates `columnSizing` during the drag rather than only on release — cheap here
-      // since widths are applied via a <colgroup> (see the header render below), not per-row
-      // cell styles, so a resize never touches the ~1387-row <tbody>. `columnResizing` (the
-      // transient in-progress-drag offsets) is deliberately left out of `state` — it's not
-      // something to persist, unlike the committed `columnSizing` map.
-      columnResizeMode: 'onChange',
     },
-    (state) => ({ columnVisibility: state.columnVisibility, columnOrder: state.columnOrder, columnSizing: state.columnSizing }),
+    (state) => ({ columnVisibility: state.columnVisibility, columnOrder: state.columnOrder }),
   )
 
   function updatePreviewPosition(x: number, y: number) {
@@ -403,6 +373,56 @@ function HomePage() {
     window.addEventListener('pointercancel', () => endDrag(null), { signal: controller.signal })
   }
 
+  // Dragging the divider between two adjacent columns moves the boundary: the left column
+  // grows by what the right one loses (see lib/columnWeights.ts). Pointer Events cover mouse,
+  // touch and pen in one path; pointer capture keeps moves coming when the cursor leaves the
+  // handle, so no window listeners are needed.
+  function handleResizePointerDown(leftId: string, rightId: string, e: ReactPointerEvent<HTMLDivElement>) {
+    if (e.button !== 0) return
+    e.stopPropagation()
+    e.preventDefault()
+
+    const tablePx = tableRef.current?.getBoundingClientRect().width ?? 0
+    const startX = e.clientX
+    const startLeft = getColumnWeight(columnSizing, leftId)
+    const startRight = getColumnWeight(columnSizing, rightId)
+    const sum = visibleWeightSum
+    const handle = e.currentTarget
+    const pointerId = e.pointerId
+
+    // Optional call: jsdom (tests) doesn't implement pointer capture.
+    handle.setPointerCapture?.(pointerId)
+    setResizingColumnId(leftId)
+    // The browser freezes the CSS cursor to whatever was under the pointer at pointerdown, so it
+    // is forced on <body> for the duration of the drag.
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    const controller = new AbortController()
+
+    function onMove(moveEvent: PointerEvent) {
+      const { left, right } = resizeAdjacentPair({
+        leftWeight: startLeft,
+        rightWeight: startRight,
+        visibleWeightSum: sum,
+        tablePx,
+        deltaPx: moveEvent.clientX - startX,
+      })
+      setColumnSizing((prev) => ({ ...prev, [leftId]: left, [rightId]: right }))
+    }
+
+    function end() {
+      setResizingColumnId(null)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      controller.abort()
+    }
+
+    handle.addEventListener('pointermove', onMove, { signal: controller.signal })
+    handle.addEventListener('pointerup', end, { signal: controller.signal })
+    handle.addEventListener('pointercancel', end, { signal: controller.signal })
+  }
+
   const hideableColumns = table
     .getAllColumns()
     .filter((column) => column.getCanHide())
@@ -420,6 +440,9 @@ function HomePage() {
     .getVisibleLeafColumns()
     .map((column) => column.id)
     .join('|')
+
+  const visibleColumnIds = (table.getHeaderGroups()[0]?.headers ?? []).map((header) => header.column.id)
+  const visibleWeightSum = visibleColumnIds.reduce((sum, id) => sum + getColumnWeight(columnSizing, id), 0)
 
   // Lives on HomePage itself, not just /lists, so switching lists refreshes the table right
   // here instead of requiring a trip to another page.
@@ -461,31 +484,25 @@ function HomePage() {
                 />
               </div>
             </div>
-            {/* `overflow-x-auto` (not `-hidden`) — if resized columns ever sum past the
-                container's width, this lets the table scroll horizontally instead of squishing
-                back down. */}
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full table-fixed border-collapse text-sm">
+            {/* Column widths are percentages that always sum to 100% (see lib/columnWeights.ts), so
+                the table can never be wider or narrower than its container — nothing to scroll. */}
+            <div className="overflow-hidden rounded-lg border border-border">
+              <table ref={tableRef} className="w-full table-fixed border-collapse text-sm">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <colgroup key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
-                      <col key={header.id} style={{ width: header.getSize() }} />
+                      <col
+                        key={header.id}
+                        style={{ width: `${(getColumnWeight(columnSizing, header.column.id) / visibleWeightSum) * 100}%` }}
+                      />
                     ))}
-                    {/* Every real column above has its own exact, independently-resizable width —
-                        this trailing, unspecified-width filler is the only thing that stretches,
-                        soaking up whatever space the real columns don't use so the table always
-                        reaches the wrapper's full width with no empty gap. Kept separate from the
-                        last real column (rather than making that column itself auto-fill, as an
-                        earlier version did) specifically so every column's own resize handle
-                        behaves identically: shrinking any one column, including the last, never
-                        has the side effect of some *other* column silently growing to compensate. */}
-                    <col />
                   </colgroup>
                 ))}
                 <thead>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id} className="border-b border-border bg-surface text-left">
-                      {headerGroup.headers.map((header) => {
+                      {headerGroup.headers.map((header, index) => {
+                        const nextHeader = headerGroup.headers[index + 1]
                         const isDragging = drag?.columnId === header.column.id
                         const isDropTarget = drag !== null && drag.hoverColumnId === header.column.id && !isDragging
                         const headerLabel =
@@ -513,73 +530,34 @@ function HomePage() {
                                 {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                               </span>
                             </div>
-                            {/* Rendered for every column, including the last one — it can be
-                                manually resized too (see `lastColumnResizedManually` above), not
-                                just auto-fit to leftover space. */}
-                            <div
-                                // `pointerdown` fires (and bubbles to the `<th>`'s own
-                                // `onPointerDown`, which starts a column-REORDER drag) *before*
-                                // `mousedown`/`touchstart` — stopping propagation only in the
-                                // mouse/touch handlers below was too late to prevent that. This is
-                                // what made every resize attempt hijacked into a reorder instead.
-                                onPointerDown={(e) => e.stopPropagation()}
-                                onMouseDown={(e) => {
-                                  e.stopPropagation()
-                                  // Browsers freeze the CSS cursor to whatever was under the
-                                  // pointer at mousedown time and don't re-evaluate it against
-                                  // new elements while the button stays down — forcing a cursor
-                                  // directly on `document.body` for the drag's duration is the
-                                  // standard fix (what resizable-panel libraries do), and is what
-                                  // stops it flickering to the header's own `grab` cursor (or the
-                                  // default arrow) as the pointer moves during the resize.
-                                  document.body.style.cursor = 'col-resize'
-                                  document.body.style.userSelect = 'none'
-                                  const restore = () => {
-                                    document.body.style.cursor = ''
-                                    document.body.style.userSelect = ''
-                                    document.removeEventListener('mouseup', restore)
-                                  }
-                                  document.addEventListener('mouseup', restore)
-                                  header.getResizeHandler()(e.nativeEvent)
-                                }}
-                                onTouchStart={(e) => {
-                                  e.stopPropagation()
-                                  header.getResizeHandler()(e.nativeEvent)
-                                }}
-                                // A wider hit area than the visible line (below) so the cursor
-                                // doesn't flicker between this handle's `col-resize` and the
-                                // header's own `grab` cursor from tiny mouse jitter over a
-                                // too-thin target, and so it's actually easy to grab without
-                                // pixel-perfect aim (widened from an initial 10px after it still
-                                // felt too small in practice); `z-10` keeps it above the header
-                                // content for hit-testing at the cell's edge. Kept fully inside
-                                // the `<th>` (not straddling the border via a negative offset)
-                                // since the `<th>` has `overflow-hidden` for truncation — an
-                                // handle extending past its edge would just get clipped.
-                                className="absolute top-0 right-0 z-10 h-full w-4 cursor-col-resize touch-none select-none"
-                                // `aria-hidden` rather than a labelled role: a mouse/touch-only
-                                // drag handle has no keyboard interaction to expose, and giving it
-                                // its own `aria-label` would otherwise get folded into the parent
-                                // `<th>`'s accessible name (breaking `getByRole('columnheader', {
-                                // name: ... })` lookups elsewhere in this file and in tests).
+                            {/* The divider between this column and the next visible one — the last column
+                                has none, since the table's right edge isn't a boundary between two
+                                columns. */}
+                            {nextHeader && (
+                              <div
+                                // `pointerdown` reaches the `<th>` first, whose own handler starts a
+                                // column REORDER drag — stop it here so a resize never becomes one.
+                                onPointerDown={(e) =>
+                                  handleResizePointerDown(header.column.id, nextHeader.column.id, e)
+                                }
+                                // Wide hit area (the visible line below is only 1px) so it's easy to
+                                // grab; kept inside the `<th>` because the `<th>` is overflow-hidden.
+                                className="absolute top-0 right-0 z-10 h-full w-3 cursor-col-resize touch-none select-none"
+                                // `aria-hidden`: a pointer-only handle has no keyboard interaction, and an
+                                // `aria-label` would get folded into the `<th>`'s accessible name.
                                 aria-hidden="true"
                                 data-testid={`resize-handle-${header.column.id}`}
                               >
-                                {/* The actual visible separator — thin at rest (per the request,
-                                    not hover-only), thicker/brand-colored while this column is
-                                    being resized. Purely visual; the wrapper above is the hit area. */}
                                 <div
                                   className={`pointer-events-none absolute top-0 right-0 h-full ${
-                                    header.column.getIsResizing() ? 'w-1 bg-brand' : 'w-px bg-border'
+                                    resizingColumnId === header.column.id ? 'w-1 bg-brand' : 'w-px bg-border'
                                   }`}
                                 />
                               </div>
+                            )}
                           </th>
                         )
                       })}
-                      {/* Matches the filler `<col>` above — no content, no resize handle, purely
-                          structural so the header row's cell count stays in sync with the body's. */}
-                      <th aria-hidden="true" className="p-0" />
                     </tr>
                   ))}
                 </thead>

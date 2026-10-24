@@ -6,12 +6,8 @@ type ColumnSizingState = Record<string, number>
 
 /**
  * Persists HomePage's column widths as `preferences.columnSizing` (3.8f), so a resize
- * survives a reload. Mirrors `useColumnOrder.ts` — a plain object here instead of a
- * string[], no shape conversion needed either way.
- *
- * `setColumnSizing` is TanStack's controlled-state shape directly
- * (`OnChangeFn<ColumnSizingState>`) so it can be passed straight to `useTable`'s
- * `onColumnSizingChange`.
+ * survives a reload. Values are relative weights (see `lib/columnWeights.ts`), not pixels.
+ * Mirrors `useColumnOrder.ts` — a plain object here instead of a string[].
  */
 export function useColumnSizing() {
   const [state, setState] = useUserState()

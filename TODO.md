@@ -671,7 +671,23 @@ even if the `3.X` task order below does.
       sentido (nombre, numero, numero dex, etc)" — matches the Sorting proposal above exactly
       (Dex, Name, Generation, Region). No new scope, just re-prioritizing it.
 
-- [x] **3.8f Resizable columns.** ✅ Web implementation complete, verified live in a real browser
+- [x] **3.8f Resizable columns.** ✅ **Rewritten (2026-10-24)** — the old independent-pixel-width
+      model (TanStack `columnSizingFeature`/`columnResizingFeature`) couldn't satisfy "resizable +
+      always fills the table, no gaps": leftover space always landed in a filler/stretched column
+      that looked wrong. Replaced by adjacent-pair resizing over proportional widths — full
+      reasoning and steps in [[TODO-3.8f-Resizable-Columns-Rewrite]] (Obsidian vault):
+      - `preferences.columnSizing` now holds relative **weights** (old pixel values still work as
+        weights, no migration); `<col>` widths are percentages that always sum to 100%.
+      - Each divider moves the boundary between two adjacent columns (left grows what right
+        loses); the last column has no divider. One uniform `MIN_COLUMN_PX = 24`, no maximums.
+      - Own Pointer Events handler (`handleResizePointerDown` in `HomePage.tsx`), math in
+        `apps/web/src/lib/columnWeights.ts`. TanStack sizing/resizing features, the filler
+        column, `ResizeObserver` and the wrapper scroll are all gone.
+      - Verified live in Brave (real pointer-event order): Dex/Owned divider moves Dex and Owned
+        only, clamps at the minimum, table stays exactly full, survives reload, reorder and
+        hide/show still keep it full. 73 web tests, clean Docker build.
+      Below is the history of the old approach, kept for reference only.
+      Previously: ✅ Web implementation complete, verified live in a real browser
       (Brave) — after one real user-reported bug, fixed same day (see below). Planning ahead using
       lessons from 3.8c's several broken rounds (reading the actual `@tanstack/table-core` source
       before writing code, not just its skill docs) got the underlying mechanism right on the
