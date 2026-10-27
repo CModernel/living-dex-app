@@ -1,5 +1,5 @@
 import { DEFAULT_LIST_FILTER, type ListFilter } from '@living-dex/business-logic'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useUserState } from '../state/UserStateContext'
 import { createList } from './useLists'
 
@@ -13,7 +13,10 @@ export function useListFilter() {
   const [state, setState] = useUserState()
 
   const activeList = state.activeListId ? state.lists[state.activeListId] : undefined
-  const filter = activeList?.filter ?? DEFAULT_LIST_FILTER
+  // Merged over the defaults: lists saved before a filter key existed (e.g. 3.8d's
+  // `hideInaccessible`) don't have it.
+  const storedFilter = activeList?.filter
+  const filter = useMemo(() => ({ ...DEFAULT_LIST_FILTER, ...storedFilter }), [storedFilter])
 
   const setFilterKey = useCallback(
     (key: keyof ListFilter, value: boolean) => {
@@ -32,6 +35,7 @@ export function useListFilter() {
   const toggleFinalStageOnly = useCallback(() => setFilterKey('finalStageOnly', !filter.finalStageOnly), [setFilterKey, filter.finalStageOnly])
   const toggleRegionalFormsOnly = useCallback(() => setFilterKey('regionalFormsOnly', !filter.regionalFormsOnly), [setFilterKey, filter.regionalFormsOnly])
   const toggleHideGenderVariants = useCallback(() => setFilterKey('hideGenderVariants', !filter.hideGenderVariants), [setFilterKey, filter.hideGenderVariants])
+  const toggleHideInaccessible = useCallback(() => setFilterKey('hideInaccessible', !filter.hideInaccessible), [setFilterKey, filter.hideInaccessible])
 
-  return { filter, toggleFinalStageOnly, toggleRegionalFormsOnly, toggleHideGenderVariants }
+  return { filter, toggleFinalStageOnly, toggleRegionalFormsOnly, toggleHideGenderVariants, toggleHideInaccessible }
 }

@@ -19,6 +19,7 @@ test('dex, box and slot start visible by default; every other hideable column st
     slot: true,
     generation: false,
     region: false,
+    availability: false,
     evolutionStage: false,
   })
 })

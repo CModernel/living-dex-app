@@ -64,11 +64,29 @@ test('hideGenderVariants drops gender variants', () => {
   assert.equal(filtered(makeEntry({ isGenderVariant: true })), false)
 })
 
+test('hideInaccessible drops entries obtainable in none of the selected games', () => {
+  const filter: ListFilter = { ...DEFAULT_LIST_FILTER, hideInaccessible: true }
+  const redOnly = makeEntry({ availability: { red: 'C', gold: 'Ev' } })
+  assert.equal(applyListFilter(alwaysTrue, filter, ['red', 'gold'])(redOnly), true)
+  assert.equal(applyListFilter(alwaysTrue, filter, ['gold', 'sword'])(redOnly), false)
+  assert.equal(applyListFilter(alwaysTrue, filter, [])(redOnly), false)
+  // Conditional counts as accessible.
+  assert.equal(applyListFilter(alwaysTrue, filter, ['gold'])(makeEntry({ availability: { gold: 'ET' } })), true)
+  // Off by default.
+  assert.equal(applyListFilter(alwaysTrue, DEFAULT_LIST_FILTER, [])(redOnly), true)
+})
+
+test('hideInaccessible never hides entries without availability data', () => {
+  const filter: ListFilter = { ...DEFAULT_LIST_FILTER, hideInaccessible: true }
+  assert.equal(applyListFilter(alwaysTrue, filter, ['red'])(makeEntry()), true)
+})
+
 test('toggles compose together (AND semantics)', () => {
   const filter: ListFilter = {
     finalStageOnly: true,
     regionalFormsOnly: true,
     hideGenderVariants: true,
+    hideInaccessible: false,
   }
   const filtered = applyListFilter(alwaysTrue, filter)
   // Passes all three.

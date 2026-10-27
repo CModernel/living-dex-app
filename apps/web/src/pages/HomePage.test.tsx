@@ -688,3 +688,76 @@ test('dragging a header reorders it without changing the sort (3.8b)', async () 
   ])
   expect(screen.getByRole('columnheader', { name: /^⠿Name/ })).not.toHaveAttribute('aria-sort')
 })
+
+// --- 3.8d: per-game availability ---
+
+// Alpha: obtainable in Red, conditional in Gold. Bravo: only an event code (unobtainable).
+// Charlie: no availability data at all (older dataset).
+const availabilityDataset = datasetOf([
+  { ...makeEntry('Alpha', '0001', 0), availability: { red: 'C', gold: 'ET' } },
+  { ...makeEntry('Bravo', '0002', 1), availability: { gold: 'Ev' } },
+  makeEntry('Charlie', '0003', 2),
+])
+
+function availabilityCell(name: string) {
+  // columns: Sprite, Name, Types, Dex, Box, Slot, Availability, Owned
+  return screen.getByText(name).closest('tr')!.querySelectorAll('td')[6]
+}
+
+async function renderWithAvailabilityColumn() {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => availabilityDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
+  fireEvent.click(screen.getByText('Columns'))
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Availability' }))
+  await waitFor(() => expect(screen.getByRole('columnheader', { name: /^⠿Availability/ })).toBeInTheDocument())
+}
+
+test('the Availability column counts selected games and lists them in a tooltip (3.8d)', async () => {
+  await renderWithAvailabilityColumn()
+
+  expect(availabilityCell('Alpha').textContent).toBe('2 / 41')
+  expect(availabilityCell('Alpha').querySelector('[title]')).toHaveAttribute('title', 'Red, Gold (conditional)')
+  expect(availabilityCell('Bravo').textContent).toBe('0 / 41')
+  expect(availabilityCell('Bravo').querySelector('[title]')).toHaveAttribute('title', 'Not obtainable in the selected games')
+  expect(availabilityCell('Charlie').textContent).toBe('—')
+})
+
+test('deselecting a game in Filters updates the counts, and the selection is persisted (3.8d)', async () => {
+  await renderWithAvailabilityColumn()
+
+  fireEvent.click(screen.getByText('Filters'))
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Red' }))
+
+  await waitFor(() => expect(availabilityCell('Alpha').textContent).toBe('1 / 40'))
+  await waitFor(() =>
+    expect(JSON.parse(window.localStorage.getItem('living-dex:user-state')!).preferences.excludedGameIds).toEqual(['red']),
+  )
+})
+
+test('Hide inaccessible drops Pokémon obtainable in none of the selected games, but not ones without data (3.8d)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => availabilityDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Bravo')).toBeInTheDocument())
+
+  fireEvent.click(screen.getByText('Filters'))
+  fireEvent.click(screen.getByRole('checkbox', { name: /hide inaccessible/i }))
+  await waitFor(() => expect(screen.queryByText('Bravo')).not.toBeInTheDocument())
+  expect(screen.getByText('Alpha')).toBeInTheDocument()
+  expect(screen.getByText('Charlie')).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'None' }))
+  await waitFor(() => expect(screen.queryByText('Alpha')).not.toBeInTheDocument())
+  expect(screen.getByText('Charlie')).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'All' }))
+  await waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
+})
+
+test('the Availability column sorts by count, ascending first (3.8d)', async () => {
+  await renderWithAvailabilityColumn()
+
+  const header = clickHeader('Availability')
+  await waitFor(() => expect(header).toHaveAttribute('aria-sort', 'ascending'))
+  expect(bodyRows().map((cells) => cells[1])).toEqual(['Charlie', 'Bravo', 'Alpha'])
+})

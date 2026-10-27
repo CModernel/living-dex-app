@@ -1,5 +1,8 @@
 import {
+  GAMES,
   applyListFilter,
+  availableGames,
+  getAvailabilityCategory,
   getPokeJungleSpriteUrl,
   getSpriteUrl,
   type PokemonEntry,
@@ -31,6 +34,7 @@ import { useColumnOrder } from '../hooks/useColumnOrder'
 import { useColumnSizing } from '../hooks/useColumnSizing'
 import { useColumnVisibility } from '../hooks/useColumnVisibility'
 import { useDataset } from '../hooks/useDataset'
+import { useGameSelection } from '../hooks/useGameSelection'
 import { useListFilter } from '../hooks/useListFilter'
 import { getColumnMinPx, getColumnWeight, resizeAdjacentPair } from '../lib/columnWeights'
 
@@ -51,8 +55,10 @@ const features = tableFeatures({
 })
 
 // `box`/`slot` are derived from the filtered, canonical-`sortIndex`-ordered list (see `entries`
-// below), never from the order the table currently displays.
-type TableEntry = PokemonEntry & { box: number; slot: number }
+// below), never from the order the table currently displays. `availableIn` is the selected games
+// (3.8d) where the entry is obtainable or conditional — null when the dataset has no availability
+// data for it — and `selectedGameCount` the denominator shown next to it.
+type TableEntry = PokemonEntry & { box: number; slot: number; availableIn: string[] | null; selectedGameCount: number }
 const BOX_SIZE = 30
 // A header press that moves less than this before release is a click (sort), not a reorder drag.
 const CLICK_MOVE_THRESHOLD_PX = 4
@@ -60,6 +66,23 @@ const columnHelper = createColumnHelper<typeof features, TableEntry>()
 
 // The hover tooltip keeps this same zoom ratio relative to the base size — bump SPRITE_SIZE
 // alone to resize both consistently.
+const GAME_NAMES: Record<string, string> = Object.fromEntries(GAMES.map((game) => [game.id, game.name]))
+
+function AvailabilityCell({ entry }: { entry: TableEntry }) {
+  if (entry.availableIn === null) return <span title="No availability data">—</span>
+  const title =
+    entry.availableIn.length === 0
+      ? 'Not obtainable in the selected games'
+      : entry.availableIn
+          .map((id) => `${GAME_NAMES[id] ?? id}${getAvailabilityCategory(entry, id) === 'conditional' ? ' (conditional)' : ''}`)
+          .join(', ')
+  return (
+    <span title={title}>
+      {entry.availableIn.length} / {entry.selectedGameCount}
+    </span>
+  )
+}
+
 const SPRITE_SIZE = 56
 const SPRITE_HOVER_ZOOM = 2
 
@@ -72,6 +95,7 @@ const COLUMN_CELL_CLASS: Record<string, string> = {
   box: 'text-left',
   slot: 'text-left',
   generation: 'text-center',
+  availability: 'text-center',
   region: 'capitalize',
   evolutionStage: 'capitalize',
 }
@@ -229,7 +253,9 @@ function HomePage() {
   const { columnVisibility, setColumnVisibility } = useColumnVisibility()
   const { columnOrder, setColumnOrder } = useColumnOrder()
   const { columnSizing, setColumnSizing } = useColumnSizing()
-  const { filter, toggleFinalStageOnly, toggleRegionalFormsOnly, toggleHideGenderVariants } = useListFilter()
+  const { filter, toggleFinalStageOnly, toggleRegionalFormsOnly, toggleHideGenderVariants, toggleHideInaccessible } =
+    useListFilter()
+  const { selectedGameIds, toggleGame, selectAllGames, selectNoGames } = useGameSelection()
   const [tierId, setTierId] = useState<TierId>('living-form')
   // Pointer-based column drag (not native HTML5 DnD — draggable/dragstart/drop on table cells is
   // a well-documented cross-browser reliability sink hole). `columnId`/`label` identify the
@@ -250,12 +276,18 @@ function HomePage() {
   const entries = useMemo(() => {
     if (!dataset) return []
     return Object.values(dataset.pokemon)
-      .filter(applyListFilter(TIERS[tierId].predicate, filter))
+      .filter(applyListFilter(TIERS[tierId].predicate, filter, selectedGameIds))
       .sort((a, b) => a.sortIndex - b.sortIndex)
       // Position in the canonical order, baked into each row's data before the table (and its
       // display sorting) ever sees it — so re-sorting can never change a Pokémon's Box/Slot.
-      .map((entry, index) => ({ ...entry, box: Math.floor(index / BOX_SIZE) + 1, slot: (index % BOX_SIZE) + 1 }))
-  }, [dataset, tierId, filter])
+      .map((entry, index) => ({
+        ...entry,
+        box: Math.floor(index / BOX_SIZE) + 1,
+        slot: (index % BOX_SIZE) + 1,
+        availableIn: entry.availability ? availableGames(entry, selectedGameIds) : null,
+        selectedGameCount: selectedGameIds.length,
+      }))
+  }, [dataset, tierId, filter, selectedGameIds])
   const ownedIds = useMemo(() => new Set(activeList?.ownedIds ?? []), [activeList])
 
   // Deliberately does NOT depend on ownedIds/toggleOwned — TableRow renders the "owned" cell
@@ -297,6 +329,14 @@ function HomePage() {
           id: 'region',
           header: 'Region',
           sortFn: sortFn_alphanumeric,
+        }),
+        // Sorts by how many selected games it's obtainable in; no data sorts below 0.
+        columnHelper.accessor((row) => row.availableIn?.length ?? -1, {
+          id: 'availability',
+          header: 'Availability',
+          sortFn: sortFn_basic,
+          sortDescFirst: false,
+          cell: (ctx) => <AvailabilityCell entry={ctx.row.original} />,
         }),
         columnHelper.accessor('evolutionStage', { header: 'Stage', enableSorting: false }),
         // Rendered directly in TableRow instead — this cell definition is never invoked, it
@@ -519,7 +559,14 @@ function HomePage() {
                     { id: 'finalStageOnly', label: 'Final stage only', checked: filter.finalStageOnly, toggle: toggleFinalStageOnly },
                     { id: 'regionalFormsOnly', label: 'Regional forms only', checked: filter.regionalFormsOnly, toggle: toggleRegionalFormsOnly },
                     { id: 'hideGenderVariants', label: 'Hide gender variants', checked: filter.hideGenderVariants, toggle: toggleHideGenderVariants },
+                    { id: 'hideInaccessible', label: 'Hide inaccessible', checked: filter.hideInaccessible, toggle: toggleHideInaccessible },
                   ]}
+                  games={{
+                    options: GAMES.map((game) => ({ ...game, selected: selectedGameIds.includes(game.id) })),
+                    toggle: toggleGame,
+                    selectAll: selectAllGames,
+                    selectNone: selectNoGames,
+                  }}
                 />
               </div>
             </div>

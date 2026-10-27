@@ -1127,7 +1127,7 @@ even if the `3.X` task order below does.
       tap-and-hold might not translate well to mobile, worth considering a dedicated
       reorder dialog (move columns up/down via buttons) instead of true drag gestures.
 
-- [ ] **3.8d Consume per-game availability data.** `living-dex-organizer`'s dataset now has a
+- [x] **3.8d Consume per-game availability data.** ✅ **Done 2026-10-27** `living-dex-organizer`'s dataset now has a
       sparse `availability: { [gameId]: rawCode }` field per entry (organizer TODO #31) — needs
       the `PokemonEntry` type declared in `packages/business-logic` (additive, doesn't break the
       existing `as PokemonDataset` cast) plus a way to decode `rawCode` on demand via
@@ -1140,6 +1140,19 @@ even if the `3.X` task order below does.
         matches should read (e.g. distinguish "fully native" vs. "event/trade/DLC-only" if that
         turns out to matter for the UI).
       - Persisted the same way as `visibleColumns`/3.5's preferences.
+      **Implemented (2026-10-27):**
+      - Decoder ported to `packages/business-logic/src/availability.ts` (legend, 41 `GAMES`,
+        `tokenizeAvailabilityCell` — never throws, unknown code = unobtainable).
+      - Hideable **Availability** column (hidden by default): `n / m` = selected games where it's
+        obtainable or conditional / selected games; tooltip lists them, conditional ones marked;
+        `—` for entries without data; sortable by count.
+      - **Filters** menu: "Hide inaccessible" (per-list, off by default; never hides entries without
+        data) + a Games section (All/None + 41 checkboxes). Selection is global, stored as
+        `preferences.excludedGameIds` so new games start selected.
+      - Old stored lists get missing filter keys from `DEFAULT_LIST_FILTER`; `reconcilePreferences`
+        inserts the new column for existing users.
+      - Verified: 44 business-logic + 88 web + 2 mobile tests, live in Brave against the real
+        dataset (e.g. Mew 3/41 all conditional; 6 Pokémon inaccessible in every game), clean Docker build.
 
 - [ ] **3.8e Visual treatment for "inaccessible" Pokémon.** Aesthetic follow-up to 3.8d, once
       the "obtainable only" game selection exists: when a Pokémon is inaccessible under the

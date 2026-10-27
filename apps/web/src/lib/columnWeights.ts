@@ -23,6 +23,7 @@ export const DEFAULT_COLUMN_WEIGHTS: Record<string, number> = {
   slot: 44,
   generation: 100,
   region: 100,
+  availability: 90,
   evolutionStage: 80,
   owned: 48,
 }

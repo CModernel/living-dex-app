@@ -20,7 +20,7 @@ test('a user-reordered legacy state keeps its order; new columns follow their de
     visibleColumns: [],
   })
   assert.deepEqual(result.columnOrder, [
-    'owned', 'dex', 'box', 'slot', 'name', 'sprite', 'types', 'generation', 'region', 'evolutionStage',
+    'owned', 'dex', 'box', 'slot', 'name', 'sprite', 'types', 'generation', 'region', 'availability', 'evolutionStage',
   ])
 })
 
@@ -34,8 +34,16 @@ test('a state that already knows the columns is left alone (a hidden Box stays h
 test('missing keys are filled from the defaults', () => {
   const result = reconcilePreferences({ visibleColumns: [], compactMode: false } as never)
   assert.deepEqual(result.columnSizing, {})
+  assert.deepEqual(result.excludedGameIds, [])
   assert.deepEqual(result.columnOrder, defaults.columnOrder)
   assert.deepEqual(result.visibleColumns, [])
+})
+
+test('a pre-3.8d state gets the Availability column inserted after region, hidden', () => {
+  const pre38d = defaults.columnOrder.filter((id) => id !== 'availability')
+  const result = reconcilePreferences({ ...defaults, columnOrder: pre38d, visibleColumns: ['dex'] })
+  assert.deepEqual(result.columnOrder, defaults.columnOrder)
+  assert.deepEqual(result.visibleColumns, ['dex'])
 })
 
 test('undefined preferences become the defaults', () => {

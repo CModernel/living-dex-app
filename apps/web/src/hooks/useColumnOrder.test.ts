@@ -25,6 +25,7 @@ describe('useColumnOrder', () => {
       'slot',
       'generation',
       'region',
+      'availability',
       'evolutionStage',
       'owned',
     ])
