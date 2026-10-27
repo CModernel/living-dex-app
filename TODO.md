@@ -634,7 +634,9 @@ even if the `3.X` task order below does.
       intro/welcome page. Sequenced and detailed individually once the table/lists/filtering
       core (3.2–3.7) is solid.
 
-- [ ] **3.8b `#17` Box/slot/page + column sorting.** User-specified behavior (2026-08-27):
+- [x] **3.8b `#17` Box/slot/page + column sorting.** ✅ **Done 2026-10-27 for Box + Slot + sorting only**
+      (see "Implemented" at the end of this item; Page, "Number" and Species are still open).
+      User-specified behavior (2026-08-27):
       - Box and Slot are shown **by default** once implemented; Page starts **hidden** (if it
       ends up getting added at all — not yet decided it's useful).
       - Box/Slot/Page must be derived from each tier's **canonical** order — `sortIndex` ascending
@@ -670,6 +672,25 @@ even if the `3.X` task order below does.
       - **Reconfirmed by the user (2026-09-17):** "permitir orden en las columnas que tengan
       sentido (nombre, numero, numero dex, etc)" — matches the Sorting proposal above exactly
       (Dex, Name, Generation, Region). No new scope, just re-prioritizing it.
+      - **Implemented (2026-10-27)** — scope agreed with the user: Box + Slot + sorting only.
+        - `box`/`slot` are attached to each entry in `HomePage.tsx`'s `entries` memo
+          (`floor(i/30)+1`, `i%30+1` over the filtered `sortIndex`-ordered list), so display
+          sorting can't touch them. Both columns are visible by default, not sortable.
+        - Sorting: `rowSortingFeature` + `createSortedRowModel()` in `tableFeatures`; explicit
+          `sortFn`s (alphanumeric for name/dex/region, basic for generation, `sortDescFirst:
+          false`); `enableSorting: false` on Stage/Box/Slot; `enableSortingRemoval: false` (always
+          asc ⇄ desc). Sort state is local and not persisted — opens as Dex ascending. The
+          `useTable` selector must include `sorting` or v9 never re-renders on a sort.
+        - Click a header to sort; a press that moves < 4px is a click, otherwise it's the 3.8c
+          reorder drag. `aria-sort` on the `<th>` + an `aria-hidden` ▲/▼.
+        - Existing users: stored state used to be taken as-is, so Box/Slot would have been hidden
+          and un-draggable. New `reconcilePreferences` (`packages/business-logic/src/preferences.ts`,
+          run in `getUserState`) fills missing keys and inserts any default column absent from the
+          stored `columnOrder` after its default predecessor, making it visible if it starts
+          visible — using `columnOrder` as the "columns this user has seen" marker, so a column the
+          user later hides stays hidden.
+        - Verified live in Brave with a fabricated legacy state; 82 web tests + 33 business-logic
+          tests, clean Docker build.
 
 - [x] **3.8f Resizable columns.** ✅ **Rewritten (2026-10-24)** — the old independent-pixel-width
       model (TanStack `columnSizingFeature`/`columnResizingFeature`) couldn't satisfy "resizable +
