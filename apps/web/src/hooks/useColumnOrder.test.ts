@@ -21,6 +21,8 @@ describe('useColumnOrder', () => {
       'name',
       'types',
       'dex',
+      'box',
+      'slot',
       'generation',
       'region',
       'evolutionStage',

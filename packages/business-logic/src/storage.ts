@@ -1,3 +1,4 @@
+import { reconcilePreferences } from './preferences.js'
 import { UserState, DEFAULT_USER_STATE } from './types.js'
 
 const STORAGE_KEY = 'living-dex:user-state'
@@ -20,7 +21,9 @@ export function createUserStateStorage(adapter: StorageAdapter): UserStateStorag
   async function getUserState(): Promise<UserState> {
     try {
       const stored = await adapter.getItem(STORAGE_KEY)
-      return stored ? JSON.parse(stored) : DEFAULT_USER_STATE
+      if (!stored) return DEFAULT_USER_STATE
+      const parsed = JSON.parse(stored) as UserState
+      return { ...parsed, preferences: reconcilePreferences(parsed.preferences) }
     } catch {
       return DEFAULT_USER_STATE
     }

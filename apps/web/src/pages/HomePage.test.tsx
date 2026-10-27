@@ -205,7 +205,7 @@ test('clicking the checkbox directly does not double-toggle via the row handler'
   })
 })
 
-test('Dex is visible by default; other optional columns start hidden', async () => {
+test('Dex, Box and Slot are visible by default; other optional columns start hidden', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
   renderHomePage()
 
@@ -363,25 +363,26 @@ test('dragging a column header (from anywhere on it) reorders the header row and
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
   const headerTextsBefore = screen.getAllByRole('columnheader').map((h) => h.textContent)
-  // Default visible order: Sprite, Name, Types, Dex, Owned (other hideable columns start
-  // hidden per HIDEABLE_COLUMN_IDS' default).
-  expect(headerTextsBefore).toEqual(['⠿Sprite', '⠿Name', '⠿Types', '⠿Dex', '⠿Owned'])
+  // Default visible order: Sprite, Name, Types, Dex, Box, Slot, Owned (other hideable columns
+  // start hidden per DEFAULT_USER_STATE's visibleColumns).
+  // Dex carries the default sort arrow (the table opens sorted by Dex ascending).
+  expect(headerTextsBefore).toEqual(['⠿Sprite', '⠿Name', '⠿Types', '⠿Dex▲', '⠿Box', '⠿Slot', '⠿Owned'])
 
   stubHeaderLayout()
 
   // Draggable from anywhere on the header, not just the grip icon.
   const nameHeader = screen.getByRole('columnheader', { name: '⠿Name' })
-  // Name is at index 1 (x range [100,200)); Owned is at index 4 (x range [400,500)).
+  // Name is at index 1 (x range [100,200)); Owned is at index 6 (x range [600,700)).
   fireEvent.pointerDown(nameHeader, { clientX: 150, clientY: 15 })
-  fireEvent.pointerMove(window, { clientX: 450, clientY: 15 })
-  fireEvent.pointerUp(window, { clientX: 450, clientY: 15 })
+  fireEvent.pointerMove(window, { clientX: 650, clientY: 15 })
+  fireEvent.pointerUp(window, { clientX: 650, clientY: 15 })
 
   // Dragging rightward (Name started left of Owned) inserts AFTER the target, not before — this
   // is what makes a one-step-right nudge onto an immediate neighbor a real move instead of a
   // no-op (inserting "before" an immediate right neighbor just undoes the removal). So Name ends
   // up last, after Owned.
   const headerTextsAfter = screen.getAllByRole('columnheader').map((h) => h.textContent)
-  expect(headerTextsAfter).toEqual(['⠿Sprite', '⠿Types', '⠿Dex', '⠿Owned', '⠿Name'])
+  expect(headerTextsAfter).toEqual(['⠿Sprite', '⠿Types', '⠿Dex▲', '⠿Box', '⠿Slot', '⠿Owned', '⠿Name'])
 
   // Body cells must reorder identically — otherwise header and data would desync.
   const bulbasaurRow = screen.getByText('Bulbasaur').closest('tr')
@@ -409,7 +410,7 @@ test('dragging a column onto its immediate right neighbor swaps them (3.8c — r
   fireEvent.pointerUp(window, { clientX: 250, clientY: 15 })
 
   const headerTextsAfter = screen.getAllByRole('columnheader').map((h) => h.textContent)
-  expect(headerTextsAfter).toEqual(['⠿Sprite', '⠿Types', '⠿Name', '⠿Dex', '⠿Owned'])
+  expect(headerTextsAfter).toEqual(['⠿Sprite', '⠿Types', '⠿Name', '⠿Dex▲', '⠿Box', '⠿Slot', '⠿Owned'])
 })
 
 test('dragging past the leftmost header (e.g. into the sidebar) clamps to the first column, not aborting the reorder (3.8c)', async () => {
@@ -429,7 +430,7 @@ test('dragging past the leftmost header (e.g. into the sidebar) clamps to the fi
 
   // Clamped to the nearest (leftmost, Sprite) column rather than finding no target and aborting.
   const headerTextsAfter = screen.getAllByRole('columnheader').map((h) => h.textContent)
-  expect(headerTextsAfter).toEqual(['⠿Types', '⠿Sprite', '⠿Name', '⠿Dex', '⠿Owned'])
+  expect(headerTextsAfter).toEqual(['⠿Types', '⠿Sprite', '⠿Name', '⠿Dex▲', '⠿Box', '⠿Slot', '⠿Owned'])
 })
 
 function stubTableWidth(width: number) {
@@ -456,7 +457,7 @@ function colPercents() {
 
 test('dragging a divider moves the boundary: left column grows, right shrinks, others untouched (3.8f)', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
-  stubTableWidth(516) // default weights sum to 516 here, so 1 weight = 1px
+  stubTableWidth(604) // default weights sum to 604 here, so 1 weight = 1px
   renderHomePage()
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
@@ -473,7 +474,7 @@ test('dragging a divider moves the boundary: left column grows, right shrinks, o
 
 test('the table always fills 100%: <col> widths sum to 100 and there is no filler cell (3.8f)', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
-  stubTableWidth(516)
+  stubTableWidth(604)
   renderHomePage()
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
@@ -502,23 +503,23 @@ test('the last visible column has no divider (3.8f)', async () => {
 
 test('a drag can\'t push either neighbour below the minimum width (3.8f)', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
-  stubTableWidth(516)
+  stubTableWidth(604)
   renderHomePage()
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
-  // Dex (56) | Owned (48): dragging far right can't take Owned below MIN_COLUMN_PX (24).
-  const handle = screen.getByTestId('resize-handle-dex')
+  // Slot (44) | Owned (48): dragging far right can't take Owned below MIN_COLUMN_PX (24).
+  const handle = screen.getByTestId('resize-handle-slot')
   fireEvent.pointerDown(handle, { clientX: 0, clientY: 0, button: 0 })
   fireEvent.pointerMove(handle, { clientX: 1000, clientY: 0 })
   fireEvent.pointerUp(handle, { clientX: 1000, clientY: 0 })
 
   await waitFor(() => expect(storedSizing().owned).toBe(24))
-  expect(storedSizing().dex).toBe(80)
+  expect(storedSizing().slot).toBe(68)
 })
 
 test('starting a resize does not start a column reorder (3.8f)', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
-  stubTableWidth(516)
+  stubTableWidth(604)
   renderHomePage()
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
@@ -531,14 +532,16 @@ test('starting a resize does not start a column reorder (3.8f)', async () => {
     '⠿Sprite',
     '⠿Name',
     '⠿Types',
-    '⠿Dex',
+    '⠿Dex▲',
+    '⠿Box',
+    '⠿Slot',
     '⠿Owned',
   ])
 })
 
 test('sprite can\'t be dragged below its larger minimum width (3.8f)', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
-  stubTableWidth(516)
+  stubTableWidth(604)
   renderHomePage()
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
@@ -550,4 +553,138 @@ test('sprite can\'t be dragged below its larger minimum width (3.8f)', async () 
 
   await waitFor(() => expect(storedSizing().sprite).toBe(48))
   expect(storedSizing().name).toBe(224)
+})
+
+// --- 3.8b: Box/Slot + column sorting ---
+
+function makeEntry(name: string, dex: string, sortIndex: number, generation = 1, region: string | null = null) {
+  const base = mockDataset.pokemon.bulbasaur
+  return { ...base, slug: name.toLowerCase(), name, dex, sortIndex, generation, region }
+}
+
+function datasetOf(entries: ReturnType<typeof makeEntry>[]): PokemonDataset {
+  return { ...mockDataset, count: entries.length, pokemon: Object.fromEntries(entries.map((e) => [e.slug, e])) }
+}
+
+// Canonical (sortIndex) order is Alpha, Bravo, Charlie; Dex order is the reverse.
+const sortableDataset = datasetOf([
+  makeEntry('Alpha', '0003', 0, 3, 'kanto'),
+  makeEntry('Bravo', '0002', 1, 1, 'johto'),
+  makeEntry('Charlie', '0001', 2, 2, 'hoenn'),
+])
+
+function bodyRows() {
+  return screen.getAllByRole('row').slice(1).map((row) => Array.from(row.querySelectorAll('td')).map((td) => td.textContent))
+}
+
+function clickHeader(name: string) {
+  const header = screen.getByRole('columnheader', { name: new RegExp(`^⠿${name}`) })
+  fireEvent.pointerDown(header, { clientX: 50, clientY: 15, button: 0 })
+  fireEvent.pointerUp(window, { clientX: 50, clientY: 15 })
+  return header
+}
+
+test('Box and Slot are positions in the canonical order, and roll over every 30 (3.8b)', async () => {
+  const many = datasetOf(Array.from({ length: 65 }, (_, i) => makeEntry(`Mon${String(i).padStart(2, '0')}`, String(i + 1).padStart(4, '0'), i)))
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => many }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Mon00')).toBeInTheDocument())
+
+  const cellsOf = (name: string) => Array.from(screen.getByText(name).closest('tr')!.querySelectorAll('td')).map((td) => td.textContent)
+  // columns: Sprite, Name, Types, Dex, Box, Slot, Owned
+  expect(cellsOf('Mon00').slice(4, 6)).toEqual(['1', '1'])
+  expect(cellsOf('Mon29').slice(4, 6)).toEqual(['1', '30'])
+  expect(cellsOf('Mon30').slice(4, 6)).toEqual(['2', '1'])
+  expect(cellsOf('Mon64').slice(4, 6)).toEqual(['3', '5'])
+})
+
+test('the table opens sorted by Dex ascending, but Box/Slot still follow the canonical order (3.8b)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => sortableDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
+
+  expect(screen.getByRole('columnheader', { name: /^⠿Dex/ })).toHaveAttribute('aria-sort', 'ascending')
+  // Displayed Charlie, Bravo, Alpha (dex order) — each keeps the slot from its canonical position.
+  expect(bodyRows().map((cells) => [cells[1], cells[4], cells[5]])).toEqual([
+    ['Charlie', '1', '3'],
+    ['Bravo', '1', '2'],
+    ['Alpha', '1', '1'],
+  ])
+})
+
+test('clicking a sortable header sorts ascending, then descending, and never moves Box/Slot (3.8b)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => sortableDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
+
+  const nameHeader = clickHeader('Name')
+  await waitFor(() => expect(nameHeader).toHaveAttribute('aria-sort', 'ascending'))
+  expect(bodyRows().map((cells) => cells[1])).toEqual(['Alpha', 'Bravo', 'Charlie'])
+  expect(screen.getByRole('columnheader', { name: /^⠿Dex/ })).not.toHaveAttribute('aria-sort')
+
+  clickHeader('Name')
+  await waitFor(() => expect(nameHeader).toHaveAttribute('aria-sort', 'descending'))
+  expect(bodyRows().map((cells) => [cells[1], cells[5]])).toEqual([
+    ['Charlie', '3'],
+    ['Bravo', '2'],
+    ['Alpha', '1'],
+  ])
+})
+
+test('Generation sorts ascending first, and Region sorts alphabetically (3.8b)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => sortableDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
+
+  fireEvent.click(screen.getByText('Columns'))
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Generation' }))
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Region' }))
+
+  clickHeader('Generation')
+  await waitFor(() => expect(screen.getByRole('columnheader', { name: /^⠿Generation/ })).toHaveAttribute('aria-sort', 'ascending'))
+  // generations: Alpha 3, Bravo 1, Charlie 2
+  expect(bodyRows().map((cells) => cells[1])).toEqual(['Bravo', 'Charlie', 'Alpha'])
+
+  clickHeader('Region')
+  await waitFor(() => expect(screen.getByRole('columnheader', { name: /^⠿Region/ })).toHaveAttribute('aria-sort', 'ascending'))
+  // regions: Alpha kanto, Bravo johto, Charlie hoenn
+  expect(bodyRows().map((cells) => cells[1])).toEqual(['Charlie', 'Bravo', 'Alpha'])
+})
+
+test('Box, Slot and Stage headers are not sortable (3.8b)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => sortableDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
+  fireEvent.click(screen.getByText('Columns'))
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Stage' }))
+
+  for (const name of ['Box', 'Slot', 'Stage']) {
+    const header = clickHeader(name)
+    expect(header).not.toHaveAttribute('aria-sort')
+    expect(header).not.toHaveAttribute('title')
+  }
+  expect(screen.getByRole('columnheader', { name: /^⠿Dex/ })).toHaveAttribute('aria-sort', 'ascending')
+})
+
+test('dragging a header reorders it without changing the sort (3.8b)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => sortableDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
+  stubHeaderLayout()
+
+  const nameHeader = screen.getByRole('columnheader', { name: /^⠿Name/ })
+  fireEvent.pointerDown(nameHeader, { clientX: 150, clientY: 15, button: 0 })
+  fireEvent.pointerMove(window, { clientX: 250, clientY: 15 })
+  fireEvent.pointerUp(window, { clientX: 250, clientY: 15 })
+
+  expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
+    '⠿Sprite',
+    '⠿Types',
+    '⠿Name',
+    '⠿Dex▲',
+    '⠿Box',
+    '⠿Slot',
+    '⠿Owned',
+  ])
+  expect(screen.getByRole('columnheader', { name: /^⠿Name/ })).not.toHaveAttribute('aria-sort')
 })

@@ -64,3 +64,25 @@ test('setUserState swallows adapter errors instead of throwing', async () => {
 
   await assert.doesNotReject(() => setUserState(DEFAULT_USER_STATE))
 })
+
+test('getUserState reconciles a legacy stored state with the current default columns', async () => {
+  const adapter = createMemoryAdapter()
+  await adapter.setItem(
+    'living-dex:user-state',
+    JSON.stringify({
+      lists: {},
+      activeListId: null,
+      preferences: {
+        visibleColumns: ['dex'],
+        columnOrder: ['sprite', 'name', 'types', 'dex', 'generation', 'region', 'evolutionStage', 'owned'],
+        compactMode: false,
+      },
+    }),
+  )
+  const { getUserState } = createUserStateStorage(adapter)
+  const loaded = await getUserState()
+
+  assert.deepEqual(loaded.preferences.columnOrder, DEFAULT_USER_STATE.preferences.columnOrder)
+  assert.deepEqual(loaded.preferences.visibleColumns, ['dex', 'box', 'slot'])
+  assert.deepEqual(loaded.preferences.columnSizing, {})
+})

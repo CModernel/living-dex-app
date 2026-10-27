@@ -11,9 +11,14 @@ import {
   columnOrderingFeature,
   columnVisibilityFeature,
   createColumnHelper,
+  createSortedRowModel,
+  rowSortingFeature,
+  sortFn_alphanumeric,
+  sortFn_basic,
   tableFeatures,
   type ColumnDef,
   type Row,
+  type SortingState,
 } from '@tanstack/table-core'
 import { memo, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
@@ -41,8 +46,17 @@ const TIER_LABELS: Record<TierId, string> = {
 const features = tableFeatures({
   columnVisibilityFeature,
   columnOrderingFeature,
+  rowSortingFeature,
+  sortedRowModel: createSortedRowModel(),
 })
-const columnHelper = createColumnHelper<typeof features, PokemonEntry>()
+
+// `box`/`slot` are derived from the filtered, canonical-`sortIndex`-ordered list (see `entries`
+// below), never from the order the table currently displays.
+type TableEntry = PokemonEntry & { box: number; slot: number }
+const BOX_SIZE = 30
+// A header press that moves less than this before release is a click (sort), not a reorder drag.
+const CLICK_MOVE_THRESHOLD_PX = 4
+const columnHelper = createColumnHelper<typeof features, TableEntry>()
 
 // The hover tooltip keeps this same zoom ratio relative to the base size — bump SPRITE_SIZE
 // alone to resize both consistently.
@@ -55,6 +69,8 @@ const SPRITE_HOVER_ZOOM = 2
 // `<td>` pull from the same source and can't drift apart.
 const COLUMN_CELL_CLASS: Record<string, string> = {
   dex: 'text-left',
+  box: 'text-left',
+  slot: 'text-left',
   generation: 'text-center',
   region: 'capitalize',
   evolutionStage: 'capitalize',
@@ -166,7 +182,7 @@ const TableRow = memo(function TableRow({
   owned,
   onToggle,
 }: {
-  row: Row<typeof features, PokemonEntry>
+  row: Row<typeof features, TableEntry>
   owned: boolean
   onToggle: (slug: string) => void
   // Unread — `row.getVisibleCells()` already reflects the current visibility/order. Passed only
@@ -226,6 +242,8 @@ function HomePage() {
   const previewPosRef = useRef({ x: 0, y: 0 })
   const headerRefs = useRef<Record<string, HTMLTableCellElement | null>>({})
   const tableRef = useRef<HTMLTableElement>(null)
+  // Not persisted: the spec is that the table always opens sorted by Dex ascending.
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'dex', desc: false }])
   const [resizingColumnId, setResizingColumnId] = useState<string | null>(null)
 
   const dataset = result.loading || result.error ? null : result.dataset
@@ -234,6 +252,9 @@ function HomePage() {
     return Object.values(dataset.pokemon)
       .filter(applyListFilter(TIERS[tierId].predicate, filter))
       .sort((a, b) => a.sortIndex - b.sortIndex)
+      // Position in the canonical order, baked into each row's data before the table (and its
+      // display sorting) ever sees it — so re-sorting can never change a Pokémon's Box/Slot.
+      .map((entry, index) => ({ ...entry, box: Math.floor(index / BOX_SIZE) + 1, slot: (index % BOX_SIZE) + 1 }))
   }, [dataset, tierId, filter])
   const ownedIds = useMemo(() => new Set(activeList?.ownedIds ?? []), [activeList])
 
@@ -254,7 +275,7 @@ function HomePage() {
           enableHiding: false,
           cell: (ctx) => (dataset ? <Sprite dataset={dataset} entry={ctx.row.original} /> : null),
         }),
-        columnHelper.accessor('name', { header: 'Name', enableHiding: false }),
+        columnHelper.accessor('name', { header: 'Name', enableHiding: false, sortFn: sortFn_alphanumeric }),
         columnHelper.display({
           id: 'types',
           header: 'Types',
@@ -267,13 +288,17 @@ function HomePage() {
             </div>
           ),
         }),
-        columnHelper.accessor('dex', { header: 'Dex' }),
-        columnHelper.accessor('generation', { header: 'Generation' }),
+        columnHelper.accessor('dex', { header: 'Dex', sortFn: sortFn_alphanumeric }),
+        columnHelper.accessor('box', { header: 'Box', enableSorting: false }),
+        columnHelper.accessor('slot', { header: 'Slot', enableSorting: false }),
+        // Numbers default to descending-first; ascending matches how every other column starts.
+        columnHelper.accessor('generation', { header: 'Generation', sortFn: sortFn_basic, sortDescFirst: false }),
         columnHelper.accessor((row) => row.region ?? '—', {
           id: 'region',
           header: 'Region',
+          sortFn: sortFn_alphanumeric,
         }),
-        columnHelper.accessor('evolutionStage', { header: 'Stage' }),
+        columnHelper.accessor('evolutionStage', { header: 'Stage', enableSorting: false }),
         // Rendered directly in TableRow instead — this cell definition is never invoked, it
         // only exists so the column shows up in the header row and the visibility menu.
         columnHelper.display({
@@ -286,7 +311,7 @@ function HomePage() {
         // producer and consumer position), so a heterogeneous array (string/number/unknown value
         // columns mixed together) can't structurally satisfy ColumnDef<Features, Data, unknown>[]
         // even though it's fine at runtime — a standard, safe cast for this known TS limitation.
-      ] as ColumnDef<typeof features, PokemonEntry, any>[],
+      ] as ColumnDef<typeof features, TableEntry, any>[],
     [dataset],
   )
 
@@ -298,11 +323,15 @@ function HomePage() {
       features,
       columns,
       data: entries,
-      state: { columnVisibility, columnOrder },
+      state: { columnVisibility, columnOrder, sorting },
       onColumnVisibilityChange: setColumnVisibility,
       onColumnOrderChange: setColumnOrder,
+      onSortingChange: setSorting,
+      // Always exactly one sorted column (toggle is asc <-> desc), never an "unsorted" state.
+      enableSortingRemoval: false,
     },
-    (state) => ({ columnVisibility: state.columnVisibility, columnOrder: state.columnOrder }),
+    // v9 only re-renders for the state slices selected here — `sorting` must be one of them.
+    (state) => ({ columnVisibility: state.columnVisibility, columnOrder: state.columnOrder, sorting: state.sorting }),
   )
 
   function updatePreviewPosition(x: number, y: number) {
@@ -354,8 +383,16 @@ function HomePage() {
       }
     }
 
-    function endDrag(finalClientX: number | null) {
-      if (finalClientX !== null) {
+    function endDrag(finalClientX: number | null, finalClientY: number | null = null) {
+      const moved =
+        finalClientX === null || finalClientY === null
+          ? true
+          : Math.hypot(finalClientX - e.clientX, finalClientY - e.clientY) >= CLICK_MOVE_THRESHOLD_PX
+      const column = table.getColumn(columnId)
+      if (!moved && column?.getCanSort()) {
+        // A press-and-release without moving is a click, not a reorder drag.
+        column.toggleSorting()
+      } else if (finalClientX !== null) {
         const overId = findNearestColumn(rects, finalClientX)
         if (overId) setColumnOrder((current) => reorderColumnIds(current, columnId, overId))
       }
@@ -366,7 +403,7 @@ function HomePage() {
     }
 
     window.addEventListener('pointermove', onPointerMove, { signal: controller.signal })
-    window.addEventListener('pointerup', (upEvent) => endDrag(upEvent.clientX), { signal: controller.signal })
+    window.addEventListener('pointerup', (upEvent) => endDrag(upEvent.clientX, upEvent.clientY), { signal: controller.signal })
     // A cancelled gesture (e.g. the browser taking over for a touch scroll) still needs to clear
     // drag state and detach the listeners — without this they'd stay attached (and `endDrag`
     // would never run) for any drag that doesn't end in a plain pointerup.
@@ -520,6 +557,14 @@ function HomePage() {
                             // Draggable from anywhere on the header, not just the grip icon — the
                             // icon is a visual affordance, not the only hit target.
                             onPointerDown={(e) => handleHeaderPointerDown(header.column.id, headerLabel, e)}
+                            aria-sort={
+                              header.column.getIsSorted() === 'asc'
+                                ? 'ascending'
+                                : header.column.getIsSorted() === 'desc'
+                                  ? 'descending'
+                                  : undefined
+                            }
+                            title={header.column.getCanSort() ? 'Click to sort' : undefined}
                             className={`relative cursor-grab overflow-hidden p-2.5 text-xs font-semibold tracking-wide text-muted uppercase select-none active:cursor-grabbing ${
                               isDragging ? 'opacity-30' : ''
                             } ${isDropTarget ? 'bg-brand/10' : ''} ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}
@@ -531,6 +576,13 @@ function HomePage() {
                               <span className="truncate">
                                 {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                               </span>
+                              {/* `aria-hidden` — `aria-sort` on the `<th>` already conveys this, and a
+                                  visible-text arrow would change the header's accessible name. */}
+                              {header.column.getIsSorted() && (
+                                <span aria-hidden="true" className="shrink-0 text-[10px] text-brand">
+                                  {header.column.getIsSorted() === 'asc' ? '▲' : '▼'}
+                                </span>
+                              )}
                             </div>
                             {/* The divider between this column and the next visible one — the last column
                                 has none, since the table's right edge isn't a boundary between two

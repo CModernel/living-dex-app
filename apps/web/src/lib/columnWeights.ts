@@ -19,6 +19,8 @@ export const DEFAULT_COLUMN_WEIGHTS: Record<string, number> = {
   name: 200,
   types: 140,
   dex: 56,
+  box: 44,
+  slot: 44,
   generation: 100,
   region: 100,
   evolutionStage: 80,

@@ -35,13 +35,13 @@ export const DEFAULT_USER_STATE: UserState = {
     // Only names the HIDEABLE columns that start visible (`sprite`/`name`/`types`/`owned`
     // are always shown regardless of this list — see HIDEABLE_COLUMN_IDS in
     // apps/web/src/hooks/useColumnVisibility.ts). `dex` starts visible per user request
-    // (2026-08-28) — every other hideable column still starts hidden.
-    visibleColumns: ['dex'],
+    // (2026-08-28), `box`/`slot` per the 3.8b spec — every other hideable column starts hidden.
+    visibleColumns: ['dex', 'box', 'slot'],
     // Deliberately NOT `[]` even though TanStack's columnOrderingFeature treats an empty array
     // as "natural definition order" for rendering purposes — HomePage's own `reorderColumns`
     // logic reads and rewrites this array directly (so a hidden column's position is preserved
     // across a drag), and needs real ids to compute indices against, not an empty list.
-    columnOrder: ['sprite', 'name', 'types', 'dex', 'generation', 'region', 'evolutionStage', 'owned'],
+    columnOrder: ['sprite', 'name', 'types', 'dex', 'box', 'slot', 'generation', 'region', 'evolutionStage', 'owned'],
     // Relative column weights (not pixels), keyed by column id. Empty is safe: a missing entry
     // falls back to DEFAULT_COLUMN_WEIGHTS in apps/web/src/lib/columnWeights.ts.
     columnSizing: {},
