@@ -1154,11 +1154,17 @@ even if the `3.X` task order below does.
       - Verified: 44 business-logic + 88 web + 2 mobile tests, live in Brave against the real
         dataset (e.g. Mew 3/41 all conditional; 6 Pokémon inaccessible in every game), clean Docker build.
 
-- [ ] **3.8e Visual treatment for "inaccessible" Pokémon.** Aesthetic follow-up to 3.8d, once
+- [x] **3.8e Visual treatment for "inaccessible" Pokémon.** ✅ **Done 2026-10-27** Aesthetic follow-up to 3.8d, once
       the "obtainable only" game selection exists: when a Pokémon is inaccessible under the
       current selection, give its row/sprite a distinct desaturated/grayed-out background (paler,
       less colorful) instead of just relying on the filter — a way to see it in-list rather than
       only hiding it.
+      **Implemented (2026-10-27):** rows that are obtainable in none of the selected games get
+      muted text and grayscale sprites (`text-muted [&_img]:grayscale`). Entries without
+      availability data are never muted. Owned rows keep their brand highlight (not muted),
+      so an owned-but-inaccessible Pokémon shows the owned state only.
+      Verified: 90 web tests (incl. muted/unmuted cases), live in Brave on the real dataset
+      (6 Magearna/Zarude/Gimmighoul rows muted), clean Docker build.
 
 ### Data & Mobile
 - [ ] **3.9 #15 — Export/import.**

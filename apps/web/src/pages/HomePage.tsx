@@ -195,6 +195,11 @@ function findNearestColumn(rects: { id: string; left: number; right: number }[],
   return closestId
 }
 
+// Only entries WITH availability data can be inaccessible; missing data isn't "unobtainable".
+function isInaccessible(entry: TableEntry): boolean {
+  return entry.availableIn !== null && entry.availableIn.length === 0
+}
+
 // Memoized and given only stable-ish props (row from TanStack's cached row model, plus a plain
 // `owned` boolean) so toggling ONE row doesn't force React to re-render all ~1387 rows' cells
 // (sprites, type badges, etc.) — before this, a single click took 100-270ms because the whole
@@ -219,7 +224,9 @@ const TableRow = memo(function TableRow({
       onClick={() => onToggle(row.original.slug)}
       // No hover tint for an already-owned row — it would sit on top of and wash out the
       // owned highlight, hiding the very state the highlight exists to show.
-      className={`cursor-pointer border-b border-border last:border-b-0 ${owned ? 'bg-brand/15' : 'hover:bg-border/20'}`}
+      // 3.8e: inaccessible (obtainable in none of the selected games) rows are muted and their
+      // sprites desaturated, so they stay in the list but read as "not for you" at a glance.
+      className={`cursor-pointer border-b border-border last:border-b-0 ${owned ? 'bg-brand/15' : 'hover:bg-border/20'} ${isInaccessible(row.original) ? 'text-muted [&_img]:grayscale' : ''}`}
     >
       {row.getVisibleCells().map((cell) =>
         cell.column.id === 'owned' ? (

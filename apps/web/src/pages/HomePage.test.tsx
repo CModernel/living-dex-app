@@ -761,3 +761,27 @@ test('the Availability column sorts by count, ascending first (3.8d)', async () 
   await waitFor(() => expect(header).toHaveAttribute('aria-sort', 'ascending'))
   expect(bodyRows().map((cells) => cells[1])).toEqual(['Charlie', 'Bravo', 'Alpha'])
 })
+
+// --- 3.8e: inaccessible rows are visually muted ---
+
+test('rows obtainable in none of the selected games are muted; rows without data or with any game are not (3.8e)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => availabilityDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Bravo')).toBeInTheDocument())
+
+  // Bravo: only an event code → inaccessible. Alpha: obtainable in Red. Charlie: no data.
+  expect(screen.getByText('Bravo').closest('tr')).toHaveClass('text-muted')
+  expect(screen.getByText('Alpha').closest('tr')).not.toHaveClass('text-muted')
+  expect(screen.getByText('Charlie').closest('tr')).not.toHaveClass('text-muted')
+})
+
+test('deselecting every game mutes all rows that have availability data (3.8e)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => availabilityDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
+
+  fireEvent.click(screen.getByText('Filters'))
+  fireEvent.click(screen.getByRole('button', { name: 'None' }))
+  await waitFor(() => expect(screen.getByText('Alpha').closest('tr')).toHaveClass('text-muted'))
+  expect(screen.getByText('Charlie').closest('tr')).not.toHaveClass('text-muted')
+})
