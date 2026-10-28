@@ -3,6 +3,7 @@ import {
   applyListFilter,
   availableGames,
   getAvailabilityCategory,
+  getOwnedGames,
   getPokeJungleSpriteUrl,
   getSpriteUrl,
   type PokemonEntry,
@@ -23,10 +24,20 @@ import {
   type Row,
   type SortingState,
 } from '@tanstack/table-core'
-import { memo, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  createContext,
+  memo,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { createPortal } from 'react-dom'
 import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
 import FilterMenu from '../components/FilterMenu'
+import GamePickerPopover, { type GamePickerOption } from '../components/GamePickerPopover'
 import ListSwitcher from '../components/ListSwitcher'
 import TypeBadge from '../components/TypeBadge'
 import { useActiveList } from '../hooks/useActiveList'
@@ -64,11 +75,16 @@ const BOX_SIZE = 30
 const CLICK_MOVE_THRESHOLD_PX = 4
 const columnHelper = createColumnHelper<typeof features, TableEntry>()
 
-// The hover tooltip keeps this same zoom ratio relative to the base size — bump SPRITE_SIZE
-// alone to resize both consistently.
 const GAME_NAMES: Record<string, string> = Object.fromEntries(GAMES.map((game) => [game.id, game.name]))
 
+// Opens (or, from the same trigger, closes) the 3.7b "obtained from" picker for an entry. Passed
+// through context rather than props so the cells inside the stable `columns` memo and the memoized
+// TableRow can reach it without depending on any state. The value never changes identity.
+const GamePickerContext = createContext<(slug: string, anchor: HTMLElement) => void>(() => {})
+
+// Tap/click opens the game picker — the hover `title` is a desktop extra, since touch has no hover.
 function AvailabilityCell({ entry }: { entry: TableEntry }) {
+  const openGamePicker = useContext(GamePickerContext)
   if (entry.availableIn === null) return <span title="No availability data">—</span>
   const title =
     entry.availableIn.length === 0
@@ -77,12 +93,23 @@ function AvailabilityCell({ entry }: { entry: TableEntry }) {
           .map((id) => `${GAME_NAMES[id] ?? id}${getAvailabilityCategory(entry, id) === 'conditional' ? ' (conditional)' : ''}`)
           .join(', ')
   return (
-    <span title={title}>
+    <button
+      type="button"
+      title={title}
+      aria-label={`Availability of ${entry.name}: ${entry.availableIn.length} of ${entry.selectedGameCount} games`}
+      onClick={(e) => {
+        e.stopPropagation()
+        openGamePicker(entry.slug, e.currentTarget)
+      }}
+      className="cursor-pointer rounded px-1 underline decoration-dotted underline-offset-2 hover:bg-border/40"
+    >
       {entry.availableIn.length} / {entry.selectedGameCount}
-    </span>
+    </button>
   )
 }
 
+// The hover tooltip keeps this same zoom ratio relative to the base size — bump SPRITE_SIZE
+// alone to resize both consistently.
 const SPRITE_SIZE = 56
 const SPRITE_HOVER_ZOOM = 2
 
@@ -195,6 +222,19 @@ function findNearestColumn(rects: { id: string; left: number; right: number }[],
   return closestId
 }
 
+// A small handheld-console glyph for the "obtained from" button. currentColor, so it follows the
+// muted/brand text color of its button.
+function GameIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <rect x="3.5" y="1.5" width="9" height="13" rx="1.5" />
+      <rect x="5.5" y="3.5" width="5" height="4" rx="0.5" />
+      <path d="M6 10.5h2M7 9.5v2" strokeLinecap="round" />
+      <circle cx="10" cy="10.5" r="0.75" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 // Only entries WITH availability data can be inaccessible; missing data isn't "unobtainable".
 function isInaccessible(entry: TableEntry): boolean {
   return entry.availableIn !== null && entry.availableIn.length === 0
@@ -209,16 +249,24 @@ function isInaccessible(entry: TableEntry): boolean {
 const TableRow = memo(function TableRow({
   row,
   owned,
+  ownedGames,
+  pickerOpen,
   onToggle,
 }: {
   row: Row<typeof features, TableEntry>
   owned: boolean
+  // 3.7b: games this entry is tagged as obtained from. Same array identity until this entry's tags
+  // change (see owned.ts), so tagging one row doesn't re-render the others.
+  ownedGames: readonly string[]
+  // Whether the game picker is currently open from this row's button (for aria-expanded).
+  pickerOpen: boolean
   onToggle: (slug: string) => void
   // Unread — `row.getVisibleCells()` already reflects the current visibility/order. Passed only
   // so its identity change makes `memo` re-render the row after a column show/hide/reorder, since
   // `row`'s own reference doesn't change in either case.
   columnsKey: string
 }) {
+  const openGamePicker = useContext(GamePickerContext)
   return (
     <tr
       onClick={() => onToggle(row.original.slug)}
@@ -230,15 +278,39 @@ const TableRow = memo(function TableRow({
     >
       {row.getVisibleCells().map((cell) =>
         cell.column.id === 'owned' ? (
-          <td key={cell.id} className="p-2.5 text-center">
-            <input
-              type="checkbox"
-              checked={owned}
-              onChange={() => onToggle(row.original.slug)}
-              onClick={(e) => e.stopPropagation()}
-              aria-label={`Mark ${row.original.name} as owned`}
-              className="cursor-pointer"
-            />
+          <td key={cell.id} className="overflow-hidden p-2.5">
+            <div className="flex items-center justify-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={owned}
+                onChange={() => onToggle(row.original.slug)}
+                onClick={(e) => e.stopPropagation()}
+                aria-label={`Mark ${row.original.name} as owned`}
+                className="cursor-pointer"
+              />
+              {/* Owned + which game(s) it came from (3.7b) — the row click above is "owned, no game". */}
+              <button
+                type="button"
+                aria-label={`Obtained from games for ${row.original.name}`}
+                aria-haspopup="dialog"
+                aria-expanded={pickerOpen}
+                title={
+                  ownedGames.length > 0
+                    ? `Obtained from: ${ownedGames.map((id) => GAME_NAMES[id] ?? id).join(', ')}`
+                    : 'Pick the game(s) it was obtained from'
+                }
+                onClick={(e) => {
+                  e.stopPropagation()
+                  openGamePicker(row.original.slug, e.currentTarget)
+                }}
+                className={`flex cursor-pointer items-center gap-0.5 rounded px-1 py-0.5 text-xs hover:bg-border/40 ${
+                  ownedGames.length > 0 ? 'text-brand' : 'text-muted'
+                }`}
+              >
+                <GameIcon />
+                {ownedGames.length > 0 && <span>{ownedGames.length}</span>}
+              </button>
+            </div>
           </td>
         ) : (
           <td key={cell.id} className={`overflow-hidden p-2.5 ${COLUMN_CELL_CLASS[cell.column.id] ?? ''}`}>
@@ -256,7 +328,7 @@ const TableRow = memo(function TableRow({
 
 function HomePage() {
   const result = useDataset()
-  const { activeList, toggleOwned } = useActiveList()
+  const { activeList, toggleOwned, toggleOwnedGame } = useActiveList()
   const { columnVisibility, setColumnVisibility } = useColumnVisibility()
   const { columnOrder, setColumnOrder } = useColumnOrder()
   const { columnSizing, setColumnSizing } = useColumnSizing()
@@ -296,6 +368,36 @@ function HomePage() {
       }))
   }, [dataset, tierId, filter, selectedGameIds])
   const ownedIds = useMemo(() => new Set(activeList?.ownedIds ?? []), [activeList])
+  const entriesBySlug = useMemo(() => new Map(entries.map((entry) => [entry.slug, entry])), [entries])
+
+  // 3.7b "obtained from" picker: which entry it's open for, and the element it's anchored to.
+  const [picker, setPicker] = useState<{ slug: string; anchor: HTMLElement } | null>(null)
+  const toggleGamePicker = useCallback(
+    (slug: string, anchor: HTMLElement) => setPicker((prev) => (prev?.anchor === anchor ? null : { slug, anchor })),
+    [],
+  )
+  const closeGamePicker = useCallback(() => setPicker(null), [])
+  // Undefined (so nothing renders) if its entry was filtered out while open. Any other way of
+  // changing the table (hiding a column, switching list/tier) starts with a tap outside the
+  // popover, which already closes it.
+  const pickerEntry = picker ? entriesBySlug.get(picker.slug) : undefined
+  const pickerOptions = useMemo((): GamePickerOption[] => {
+    if (!pickerEntry) return []
+    const tagged = getOwnedGames(activeList, pickerEntry.slug)
+    const accessible = new Set(pickerEntry.availableIn ?? [])
+    // Only accessible games are offered, plus any already-tagged game that no longer is (e.g. it
+    // was deselected in Filters) — tags are a historical record, kept until unticked here.
+    return GAMES.filter((game) => accessible.has(game.id) || tagged.includes(game.id)).map((game) => ({
+      id: game.id,
+      name: game.name,
+      note: !accessible.has(game.id)
+        ? 'not in selection'
+        : getAvailabilityCategory(pickerEntry, game.id) === 'conditional'
+          ? 'conditional'
+          : undefined,
+      checked: tagged.includes(game.id),
+    }))
+  }, [pickerEntry, activeList])
 
   // Deliberately does NOT depend on ownedIds/toggleOwned — TableRow renders the "owned" cell
   // itself from props instead of through this column's cell definition. Keeping this stable
@@ -670,21 +772,35 @@ function HomePage() {
                   ))}
                 </thead>
                 <tbody>
-                  {table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      row={row}
-                      owned={ownedIds.has(row.original.slug)}
-                      onToggle={toggleOwned}
-                      columnsKey={columnsKey}
-                    />
-                  ))}
+                  <GamePickerContext.Provider value={toggleGamePicker}>
+                    {table.getRowModel().rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        row={row}
+                        owned={ownedIds.has(row.original.slug)}
+                        ownedGames={getOwnedGames(activeList, row.original.slug)}
+                        pickerOpen={picker?.slug === row.original.slug}
+                        onToggle={toggleOwned}
+                        columnsKey={columnsKey}
+                      />
+                    ))}
+                  </GamePickerContext.Provider>
                 </tbody>
               </table>
             </div>
           </>
         )}
       </div>
+      {picker && pickerEntry && (
+        <GamePickerPopover
+          anchor={picker.anchor}
+          title={`Obtained from — ${pickerEntry.name}`}
+          options={pickerOptions}
+          emptyMessage={pickerEntry.availableIn === null ? 'No availability data' : 'Not obtainable in the selected games'}
+          onToggle={(gameId) => toggleOwnedGame(pickerEntry.slug, gameId)}
+          onClose={closeGamePicker}
+        />
+      )}
       {drag &&
         createPortal(
           <div

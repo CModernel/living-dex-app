@@ -1,5 +1,5 @@
 import { clearDatasetCache, type PokemonDataset } from '@living-dex/business-logic'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { UserStateProvider } from '../state/UserStateContext'
 import HomePage from './HomePage'
@@ -457,7 +457,7 @@ function colPercents() {
 
 test('dragging a divider moves the boundary: left column grows, right shrinks, others untouched (3.8f)', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
-  stubTableWidth(604) // default weights sum to 604 here, so 1 weight = 1px
+  stubTableWidth(632) // default weights sum to 632 here, so 1 weight = 1px
   renderHomePage()
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
@@ -474,7 +474,7 @@ test('dragging a divider moves the boundary: left column grows, right shrinks, o
 
 test('the table always fills 100%: <col> widths sum to 100 and there is no filler cell (3.8f)', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
-  stubTableWidth(604)
+  stubTableWidth(632)
   renderHomePage()
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
@@ -503,23 +503,23 @@ test('the last visible column has no divider (3.8f)', async () => {
 
 test('a drag can\'t push either neighbour below the minimum width (3.8f)', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
-  stubTableWidth(604)
+  stubTableWidth(632)
   renderHomePage()
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
-  // Slot (44) | Owned (48): dragging far right can't take Owned below MIN_COLUMN_PX (24).
+  // Slot (44) | Owned (76): dragging far right can't take Owned below MIN_COLUMN_PX (24).
   const handle = screen.getByTestId('resize-handle-slot')
   fireEvent.pointerDown(handle, { clientX: 0, clientY: 0, button: 0 })
   fireEvent.pointerMove(handle, { clientX: 1000, clientY: 0 })
   fireEvent.pointerUp(handle, { clientX: 1000, clientY: 0 })
 
   await waitFor(() => expect(storedSizing().owned).toBe(24))
-  expect(storedSizing().slot).toBe(68)
+  expect(storedSizing().slot).toBe(96)
 })
 
 test('starting a resize does not start a column reorder (3.8f)', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
-  stubTableWidth(604)
+  stubTableWidth(632)
   renderHomePage()
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
@@ -541,7 +541,7 @@ test('starting a resize does not start a column reorder (3.8f)', async () => {
 
 test('sprite can\'t be dragged below its larger minimum width (3.8f)', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
-  stubTableWidth(604)
+  stubTableWidth(632)
   renderHomePage()
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
@@ -784,4 +784,123 @@ test('deselecting every game mutes all rows that have availability data (3.8e)',
   fireEvent.click(screen.getByRole('button', { name: 'None' }))
   await waitFor(() => expect(screen.getByText('Alpha').closest('tr')).toHaveClass('text-muted'))
   expect(screen.getByText('Charlie').closest('tr')).not.toHaveClass('text-muted')
+})
+
+// --- 3.7b: "obtained from" game tags ---
+
+function gamesButton(name: string) {
+  return screen.getByRole('button', { name: `Obtained from games for ${name}` })
+}
+
+function ownedCheckbox(name: string) {
+  return screen.getByRole('checkbox', { name: `Mark ${name} as owned` })
+}
+
+async function openGamePicker(name: string) {
+  fireEvent.click(gamesButton(name))
+  return within(await screen.findByRole('dialog', { name: `Obtained from — ${name}` }))
+}
+
+async function renderAvailabilityDataset() {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => availabilityDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
+}
+
+function storedActiveList() {
+  const state = JSON.parse(window.localStorage.getItem('living-dex:user-state')!)
+  return state.lists[state.activeListId]
+}
+
+test('the games button opens a picker with only the accessible games, without toggling the row (3.7b)', async () => {
+  await renderAvailabilityDataset()
+
+  const picker = await openGamePicker('Alpha')
+  expect(picker.getAllByRole('checkbox').map((cb) => cb.closest('label')!.textContent)).toEqual(['Red', 'Gold (conditional)'])
+  expect(gamesButton('Alpha')).toHaveAttribute('aria-expanded', 'true')
+  expect(ownedCheckbox('Alpha')).not.toBeChecked()
+})
+
+test('ticking a game owns the Pokémon; unticking it keeps it owned (rules 2, 3, 5, 6 — 3.7b)', async () => {
+  await renderAvailabilityDataset()
+
+  const picker = await openGamePicker('Alpha')
+  fireEvent.click(picker.getByRole('checkbox', { name: 'Red' }))
+  await waitFor(() => expect(ownedCheckbox('Alpha')).toBeChecked())
+  expect(picker.getByRole('checkbox', { name: 'Red' })).toBeChecked()
+  expect(gamesButton('Alpha').textContent).toBe('1')
+  await waitFor(() => expect(storedActiveList().ownedGames).toEqual({ alpha: ['red'] }))
+
+  fireEvent.click(picker.getByRole('checkbox', { name: 'Red' }))
+  await waitFor(() => expect(gamesButton('Alpha').textContent).toBe(''))
+  expect(ownedCheckbox('Alpha')).toBeChecked()
+})
+
+test('clicking an owned row unowns it and clears its game tags (rule 4 — 3.7b)', async () => {
+  await renderAvailabilityDataset()
+
+  const picker = await openGamePicker('Alpha')
+  fireEvent.click(picker.getByRole('checkbox', { name: 'Gold (conditional)' }))
+  await waitFor(() => expect(ownedCheckbox('Alpha')).toBeChecked())
+  fireEvent.keyDown(document, { key: 'Escape' })
+
+  fireEvent.click(screen.getByText('Alpha'))
+  await waitFor(() => expect(ownedCheckbox('Alpha')).not.toBeChecked())
+  expect(gamesButton('Alpha').textContent).toBe('')
+  const reopened = await openGamePicker('Alpha')
+  expect(reopened.getByRole('checkbox', { name: 'Gold (conditional)' })).not.toBeChecked()
+})
+
+test('the picker closes on Escape, on a tap outside, and when its button is tapped again (3.7b)', async () => {
+  await renderAvailabilityDataset()
+
+  await openGamePicker('Alpha')
+  fireEvent.keyDown(document, { key: 'Escape' })
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+  await openGamePicker('Alpha')
+  fireEvent.pointerDown(screen.getByText('Bravo'))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+  await openGamePicker('Alpha')
+  fireEvent.click(gamesButton('Alpha'))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+})
+
+test('Pokémon with no accessible games or no data show an explanation instead of games (3.7b)', async () => {
+  await renderAvailabilityDataset()
+
+  const bravo = await openGamePicker('Bravo')
+  expect(bravo.getByText('Not obtainable in the selected games')).toBeInTheDocument()
+  expect(bravo.queryAllByRole('checkbox')).toHaveLength(0)
+
+  const charlie = await openGamePicker('Charlie')
+  expect(charlie.getByText('No availability data')).toBeInTheDocument()
+})
+
+test('tapping the Availability cell opens the same picker (touch has no hover tooltip — 3.7b)', async () => {
+  await renderWithAvailabilityColumn()
+
+  fireEvent.click(screen.getByRole('button', { name: /^Availability of Alpha/ }))
+  const picker = within(await screen.findByRole('dialog', { name: 'Obtained from — Alpha' }))
+  expect(picker.getByRole('checkbox', { name: 'Red' })).toBeInTheDocument()
+  expect(ownedCheckbox('Alpha')).not.toBeChecked()
+})
+
+test('a tag on a game later deselected in Filters is kept and shown as "not in selection" (3.7b)', async () => {
+  await renderAvailabilityDataset()
+
+  const picker = await openGamePicker('Alpha')
+  fireEvent.click(picker.getByRole('checkbox', { name: 'Red' }))
+  await waitFor(() => expect(gamesButton('Alpha').textContent).toBe('1'))
+  fireEvent.keyDown(document, { key: 'Escape' })
+
+  fireEvent.click(screen.getByText('Filters'))
+  const filterRed = screen.getAllByRole('checkbox', { name: 'Red' }).find((cb) => !cb.closest('[role="dialog"]'))!
+  fireEvent.click(filterRed)
+
+  const reopened = await openGamePicker('Alpha')
+  const red = reopened.getByRole('checkbox', { name: 'Red (not in selection)' })
+  expect(red).toBeChecked()
+  expect(storedActiveList().ownedGames).toEqual({ alpha: ['red'] })
 })

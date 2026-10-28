@@ -567,7 +567,7 @@ even if the `3.X` task order below does.
       business-logic-package-local + web tests passing (26 + 52 across both workspaces),
       `tsc -b` clean, verified in a clean Docker (`node:22`, `npm ci`) build too.
 
-- [ ] **3.7b `#XY` Per-game "obtained from" tagging.** ✏️ Redefined (2026-09-16) — no longer a
+- [x] **3.7b `#XY` Per-game "obtained from" tagging.** ✅ **Done 2026-10-28** ✏️ Redefined (2026-09-16) — no longer a
       free-text note field (that idea is dropped in favor of something structured and tied to
       3.8d's per-game availability data: which game(s) a Pokémon was actually obtained in, tracked
       per entry per list, alongside `ownedIds`).
@@ -610,6 +610,25 @@ even if the `3.X` task order below does.
       **Test shape still TBD** (marker only, not a scheduled task yet): unit tests for the
       owned/game-tag sync rules above (all 6 cases, including the "untick last game keeps owned"
       case) + UI tests for the tap interactions once the affordance is designed.
+
+      **Implemented (2026-10-28)** — open questions resolved with the user:
+      - Data: `PokemonList.ownedGames?: Record<slug, gameId[]>` (sparse, release order). Rules in
+        business-logic `owned.ts` (`toggleOwnedEntry`/`toggleOwnedGame`/`getOwnedGames`), all 6
+        rules unit-tested.
+      - UI: a click/tap **popover** (non-modal, no hover needed, so it works on touch) opened by a
+        small game button next to the Owned checkbox (shows the tagged count), or by tapping the
+        Availability cell. Lists only accessible games (obtainable/conditional among Filters →
+        Games), conditional ones marked. Row click stays "owned, no game".
+      - Deselecting a game in Filters keeps existing tags (historical record); they show as
+        "(not in selection)" so they can still be unticked.
+      - Popover positioning (`lib/popoverPosition.ts`): below or on the roomier side, height capped
+        so it never covers its trigger, clamped to the viewport. Closes on Escape (focus returns to
+        the trigger), outside tap, resize or page scroll; scrolling its own list keeps it open.
+      - Owned column default weight 48 → 76 to fit the button.
+      - Verified: 52 business-logic + 103 web + 2 mobile tests, live in Brave (desktop + a 390px
+        same-origin iframe for phone width), clean Docker build.
+      - Not done: the RN app (3.10 can reuse `owned.ts`); web at phone width still scrolls
+        sideways because of the fixed-width sidebar (pre-existing, not part of this ticket).
 
 ### Polish (web)
 - [x] **3.4f Table styling refinements.** ✅ User-requested (2026-08-27), small/mechanical:

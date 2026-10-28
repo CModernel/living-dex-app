@@ -14,6 +14,10 @@ export type PokemonList = {
   variant: 'normal' | 'shiny';
   filter: ListFilter;
   ownedIds: string[];
+  // 3.7b: which game(s) each owned entry was obtained from — sparse (slug → game ids in release
+  // order), only for entries with at least one tag. Optional: lists saved before 3.7b lack it.
+  // Kept consistent by owned.ts: a tagged slug is always in `ownedIds`.
+  ownedGames?: Record<string, string[]>;
 };
 
 export type UserPreferences = {

@@ -25,7 +25,7 @@ export const DEFAULT_COLUMN_WEIGHTS: Record<string, number> = {
   region: 100,
   availability: 90,
   evolutionStage: 80,
-  owned: 48,
+  owned: 76,
 }
 
 const FALLBACK_WEIGHT = 100
