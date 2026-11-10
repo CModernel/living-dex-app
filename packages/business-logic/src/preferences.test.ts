@@ -20,7 +20,7 @@ test('a user-reordered legacy state keeps its order; new columns follow their de
     visibleColumns: [],
   })
   assert.deepEqual(result.columnOrder, [
-    'owned', 'dex', 'box', 'slot', 'name', 'sprite', 'types', 'generation', 'region', 'availability', 'evolutionStage',
+    'owned', 'dex', 'box', 'slot', 'position', 'name', 'species', 'sprite', 'types', 'generation', 'region', 'availability', 'evolutionStage',
   ])
 })
 

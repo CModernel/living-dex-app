@@ -124,6 +124,7 @@ const SPRITE_HOVER_ZOOM = 2
 // underlying data stays untouched). Centralized here so both the header `<th>` and body
 // `<td>` pull from the same source and can't drift apart.
 const COLUMN_CELL_CLASS: Record<string, string> = {
+  position: 'text-left',
   dex: 'text-left',
   box: 'text-left',
   slot: 'text-left',
@@ -254,12 +255,16 @@ function isInaccessible(entry: TableEntry): boolean {
 // specifically so the column definitions never need to depend on ownedIds/toggleOwned either.
 const TableRow = memo(function TableRow({
   row,
+  position,
   owned,
   ownedGames,
   pickerOpen,
   onToggle,
 }: {
   row: Row<typeof features, TableEntry>
+  // 1-based place in the list as currently displayed (filtered + sorted), for the "#" column.
+  // Rendered here, not baked into `entries`, so it follows sorting while Box/Slot never do.
+  position: number
   owned: boolean
   // 3.7b: games this entry is tagged as obtained from. Same array identity until this entry's tags
   // change (see owned.ts), so tagging one row doesn't re-render the others.
@@ -317,6 +322,10 @@ const TableRow = memo(function TableRow({
                 {ownedGames.length > 0 && <span>{ownedGames.length}</span>}
               </button>
             </div>
+          </td>
+        ) : cell.column.id === 'position' ? (
+          <td key={cell.id} className={`overflow-hidden p-2.5 ${COLUMN_CELL_CLASS.position}`}>
+            {position}
           </td>
         ) : (
           <td key={cell.id} className={`overflow-hidden p-2.5 ${COLUMN_CELL_CLASS[cell.column.id] ?? ''}`}>
@@ -430,6 +439,8 @@ function HomePage() {
           cell: (ctx) => (dataset ? <Sprite dataset={dataset} entry={ctx.row.original} /> : null),
         }),
         columnHelper.accessor('name', { header: 'Name', enableHiding: false, sortFn: sortFn_alphanumeric }),
+        // Bare species name without the form suffix (e.g. "Raichu" for "Raichu (Alolan)").
+        columnHelper.accessor('species', { header: 'Species', sortFn: sortFn_alphanumeric }),
         columnHelper.display({
           id: 'types',
           header: 'Types',
@@ -445,6 +456,9 @@ function HomePage() {
         columnHelper.accessor('dex', { header: 'Dex', sortFn: sortFn_alphanumeric }),
         columnHelper.accessor('box', { header: 'Box', enableSorting: false }),
         columnHelper.accessor('slot', { header: 'Slot', enableSorting: false }),
+        // Place in the displayed list (see TableRow's `position`); the cell is rendered there, so
+        // this definition only supplies the header and the visibility-menu entry.
+        columnHelper.display({ id: 'position', header: '#', cell: () => null }),
         // Numbers default to descending-first; ascending matches how every other column starts.
         columnHelper.accessor('generation', { header: 'Generation', sortFn: sortFn_basic, sortDescFirst: false }),
         columnHelper.accessor((row) => row.region ?? '—', {
@@ -789,10 +803,11 @@ function HomePage() {
                 </thead>
                 <tbody>
                   <GamePickerContext.Provider value={toggleGamePicker}>
-                    {table.getRowModel().rows.map((row) => (
+                    {table.getRowModel().rows.map((row, index) => (
                       <TableRow
                         key={row.id}
                         row={row}
+                        position={index + 1}
                         owned={ownedIds.has(row.original.slug)}
                         ownedGames={getOwnedGames(activeList, row.original.slug)}
                         pickerOpen={picker?.slug === row.original.slug}

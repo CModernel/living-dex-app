@@ -922,3 +922,38 @@ test('shows owned progress and the dismissible welcome card (3.8)', async () => 
     expect(stored.preferences?.welcomeDismissed).toBe(true)
   })
 })
+
+test('the "#" column is the place in the displayed list and follows sorting, while Slot does not (3.8b)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+  fireEvent.click(screen.getByRole('checkbox', { name: '#' }))
+  await waitFor(() => expect(screen.getByRole('columnheader', { name: /^⠿#/ })).toBeInTheDocument())
+
+  const cellsOf = (name: string) => bodyRows().find((cells) => cells.includes(name))!
+  const headers = screen.getAllByRole('columnheader').map((th) => th.textContent?.replace('⠿', '').replace(/[▲▼]/g, ''))
+  const pos = headers.indexOf('#')
+  const slot = headers.indexOf('Slot')
+  expect(cellsOf('Bulbasaur')[pos]).toBe('1')
+  expect(cellsOf('Charizard')[pos]).toBe('2')
+
+  // Dex is already sorted ascending by default, so one click flips it to descending.
+  clickHeader('Dex')
+  await waitFor(() => expect(cellsOf('Charizard')[pos]).toBe('1'))
+  expect(cellsOf('Bulbasaur')[pos]).toBe('2')
+  // Slot stays the canonical position regardless of the display order.
+  expect(cellsOf('Bulbasaur')[slot]).toBe('1')
+  expect(cellsOf('Charizard')[slot]).toBe('2')
+})
+
+test('the Species column shows the bare species name and starts hidden (3.8b)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+  expect(screen.queryByRole('columnheader', { name: /species/i })).not.toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Species' }))
+  await waitFor(() => expect(screen.getByRole('columnheader', { name: /species/i })).toBeInTheDocument())
+  // Same text as Name for these fixtures, so each species now appears in two cells of its row.
+  expect(screen.getAllByText('Charizard')).toHaveLength(2)
+})

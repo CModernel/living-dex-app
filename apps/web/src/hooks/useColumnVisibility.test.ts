@@ -14,9 +14,11 @@ afterEach(() => {
 test('dex, box and slot start visible by default; every other hideable column starts hidden', () => {
   const { result } = renderHook(() => useColumnVisibility(), { wrapper: UserStateProvider })
   expect(result.current.columnVisibility).toEqual({
+    species: false,
     dex: true,
     box: true,
     slot: true,
+    position: false,
     generation: false,
     region: false,
     availability: false,

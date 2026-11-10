@@ -678,7 +678,10 @@ even if the `3.X` task order below does.
       Champions app is under consideration (web-only for now).
 
 - [x] **3.8b `#17` Box/slot/page + column sorting.** ✅ **Done 2026-10-27 for Box + Slot + sorting only**
-      (see "Implemented" at the end of this item; Page, "Number" and Species are still open).
+      (see "Implemented" at the end of this item). **2026-11-10: Species and `#` (Number) columns added**
+      — both hideable, default hidden; `#` is the place in the displayed list (rendered in `TableRow`
+      from the row index, so it follows sorting while Box/Slot don't). **Page** skipped: nothing in
+      the organizer's `docs/PLANNING.md` defines it, so there is nothing to derive.
       User-specified behavior (2026-08-27):
       - Box and Slot are shown **by default** once implemented; Page starts **hidden** (if it
       ends up getting added at all — not yet decided it's useful).

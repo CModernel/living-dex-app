@@ -17,10 +17,12 @@ export function getColumnMinPx(columnId: string): number {
 export const DEFAULT_COLUMN_WEIGHTS: Record<string, number> = {
   sprite: 72,
   name: 200,
+  species: 140,
   types: 140,
   dex: 56,
   box: 44,
   slot: 44,
+  position: 44,
   generation: 100,
   region: 100,
   availability: 90,

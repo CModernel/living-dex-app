@@ -7,7 +7,7 @@ import { useUserState } from '../state/UserStateContext'
 // hideable without the table already existing, and this hook feeds the table's
 // visibility *input*. Must stay in sync with HomePage.tsx's `columnHelper.accessor`
 // calls that don't set `enableHiding: false`.
-export const HIDEABLE_COLUMN_IDS = ['dex', 'box', 'slot', 'generation', 'region', 'availability', 'evolutionStage'] as const
+export const HIDEABLE_COLUMN_IDS = ['species', 'dex', 'box', 'slot', 'position', 'generation', 'region', 'availability', 'evolutionStage'] as const
 
 type ColumnVisibilityState = Record<string, boolean>
 

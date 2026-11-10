@@ -54,7 +54,7 @@ export const DEFAULT_USER_STATE: UserState = {
     // as "natural definition order" for rendering purposes — HomePage's own `reorderColumns`
     // logic reads and rewrites this array directly (so a hidden column's position is preserved
     // across a drag), and needs real ids to compute indices against, not an empty list.
-    columnOrder: ['sprite', 'name', 'types', 'dex', 'box', 'slot', 'generation', 'region', 'availability', 'evolutionStage', 'owned'],
+    columnOrder: ['sprite', 'name', 'species', 'types', 'dex', 'box', 'slot', 'position', 'generation', 'region', 'availability', 'evolutionStage', 'owned'],
     // Relative column weights (not pixels), keyed by column id. Empty is safe: a missing entry
     // falls back to DEFAULT_COLUMN_WEIGHTS in apps/web/src/lib/columnWeights.ts.
     columnSizing: {},
