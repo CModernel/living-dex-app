@@ -638,8 +638,8 @@ function HomePage() {
   // Lives on HomePage itself, not just /lists, so switching lists refreshes the table right
   // here instead of requiring a trip to another page.
   return (
-    <div className="flex w-full gap-6">
-      <aside className="w-52 shrink-0 rounded-lg border border-border bg-surface p-3">
+    <div className="flex w-full flex-col gap-6 md:flex-row">
+      <aside className="w-full shrink-0 rounded-lg md:w-52 border border-border bg-surface p-3">
         <h2 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">Lists</h2>
         <ListSwitcher />
         {dataset && <TrophiesPanel trophies={trophies} />}
@@ -649,9 +649,9 @@ function HomePage() {
         {result.error && <p className="text-muted">Failed to load dataset: {result.error.message}</p>}
         {!result.loading && !result.error && (
           <>
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h1 className="text-2xl font-semibold tracking-tight">Living Dex</h1>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <label className="flex items-center gap-2 text-sm">
                   Tier
                   <select
