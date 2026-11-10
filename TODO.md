@@ -649,6 +649,17 @@ even if the `3.X` task order below does.
       regional form (Rattata (Alolan) → "Alola").
       **Tests:** no behavior change (styling only), existing 28/28 web tests still pass.
 
+- [x] **3.13 Collections (create / edit / clone / delete)** ✅ **Done 2026-11-10.** `PokemonList.icon?`;
+      `useLists` gained `updateList` and `cloneList` (deep copy, "X (copy)", becomes active);
+      ListSwitcher has edit (name + emoji) and clone buttons. Owned is per collection. 4 new tests
+      (web: 114). Not done: icon picker in the create dialog.
+- [ ] **3.14 Local trophies** — pure `trophies.ts` in business-logic + panel; agree the goal list
+      first (plan mode). Local only; social waits for Supabase.
+- [ ] **3.15 Sheet-update guide** — `living-dex-organizer/docs/UPDATING-SHEETS.md` (docs only; ask
+      before committing in the organizer repo).
+- [ ] **3.16 Remaining UI tests** — `UserStateProvider` hydration (flaky-test root cause) and
+      ListSwitcher edit/clone.
+
 - [ ] **3.8 Polish pass** — `#21` progress indicator (% owned), `#22` sticky headers, `#13`
       intro/welcome page. Sequenced and detailed individually once the table/lists/filtering
       core (3.2–3.7) is solid.
