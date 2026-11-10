@@ -904,3 +904,21 @@ test('a tag on a game later deselected in Filters is kept and shown as "not in s
   expect(red).toBeChecked()
   expect(storedActiveList().ownedGames).toEqual({ alpha: ['red'] })
 })
+
+test('shows owned progress and the dismissible welcome card (3.8)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+
+  // Living-form tier keeps Bulbasaur + Charizard (the gender variant is filtered out).
+  expect(screen.getByText('0 / 2 owned')).toBeInTheDocument()
+  expect(screen.getByRole('progressbar', { name: /owned progress/i })).toHaveAttribute('aria-valuenow', '0')
+
+  expect(screen.getByRole('region', { name: /welcome/i })).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: /got it/i }))
+  expect(screen.queryByRole('region', { name: /welcome/i })).not.toBeInTheDocument()
+  await waitFor(() => {
+    const stored = JSON.parse(window.localStorage.getItem('living-dex:user-state') ?? '{}')
+    expect(stored.preferences?.welcomeDismissed).toBe(true)
+  })
+})

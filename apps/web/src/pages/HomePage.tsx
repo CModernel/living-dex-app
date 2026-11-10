@@ -2,6 +2,7 @@ import {
   GAMES,
   applyListFilter,
   evaluateTrophies,
+  ownedProgress,
   availableGames,
   getAvailabilityCategory,
   getOwnedGames,
@@ -40,9 +41,12 @@ import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
 import FilterMenu from '../components/FilterMenu'
 import GamePickerPopover, { type GamePickerOption } from '../components/GamePickerPopover'
 import ListSwitcher from '../components/ListSwitcher'
+import OwnedProgress from '../components/OwnedProgress'
 import TrophiesPanel from '../components/TrophiesPanel'
+import WelcomeCard from '../components/WelcomeCard'
 import TypeBadge from '../components/TypeBadge'
 import { useActiveList } from '../hooks/useActiveList'
+import { useUserState } from '../state/UserStateContext'
 import { useColumnOrder } from '../hooks/useColumnOrder'
 import { useColumnSizing } from '../hooks/useColumnSizing'
 import { useColumnVisibility } from '../hooks/useColumnVisibility'
@@ -370,6 +374,12 @@ function HomePage() {
       }))
   }, [dataset, tierId, filter, selectedGameIds])
   const ownedIds = useMemo(() => new Set(activeList?.ownedIds ?? []), [activeList])
+  const [userState, setUserState] = useUserState()
+  const dismissWelcome = useCallback(
+    () => setUserState((prev) => ({ ...prev, preferences: { ...prev.preferences, welcomeDismissed: true } })),
+    [setUserState],
+  )
+  const progress = useMemo(() => ownedProgress(entries, ownedIds), [entries, ownedIds])
   const trophies = useMemo(() => evaluateTrophies(entries, ownedIds), [entries, ownedIds])
   const entriesBySlug = useMemo(() => new Map(entries.map((entry) => [entry.slug, entry])), [entries])
 
@@ -649,6 +659,7 @@ function HomePage() {
         {result.error && <p className="text-muted">Failed to load dataset: {result.error.message}</p>}
         {!result.loading && !result.error && (
           <>
+            {!userState.preferences.welcomeDismissed && <WelcomeCard onDismiss={dismissWelcome} />}
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h1 className="text-2xl font-semibold tracking-tight">Living Dex</h1>
               <div className="flex flex-wrap items-center gap-3">
@@ -683,9 +694,10 @@ function HomePage() {
                 />
               </div>
             </div>
+            <OwnedProgress progress={progress} />
             {/* Column widths are percentages that always sum to 100% (see lib/columnWeights.ts), so
                 the table can never be wider or narrower than its container — nothing to scroll. */}
-            <div className="overflow-hidden rounded-lg border border-border">
+            <div className="overflow-clip rounded-lg border border-border">
               <table ref={tableRef} className="w-full table-fixed border-collapse text-sm">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <colgroup key={headerGroup.id}>
@@ -725,7 +737,7 @@ function HomePage() {
                                   : undefined
                             }
                             title={header.column.getCanSort() ? 'Click to sort' : undefined}
-                            className={`relative cursor-grab overflow-hidden p-2.5 text-xs font-semibold tracking-wide text-muted uppercase select-none active:cursor-grabbing ${
+                            className={`sticky top-0 z-20 cursor-grab overflow-hidden bg-surface p-2.5 text-xs font-semibold tracking-wide text-muted uppercase select-none active:cursor-grabbing ${
                               isDragging ? 'opacity-30' : ''
                             } ${isDropTarget ? 'bg-brand/10' : ''} ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}
                           >

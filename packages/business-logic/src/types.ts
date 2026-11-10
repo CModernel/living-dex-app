@@ -28,6 +28,8 @@ export type UserPreferences = {
   columnSizing: Record<string, number>;
   compactMode: boolean;
   darkMode?: 'system' | 'light' | 'dark';
+  // Set once the user dismisses the Home welcome card (3.8 #13). Optional: absent means not yet.
+  welcomeDismissed?: boolean;
   // Games the user deselected in the Filters menu (ids from availability.ts GAMES). Stored as
   // the deselected set so every game, including ones added later, is selected by default.
   excludedGameIds: string[];

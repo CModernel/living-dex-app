@@ -663,9 +663,12 @@ even if the `3.X` task order below does.
 - [x] **3.16 Remaining UI tests** ✅ Done 2026-11-10 — UserStateProvider hydration (2 tests) + edit-cancel; ListSwitcher edit/clone covered via ListsPage tests. Web: 117 tests. (Root cause of the early-mutation race — setState(loaded) clobbers pre-hydration changes — is unchanged; tests keep the waitFor guard.)
       ListSwitcher edit/clone.
 
-- [ ] **3.8 Polish pass** — `#21` progress indicator (% owned), `#22` sticky headers, `#13`
-      intro/welcome page. Sequenced and detailed individually once the table/lists/filtering
-      core (3.2–3.7) is solid.
+- [x] **3.8 Polish pass** ✅ **Done 2026-11-10.** `#21` owned progress bar (`ownedProgress()` in
+      business-logic + `OwnedProgress`), `#22` sticky table headers (wrapper `overflow-hidden` →
+      `overflow-clip` so sticky works; verified in browser), `#13` dismissible `WelcomeCard` on Home
+      (`preferences.welcomeDismissed`). Also: phone-width fix — sidebar stacks below `md`, toolbar
+      wraps (no sideways scroll at 375px). Mobile 3.10/3.11 are **paused**; merging in the Pokémon
+      Champions app is under consideration (web-only for now).
 
 - [x] **3.8b `#17` Box/slot/page + column sorting.** ✅ **Done 2026-10-27 for Box + Slot + sorting only**
       (see "Implemented" at the end of this item; Page, "Number" and Species are still open).
