@@ -674,8 +674,9 @@ even if the `3.X` task order below does.
       business-logic + `OwnedProgress`), `#22` sticky table headers (wrapper `overflow-hidden` →
       `overflow-clip` so sticky works; verified in browser), `#13` dismissible `WelcomeCard` on Home
       (`preferences.welcomeDismissed`). Also: phone-width fix — sidebar stacks below `md`, toolbar
-      wraps (no sideways scroll at 375px). Mobile 3.10/3.11 are **paused**; merging in the Pokémon
-      Champions app is under consideration (web-only for now).
+      wraps (no sideways scroll at 375px). Mobile 3.10/3.11 are **paused**; the Pokémon
+      Champions app stays a **separate app** (decided 2026-11-11); the two cross-promote each other
+      (card/link, not yet built).
 
 - [x] **3.8b `#17` Box/slot/page + column sorting.** ✅ **Done 2026-10-27 for Box + Slot + sorting only**
       (see "Implemented" at the end of this item). **2026-11-10: Species and `#` (Number) columns added**
