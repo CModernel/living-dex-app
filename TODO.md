@@ -1236,9 +1236,12 @@ even if the `3.X` task order below does.
 - [ ] **3.11 #23 — Mobile portrait/landscape.**
 
 ### Tests
-- [ ] **3.12 #25/#26 — Integration/UI test sweep.** Cross-cutting pass once the above is done.
-      `#24` (unit tests) is already a standing rule applied throughout every task above, not a
-      separate step.
+- [x] **3.12 #25/#26 — Integration/UI test sweep.** ✅ **Done 2026-11-10 (web).** Audited files without a test:
+      added direct tests for `useActiveList`, `useListFilter`, `useGameSelection` (incl. pre-hydration
+      toggles) and an integration test (Settings import → Lists page → switch). `ListSwitcher` stays
+      covered through `ListsPage` tests; `App.tsx`/`main.tsx`/`pokemonTypeColors.ts` have none by design
+      (bootstrap/static map). Web: 140 tests in 26 files, 3 consecutive green full runs; business-logic 67.
+      Playwright E2E not added (new dependency; ask first). `#24` unit tests remains a standing rule.
 
 ---
 
