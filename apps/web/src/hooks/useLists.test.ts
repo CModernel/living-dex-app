@@ -138,3 +138,47 @@ test('deleteList no-ops for an unknown id', async () => {
   act(() => result.current.deleteList('does-not-exist'))
   expect(result.current.lists).toHaveLength(1)
 })
+
+test('updateList renames and sets/clears the icon; ignores blank names and unknown ids', async () => {
+  const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
+  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
+
+  act(() => result.current.createNewList('Dex'))
+  await waitFor(() => expect(result.current.lists).toHaveLength(1))
+  const id = result.current.lists[0].id
+
+  act(() => result.current.updateList(id, { name: '  Base  ', icon: '⭐' }))
+  await waitFor(() => expect(result.current.lists[0].name).toBe('Base'))
+  expect(result.current.lists[0].icon).toBe('⭐')
+
+  act(() => result.current.updateList(id, { name: '   ' }))
+  expect(result.current.lists[0].name).toBe('Base')
+
+  act(() => result.current.updateList(id, { icon: '' }))
+  await waitFor(() => expect(result.current.lists[0].icon).toBeUndefined())
+
+  act(() => result.current.updateList('nope', { name: 'X' }))
+  expect(result.current.lists).toHaveLength(1)
+})
+
+test('cloneList deep-copies owned data, gets a new id and becomes active', async () => {
+  const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
+  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
+
+  act(() => result.current.createNewList('Dex'))
+  await waitFor(() => expect(result.current.lists).toHaveLength(1))
+  const src = result.current.lists[0]
+
+  act(() => result.current.cloneList(src.id))
+  await waitFor(() => expect(result.current.lists).toHaveLength(2))
+  const copy = result.current.lists[1]
+  expect(copy.id).not.toBe(src.id)
+  expect(copy.name).toBe('Dex (copy)')
+  expect(copy.filter).toEqual(src.filter)
+  expect(copy.filter).not.toBe(src.filter)
+  expect(copy.ownedIds).not.toBe(src.ownedIds)
+  expect(result.current.activeListId).toBe(copy.id)
+
+  act(() => result.current.cloneList('nope'))
+  expect(result.current.lists).toHaveLength(2)
+})

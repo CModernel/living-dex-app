@@ -137,3 +137,29 @@ test('clicking delete does not also switch the active list via the row handler',
 
   confirmSpy.mockRestore()
 })
+
+test('edit dialog renames the list and sets an icon', async () => {
+  renderListsPage()
+  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
+  createListViaDialog('Dex')
+  await screen.findByText('Dex')
+
+  fireEvent.click(screen.getByRole('button', { name: /edit dex/i }))
+  fireEvent.change(screen.getByLabelText(/^list name$/i), { target: { value: 'Base Dex' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Icon ⭐' }))
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
+
+  expect(await screen.findByText('Base Dex')).toBeInTheDocument()
+  expect(screen.getByText('⭐')).toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+test('clone button adds a "(copy)" list', async () => {
+  renderListsPage()
+  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
+  createListViaDialog('Dex')
+  await screen.findByText('Dex')
+
+  fireEvent.click(screen.getByRole('button', { name: /clone dex/i }))
+  expect(await screen.findByText('Dex (copy)')).toBeInTheDocument()
+})

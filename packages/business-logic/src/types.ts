@@ -9,6 +9,8 @@ export type ListFilter = {
 export type PokemonList = {
   id: string;
   name: string;
+  // Collections: optional emoji shown next to the name. Optional so older saved lists keep working.
+  icon?: string;
   createdAt: string;
   dataVersion: 'v1';
   variant: 'normal' | 'shiny';

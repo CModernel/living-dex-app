@@ -61,5 +61,43 @@ export function useLists() {
     [setState],
   )
 
-  return { lists, activeListId: state.activeListId, createNewList, switchTo, deleteList }
+  // Edit name and/or icon. An empty/whitespace name is ignored (keeps the old one); an empty
+  // icon clears it. No-ops for an unknown id.
+  const updateList = useCallback(
+    (id: string, changes: { name?: string; icon?: string }) => {
+      setState((prev) => {
+        const list = prev.lists[id]
+        if (!list) return prev
+        const name = changes.name?.trim() || list.name
+        const icon = changes.icon === undefined ? list.icon : changes.icon.trim() || undefined
+        return { ...prev, lists: { ...prev.lists, [id]: { ...list, name, icon } } }
+      })
+    },
+    [setState],
+  )
+
+  // Deep copy (filter, owned, per-game tags) with a new id; the clone becomes the active list.
+  const cloneList = useCallback(
+    (id: string) => {
+      setState((prev) => {
+        const src = prev.lists[id]
+        if (!src) return prev
+        const copy: PokemonList = {
+          ...src,
+          id: crypto.randomUUID(),
+          name: `${src.name} (copy)`,
+          createdAt: new Date().toISOString(),
+          filter: { ...src.filter },
+          ownedIds: [...src.ownedIds],
+          ownedGames: src.ownedGames
+            ? Object.fromEntries(Object.entries(src.ownedGames).map(([k, v]) => [k, [...v]]))
+            : undefined,
+        }
+        return { ...prev, lists: { ...prev.lists, [copy.id]: copy }, activeListId: copy.id }
+      })
+    },
+    [setState],
+  )
+
+  return { lists, activeListId: state.activeListId, createNewList, switchTo, deleteList, updateList, cloneList }
 }
