@@ -26,10 +26,9 @@ export function useLists() {
 
   const createNewList = useCallback(
     (name: string) => {
-      setState((prev) => {
-        const list = createList(name)
-        return { ...prev, lists: { ...prev.lists, [list.id]: list }, activeListId: list.id }
-      })
+      // Built outside the updater: a pre-hydration update is replayed, and must produce the same id.
+      const list = createList(name)
+      setState((prev) => ({ ...prev, lists: { ...prev.lists, [list.id]: list }, activeListId: list.id }))
     },
     [setState],
   )
@@ -79,14 +78,17 @@ export function useLists() {
   // Deep copy (filter, owned, per-game tags) with a new id; the clone becomes the active list.
   const cloneList = useCallback(
     (id: string) => {
+      // Identity generated outside the updater so a replayed (pre-hydration) update yields the same copy id.
+      const copyId = crypto.randomUUID()
+      const createdAt = new Date().toISOString()
       setState((prev) => {
         const src = prev.lists[id]
         if (!src) return prev
         const copy: PokemonList = {
           ...src,
-          id: crypto.randomUUID(),
+          id: copyId,
           name: `${src.name} (copy)`,
-          createdAt: new Date().toISOString(),
+          createdAt,
           filter: { ...src.filter },
           ownedIds: [...src.ownedIds],
           ownedGames: src.ownedGames

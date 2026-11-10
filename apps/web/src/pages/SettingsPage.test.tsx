@@ -48,8 +48,6 @@ test('renders the settings heading and data buttons', () => {
 
 test('importing a valid file adds the collection with a new id and shows a success message', async () => {
   renderPage()
-  await waitFor(() => expect(window.localStorage.getItem(STORAGE_KEY)).not.toBeNull())
-
   chooseFile(serializeExport({ ...DEFAULT_USER_STATE, lists: { 'old-id': sampleList } }))
 
   expect(await screen.findByRole('status')).toHaveTextContent('Imported 1 collection.')
@@ -62,8 +60,6 @@ test('importing a valid file adds the collection with a new id and shows a succe
 
 test('an invalid file shows the error and changes nothing', async () => {
   renderPage()
-  await waitFor(() => expect(window.localStorage.getItem(STORAGE_KEY)).not.toBeNull())
-
   chooseFile('definitely not json')
 
   expect(await screen.findByRole('status')).toHaveTextContent(/not valid json/i)

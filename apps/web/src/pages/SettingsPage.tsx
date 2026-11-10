@@ -26,10 +26,13 @@ function SettingsPage() {
       setStatus({ ok: false, message: result.error })
       return
     }
-    setState((prev) => ({
-      ...prev,
-      lists: mergeImportedLists(prev.lists, result.lists, () => crypto.randomUUID(), new Date()),
-    }))
+    // Ids and time fixed up front so the updater is pure (it can be replayed or run twice).
+    const ids = result.lists.map(() => crypto.randomUUID())
+    const now = new Date()
+    setState((prev) => {
+      let next = 0
+      return { ...prev, lists: mergeImportedLists(prev.lists, result.lists, () => ids[next++], now) }
+    })
     const n = result.lists.length
     setStatus({ ok: true, message: `Imported ${n} collection${n === 1 ? '' : 's'}.` })
   }

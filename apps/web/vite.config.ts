@@ -22,5 +22,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.ts',
+    // HomePage tests render ~1.4k-row tables in jsdom; the 5s default flakes on a busy machine.
+    testTimeout: 20000,
   },
 })

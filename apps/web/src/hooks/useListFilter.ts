@@ -1,4 +1,4 @@
-import { DEFAULT_LIST_FILTER, type ListFilter } from '@living-dex/business-logic'
+import { DEFAULT_LIST_FILTER, type ListFilter, type PokemonList } from '@living-dex/business-logic'
 import { useCallback, useMemo } from 'react'
 import { useUserState } from '../state/UserStateContext'
 import { createList } from './useLists'
@@ -20,8 +20,10 @@ export function useListFilter() {
 
   const setFilterKey = useCallback(
     (key: keyof ListFilter, value: boolean) => {
+      let fallback: PokemonList | undefined // one id per call, so a replayed (pre-hydration) update matches
       setState((prev) => {
-        const list = (prev.activeListId ? prev.lists[prev.activeListId] : undefined) ?? createList('My Living Dex')
+        const existing = prev.activeListId ? prev.lists[prev.activeListId] : undefined
+        const list = existing ?? (fallback ??= createList('My Living Dex'))
         return {
           ...prev,
           lists: { ...prev.lists, [list.id]: { ...list, filter: { ...list.filter, [key]: value } } },

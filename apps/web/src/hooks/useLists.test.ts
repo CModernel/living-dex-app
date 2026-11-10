@@ -20,11 +20,6 @@ test('starts with no lists and no active list', () => {
 test('createNewList adds a list and makes it active', async () => {
   const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
 
-  // UserStateProvider hydrates from storage asynchronously; mutating before that resolves
-  // can get silently clobbered back to defaults once it does (see 3.5's useDarkMode.test.ts
-  // for the same guard, and TODO.md for why this is left as-is for now).
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
-
   act(() => result.current.createNewList('Shinies'))
 
   await waitFor(() => expect(result.current.lists).toHaveLength(1))
@@ -34,11 +29,6 @@ test('createNewList adds a list and makes it active', async () => {
 
 test('switchTo changes the active list only for an existing id', async () => {
   const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
-
-  // UserStateProvider hydrates from storage asynchronously; a second create/switch before
-  // that resolves can get silently clobbered back to defaults once it does (see 3.5's
-  // useDarkMode.test.ts for the same guard, and TODO.md for why this is left as-is for now).
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
 
   act(() => result.current.createNewList('First'))
   await waitFor(() => expect(result.current.lists).toHaveLength(1))
@@ -59,8 +49,6 @@ test('switchTo changes the active list only for an existing id', async () => {
 test('lists stay in creation order', async () => {
   const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
 
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
-
   act(() => result.current.createNewList('First'))
   await waitFor(() => expect(result.current.lists).toHaveLength(1))
   act(() => result.current.createNewList('Second'))
@@ -73,8 +61,6 @@ test('lists stay in creation order', async () => {
 
 test('deleteList removes a non-active list without touching the active one', async () => {
   const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
-
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
 
   act(() => result.current.createNewList('First'))
   await waitFor(() => expect(result.current.lists).toHaveLength(1))
@@ -93,8 +79,6 @@ test('deleteList removes a non-active list without touching the active one', asy
 
 test('deleting the active list falls back to another remaining one', async () => {
   const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
-
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
 
   act(() => result.current.createNewList('First'))
   await waitFor(() => expect(result.current.lists).toHaveLength(1))
@@ -115,8 +99,6 @@ test('deleting the active list falls back to another remaining one', async () =>
 test('deleting the last remaining list nulls activeListId', async () => {
   const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
 
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
-
   act(() => result.current.createNewList('Only'))
   await waitFor(() => expect(result.current.lists).toHaveLength(1))
   const only = result.current.lists[0]
@@ -130,8 +112,6 @@ test('deleting the last remaining list nulls activeListId', async () => {
 test('deleteList no-ops for an unknown id', async () => {
   const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
 
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
-
   act(() => result.current.createNewList('Only'))
   await waitFor(() => expect(result.current.lists).toHaveLength(1))
 
@@ -141,8 +121,6 @@ test('deleteList no-ops for an unknown id', async () => {
 
 test('updateList renames and sets/clears the icon; ignores blank names and unknown ids', async () => {
   const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
-
   act(() => result.current.createNewList('Dex'))
   await waitFor(() => expect(result.current.lists).toHaveLength(1))
   const id = result.current.lists[0].id
@@ -163,8 +141,6 @@ test('updateList renames and sets/clears the icon; ignores blank names and unkno
 
 test('cloneList deep-copies owned data, gets a new id and becomes active', async () => {
   const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
-
   act(() => result.current.createNewList('Dex'))
   await waitFor(() => expect(result.current.lists).toHaveLength(1))
   const src = result.current.lists[0]

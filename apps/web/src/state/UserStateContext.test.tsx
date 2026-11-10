@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test } from 'vitest'
+import { useActiveList } from '../hooks/useActiveList'
 import { UserStateProvider, useUserState } from './UserStateContext'
 
 const STORAGE_KEY = 'living-dex:user-state'
@@ -124,4 +125,73 @@ test('mounting does not overwrite persisted data with defaults before hydration 
   await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('1'))
   const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}')
   expect(stored.lists.a.ownedIds).toEqual(['bulbasaur', 'ivysaur'])
+})
+
+function RenameConsumer() {
+  const [state, setState] = useUserState()
+  const list = state.lists.a
+  return (
+    <div>
+      <span data-testid="name">{list?.name ?? 'none'}</span>
+      <button
+        type="button"
+        onClick={() =>
+          setState((prev) => ({ ...prev, lists: { ...prev.lists, a: { ...prev.lists.a, name: 'Renamed' } } }))
+        }
+      >
+        rename
+      </button>
+    </div>
+  )
+}
+
+test('an update made before hydration finishes is replayed on top of the persisted state', async () => {
+  window.localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ lists: { a: savedList }, activeListId: 'a', preferences: { visibleColumns: [], compactMode: false } }),
+  )
+
+  render(
+    <UserStateProvider>
+      <RenameConsumer />
+    </UserStateProvider>,
+  )
+
+  // Clicked synchronously after mount: storage has not loaded yet.
+  act(() => screen.getByRole('button', { name: 'rename' }).click())
+
+  await waitFor(() => expect(screen.getByTestId('name')).toHaveTextContent('Renamed'))
+  await waitFor(() => {
+    const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}')
+    expect(stored.lists.a.name).toBe('Renamed')
+    expect(stored.lists.a.ownedIds).toEqual(['bulbasaur', 'ivysaur'])
+  })
+})
+
+test('useActiveList does not create a second list when one is already stored', async () => {
+  window.localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ lists: { a: savedList }, activeListId: 'a', preferences: { visibleColumns: [], compactMode: false } }),
+  )
+
+  function Probe() {
+    const { activeList } = useActiveList()
+    const [state] = useUserState()
+    return (
+      <span data-testid="probe">
+        {activeList?.name ?? 'none'}:{Object.keys(state.lists).length}
+      </span>
+    )
+  }
+
+  render(
+    <UserStateProvider>
+      <Probe />
+    </UserStateProvider>,
+  )
+
+  await waitFor(() => expect(screen.getByTestId('probe')).toHaveTextContent('Saved:1'))
+  // Give any (wrong) bootstrap effect a chance to fire.
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  expect(screen.getByTestId('probe')).toHaveTextContent('Saved:1')
 })

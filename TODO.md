@@ -661,6 +661,13 @@ even if the `3.X` task order below does.
 - [ ] **3.15 Sheet-update guide** — `living-dex-organizer/docs/UPDATING-SHEETS.md` (docs only; ask
       before committing in the organizer repo).
 - [x] **3.16 Remaining UI tests** ✅ Done 2026-11-10 — UserStateProvider hydration (2 tests) + edit-cancel; ListSwitcher edit/clone covered via ListsPage tests. Web: 117 tests. (Root cause of the early-mutation race — setState(loaded) clobbers pre-hydration changes — is unchanged; tests keep the waitFor guard.)
+- [x] **3.17 Hydration race fixed** ✅ **Done 2026-11-10 (web).** `UserStateProvider` now queues updates made
+      before storage loads and replays them over the loaded state (they still apply instantly);
+      `useIsHydrated()` gates `useActiveList`'s bootstrap. Updaters that create ids
+      (`createNewList`, `cloneList`, `useActiveList`, `useListFilter`, import) now generate them
+      outside the updater so a replay yields the same id. Removed the `waitFor(localStorage)` guards
+      from tests; vitest `testTimeout` raised to 20s (1.4k-row tables in jsdom). Mobile has the same
+      provider and is unchanged (paused). Web: 127 tests, 5 full runs green.
       ListSwitcher edit/clone.
 
 - [x] **3.8 Polish pass** ✅ **Done 2026-11-10.** `#21` owned progress bar (`ownedProgress()` in

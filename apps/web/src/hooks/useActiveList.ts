@@ -1,6 +1,6 @@
 import { toggleOwnedEntry, toggleOwnedGame as toggleGameOnList, type PokemonList } from '@living-dex/business-logic'
 import { useCallback, useEffect } from 'react'
-import { useUserState } from '../state/UserStateContext'
+import { useIsHydrated, useUserState } from '../state/UserStateContext'
 import { createList } from './useLists'
 
 function createDefaultList() {
@@ -9,8 +9,12 @@ function createDefaultList() {
 
 export function useActiveList() {
   const [state, setState] = useUserState()
+  const hydrated = useIsHydrated()
 
   useEffect(() => {
+    // Wait for storage: before that, state is just the defaults and a list created here would be
+    // layered over the user's real one.
+    if (!hydrated) return
     if (state.activeListId && state.lists[state.activeListId]) return
     const list = createDefaultList()
     setState((prev) => ({
@@ -18,7 +22,7 @@ export function useActiveList() {
       lists: { ...prev.lists, [list.id]: list },
       activeListId: list.id,
     }))
-  }, [state.activeListId, state.lists, setState])
+  }, [hydrated, state.activeListId, state.lists, setState])
 
   const activeList = state.activeListId ? state.lists[state.activeListId] : undefined
 
@@ -27,12 +31,15 @@ export function useActiveList() {
   // "changed" (a new onToggle reference) on every single toggle, defeating that memoization.
   const updateActiveList = useCallback(
     (update: (list: PokemonList) => PokemonList) => {
+      let fallback: PokemonList | undefined
       setState((prev) => {
         // Don't rely on the mount effect above having already run — a click can land before
         // that effect commits (e.g. right after the dataset resolves), and a plain "no active
         // list yet, so no-op" here would silently drop it. Create the list inline instead, so
         // this is correct regardless of timing.
-        const list = (prev.activeListId ? prev.lists[prev.activeListId] : undefined) ?? createDefaultList()
+        const existing = prev.activeListId ? prev.lists[prev.activeListId] : undefined
+        // Created once per call, so a replayed (pre-hydration) update reuses the same list id.
+        const list = existing ?? (fallback ??= createDefaultList())
         const next = update(list)
         return { ...prev, lists: { ...prev.lists, [next.id]: next }, activeListId: next.id }
       })

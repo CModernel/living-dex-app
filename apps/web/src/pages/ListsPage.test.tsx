@@ -47,12 +47,6 @@ test('the create dialog is closed until the "+" button is clicked', () => {
 test('creating a list shows it, marks it active, and closes the dialog', async () => {
   renderListsPage()
 
-  // UserStateProvider hydrates from storage asynchronously; mutating before that resolves
-  // can get silently clobbered back to defaults once it does — even a single create, not
-  // just consecutive ones (see 3.5's useDarkMode.test.ts for the same guard, and TODO.md
-  // for why this is left as-is for now).
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
-
   createListViaDialog('Shinies')
 
   await waitFor(() => expect(screen.getByText('Shinies')).toBeInTheDocument())
@@ -64,8 +58,6 @@ test('creating a list shows it, marks it active, and closes the dialog', async (
 
 test('clicking a different list switches which one is marked active', async () => {
   renderListsPage()
-
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
 
   createListViaDialog('First')
   await waitFor(() => expect(screen.getByText('First')).toBeInTheDocument())
@@ -87,8 +79,6 @@ test('deleting a list removes it after confirming', async () => {
   const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
   renderListsPage()
 
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
-
   createListViaDialog('Shinies')
   await waitFor(() => expect(screen.getByText('Shinies')).toBeInTheDocument())
 
@@ -105,8 +95,6 @@ test('declining the confirmation keeps the list', async () => {
   const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
   renderListsPage()
 
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
-
   createListViaDialog('Shinies')
   await waitFor(() => expect(screen.getByText('Shinies')).toBeInTheDocument())
 
@@ -121,8 +109,6 @@ test('declining the confirmation keeps the list', async () => {
 test('clicking delete does not also switch the active list via the row handler', async () => {
   const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
   renderListsPage()
-
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
 
   createListViaDialog('First')
   await waitFor(() => expect(screen.getByText('First')).toBeInTheDocument())
@@ -140,7 +126,6 @@ test('clicking delete does not also switch the active list via the row handler',
 
 test('edit dialog renames the list and sets an icon', async () => {
   renderListsPage()
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
   createListViaDialog('Dex')
   await screen.findByText('Dex')
 
@@ -156,7 +141,6 @@ test('edit dialog renames the list and sets an icon', async () => {
 
 test('clone button adds a "(copy)" list', async () => {
   renderListsPage()
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
   createListViaDialog('Dex')
   await screen.findByText('Dex')
 
@@ -166,7 +150,6 @@ test('clone button adds a "(copy)" list', async () => {
 
 test('cancelling the edit dialog keeps the list unchanged', async () => {
   renderListsPage()
-  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
   createListViaDialog('Dex')
   await screen.findByText('Dex')
 
