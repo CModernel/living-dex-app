@@ -163,3 +163,18 @@ test('clone button adds a "(copy)" list', async () => {
   fireEvent.click(screen.getByRole('button', { name: /clone dex/i }))
   expect(await screen.findByText('Dex (copy)')).toBeInTheDocument()
 })
+
+test('cancelling the edit dialog keeps the list unchanged', async () => {
+  renderListsPage()
+  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
+  createListViaDialog('Dex')
+  await screen.findByText('Dex')
+
+  fireEvent.click(screen.getByRole('button', { name: /edit dex/i }))
+  fireEvent.change(screen.getByLabelText(/^list name$/i), { target: { value: 'Changed' } })
+  fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }))
+
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(screen.getByText('Dex')).toBeInTheDocument()
+  expect(screen.queryByText('Changed')).not.toBeInTheDocument()
+})

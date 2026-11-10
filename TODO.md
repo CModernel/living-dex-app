@@ -657,7 +657,7 @@ even if the `3.X` task order below does.
       first (plan mode). Local only; social waits for Supabase.
 - [ ] **3.15 Sheet-update guide** — `living-dex-organizer/docs/UPDATING-SHEETS.md` (docs only; ask
       before committing in the organizer repo).
-- [ ] **3.16 Remaining UI tests** — `UserStateProvider` hydration (flaky-test root cause) and
+- [x] **3.16 Remaining UI tests** ✅ Done 2026-11-10 — UserStateProvider hydration (2 tests) + edit-cancel; ListSwitcher edit/clone covered via ListsPage tests. Web: 117 tests. (Root cause of the early-mutation race — setState(loaded) clobbers pre-hydration changes — is unchanged; tests keep the waitFor guard.)
       ListSwitcher edit/clone.
 
 - [ ] **3.8 Polish pass** — `#21` progress indicator (% owned), `#22` sticky headers, `#13`
