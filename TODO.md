@@ -653,8 +653,11 @@ even if the `3.X` task order below does.
       `useLists` gained `updateList` and `cloneList` (deep copy, "X (copy)", becomes active);
       ListSwitcher has edit (name + emoji) and clone buttons. Owned is per collection. 4 new tests
       (web: 114). Not done: icon picker in the create dialog.
-- [ ] **3.14 Local trophies** — pure `trophies.ts` in business-logic + panel; agree the goal list
-      first (plan mode). Local only; social waits for Supabase.
+- [x] **3.14 Local trophies** ✅ **Done 2026-11-10.** `trophies.ts` in business-logic
+      (`evaluateTrophies(entries, ownedIds)`: 25/50/75/100% milestones, one per generation present,
+      regional forms; computed over the collection's visible entries, never stored) +
+      `TrophiesPanel` in the Home sidebar under the collections list. Tests: business-logic 57,
+      web 119. Deferred: game-tag trophies, starters/legendaries (no flag in the dataset), social.
 - [ ] **3.15 Sheet-update guide** — `living-dex-organizer/docs/UPDATING-SHEETS.md` (docs only; ask
       before committing in the organizer repo).
 - [x] **3.16 Remaining UI tests** ✅ Done 2026-11-10 — UserStateProvider hydration (2 tests) + edit-cancel; ListSwitcher edit/clone covered via ListsPage tests. Web: 117 tests. (Root cause of the early-mutation race — setState(loaded) clobbers pre-hydration changes — is unchanged; tests keep the waitFor guard.)

@@ -1,6 +1,7 @@
 import {
   GAMES,
   applyListFilter,
+  evaluateTrophies,
   availableGames,
   getAvailabilityCategory,
   getOwnedGames,
@@ -39,6 +40,7 @@ import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
 import FilterMenu from '../components/FilterMenu'
 import GamePickerPopover, { type GamePickerOption } from '../components/GamePickerPopover'
 import ListSwitcher from '../components/ListSwitcher'
+import TrophiesPanel from '../components/TrophiesPanel'
 import TypeBadge from '../components/TypeBadge'
 import { useActiveList } from '../hooks/useActiveList'
 import { useColumnOrder } from '../hooks/useColumnOrder'
@@ -368,6 +370,7 @@ function HomePage() {
       }))
   }, [dataset, tierId, filter, selectedGameIds])
   const ownedIds = useMemo(() => new Set(activeList?.ownedIds ?? []), [activeList])
+  const trophies = useMemo(() => evaluateTrophies(entries, ownedIds), [entries, ownedIds])
   const entriesBySlug = useMemo(() => new Map(entries.map((entry) => [entry.slug, entry])), [entries])
 
   // 3.7b "obtained from" picker: which entry it's open for, and the element it's anchored to.
@@ -639,6 +642,7 @@ function HomePage() {
       <aside className="w-52 shrink-0 rounded-lg border border-border bg-surface p-3">
         <h2 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">Lists</h2>
         <ListSwitcher />
+        {dataset && <TrophiesPanel trophies={trophies} />}
       </aside>
       <div className="min-w-0 flex-1">
         {result.loading && <p className="text-muted">Loading Pokémon data…</p>}
