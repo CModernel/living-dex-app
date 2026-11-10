@@ -1200,7 +1200,12 @@ even if the `3.X` task order below does.
       (6 Magearna/Zarude/Gimmighoul rows muted), clean Docker build.
 
 ### Data & Mobile
-- [ ] **3.9 #15 — Export/import.**
+- [x] **3.9 #15 — Export/import.** ✅ **Done 2026-11-10.** Pure `exportImport.ts` in business-logic
+      (`serializeExport`, `parseImport` with validation, `mergeImportedLists`); Settings page has
+      Export / Import buttons. Export = whole state (collections + preferences) as JSON; import only
+      ADDS collections with fresh ids (name clash → "X (imported)"), never overwrites, and does not
+      apply the file's preferences. Tests: business-logic 64, web 122. Not done: replace-all restore
+      mode, mobile file picker (3.10).
 - [ ] **3.10 #12 — Mobile layout.** Port the web table + filters to React Native, reusing the same
       `useDataset`-equivalent + tier-predicate + `useUserState()` plumbing proven on web.
       Mobile equivalents of 3.3b's polish to carry over (web-only bits like `cursor-pointer` and
