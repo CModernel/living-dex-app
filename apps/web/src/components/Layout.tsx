@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router'
 import { useDarkMode } from '../hooks/useDarkMode'
+import { DISCLAIMER } from '../lib/disclaimer'
 import Logo from './Logo'
 
 function navLinkClassName({ isActive }: { isActive: boolean }) {
@@ -40,8 +41,8 @@ function Layout() {
         <Outlet />
       </main>
 
-      <footer className="border-t border-border py-4 text-center text-xs text-muted">
-        Living Dex Organizer
+      <footer className="border-t border-border px-4 py-4 text-center text-xs text-muted">
+        <p className="mx-auto max-w-3xl">{DISCLAIMER}</p>
       </footer>
     </div>
   )

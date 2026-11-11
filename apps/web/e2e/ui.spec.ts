@@ -67,3 +67,12 @@ test('creating a list opens a styled dialog and the new list becomes active', as
   await dialog.getByRole('button', { name: 'Create' }).click()
   await expect(page.getByText('Shinies')).toBeVisible()
 })
+
+test('the disclaimer is visible in the footer and in Settings, and the page does not overflow', async ({ page }) => {
+  await expect(page.getByRole('contentinfo')).toContainText('not affiliated with')
+  await page.getByRole('link', { name: 'Settings' }).click()
+  await expect(page.getByRole('region', { name: 'About' })).toContainText('independent, unofficial fan-made tool')
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+  expect(overflow).toBeLessThanOrEqual(0)
+  await page.screenshot({ path: 'e2e/results/settings.png' })
+})

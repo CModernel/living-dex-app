@@ -93,3 +93,10 @@ test('export downloads a JSON backup of the current state', async () => {
   })
   expect(click).toHaveBeenCalled()
 })
+
+test('the About section shows the unofficial-fan-tool disclaimer', () => {
+  renderPage()
+  const about = screen.getByRole('region', { name: 'About' })
+  expect(about).toHaveTextContent('independent, unofficial fan-made tool')
+  expect(about).toHaveTextContent('Nintendo, Game Freak, Creatures Inc. or The Pokémon Company')
+})

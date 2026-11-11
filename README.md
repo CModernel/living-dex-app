@@ -5,6 +5,11 @@ more custom lists, filtered by tier (Living Form, Living Lite, Final Form Full, 
 TypeScript monorepo sharing business logic between a React 19 web app and a React Native + Expo
 mobile app.
 
+> **Disclaimer.** Living Dex is an independent, unofficial fan-made tool for informational and educational
+> use. It is not affiliated with, endorsed by, sponsored by or associated with Nintendo, Game Freak, Creatures
+> Inc. or The Pokémon Company. All character names, trademarks, game data and related images are the property
+> of their respective owners. IP rules for this project: see the IP guide in the Obsidian vault.
+
 This repo is only the app. The dataset and tier predicates (`@cmodernel/living-dex-tiers`) are
 built and versioned in the sibling
 [`living-dex-organizer`](https://github.com/CModernel/living-dex-organizer) repo, checked out

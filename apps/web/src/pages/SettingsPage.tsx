@@ -1,5 +1,6 @@
 import { mergeImportedLists, parseImport, serializeExport } from '@living-dex/business-logic'
 import { useRef, useState, type ChangeEvent } from 'react'
+import { DISCLAIMER } from '../lib/disclaimer'
 import { useUserState } from '../state/UserStateContext'
 
 function SettingsPage() {
@@ -71,6 +72,11 @@ function SettingsPage() {
             {status.message}
           </p>
         )}
+      </section>
+
+      <section aria-label="About" className="mt-4 rounded-lg border border-border bg-surface p-4">
+        <h2 className="mb-1 text-sm font-semibold">About</h2>
+        <p className="text-xs text-muted">{DISCLAIMER}</p>
       </section>
     </div>
   )

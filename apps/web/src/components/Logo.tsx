@@ -1,12 +1,10 @@
-// Original mark (a ball-style badge, not the Pokémon logo) + two-tone wordmark for the header.
+// Original mark: a storage box (3x3 grid of slots, one filled) + two-tone wordmark. Deliberately NOT
+// a ball or any Pokémon logo/lettering (see the IP guide, rule 2).
 function Logo() {
   return (
     <span className="flex items-center gap-2.5">
-      <svg width="34" height="34" viewBox="-20 -20 40 40" aria-hidden="true" className="shrink-0">
-        <circle r="17" fill="#ffffff" stroke="#1d2433" strokeWidth="2.5" />
-        <path d="M-17 0a17 17 0 0 1 34 0z" fill="#E3350D" stroke="#1d2433" strokeWidth="2.5" />
-        <path d="M-17 0h34" stroke="#1d2433" strokeWidth="2.5" />
-        <circle r="5.5" fill="#ffffff" stroke="#1d2433" strokeWidth="2.5" />
+      <svg width="34" height="34" viewBox="-20 -20 40 40" aria-hidden="true" className="shrink-0" data-testid="logo-mark">
+        <rect x="-18" y="-18" width="36" height="36" rx="9" fill="#208aef"/><rect x="-18" y="-18" width="36" height="36" rx="9" fill="none" stroke="#0C447C" strokeWidth="2"/><circle cx="-9" cy="-9" r="3.4" fill="#ffffff" fillOpacity="0.92"/><circle cx="0" cy="-9" r="3.4" fill="#ffffff" fillOpacity="0.92"/><circle cx="9" cy="-9" r="3.4" fill="#FFC53D"/><circle cx="-9" cy="0" r="3.4" fill="#ffffff" fillOpacity="0.92"/><circle cx="0" cy="0" r="3.4" fill="#ffffff" fillOpacity="0.92"/><circle cx="9" cy="0" r="3.4" fill="#ffffff" fillOpacity="0.92"/><circle cx="-9" cy="9" r="3.4" fill="#ffffff" fillOpacity="0.92"/><circle cx="0" cy="9" r="3.4" fill="#ffffff" fillOpacity="0.92"/><circle cx="9" cy="9" r="3.4" fill="#ffffff" fillOpacity="0.92"/>
       </svg>
       <span className="flex flex-col leading-none">
         <span className="text-xl font-semibold tracking-tight">

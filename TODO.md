@@ -691,12 +691,11 @@ even if the `3.X` task order below does.
       Playwright's mobile project (known: the Owned column is tight at 375 px when many columns are
       visible), then decide responsive web vs native. Notes: Hermes lacks `crypto.randomUUID`; the
       mobile provider has the hydration race fixed on web only. No decision yet.
-- [ ] **3.24 IP compliance fixes (found 2026-11-12; guide: `obsidian/IP-Guide.md`, skill `pokemon-fan-ip-compliance`).**
-      (1) Header logo and favicon are almost a Pokéball: redesign (cut/colors/shape) — `Logo.tsx`,
-      `public/favicon.svg`. (2) Add the unofficial/not-affiliated disclaimer to the web footer
-      (`Layout.tsx`), Settings and the README. (3) Sprites stay runtime-fetched, never bundled; note the residual
-      risk. (4) Ads stay deferred; donation link external only. Tests: footer and Settings show the disclaimer
-      (component + e2e), logo has no red/white center-button composition (review).
+- [x] **3.24 IP compliance fixes** ✅ **Done 2026-11-12** (guide: `obsidian/IP-Guide.md`, skill
+      `pokemon-fan-ip-compliance`). Logo and favicon redesigned as an abstract storage box (3x3 slot grid,
+      one filled), no ball; `lib/disclaimer.ts` disclaimer shown in the footer, in Settings → About and in the
+      README. Sprites stay runtime-fetched (residual risk noted); ads stay deferred, external donation link only.
+      Tests: Logo (no ball/red composition), Layout footer, Settings About, e2e footer/Settings. Web 160 + 12 e2e.
 - [ ] **3.18 Grid view (idea)** — alternative to the table: tiles per Pokémon, simplified and easier to
       scan. `preferences.viewMode: 'table'|'grid'`; tile content and items-per-row still to decide.
 

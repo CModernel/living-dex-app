@@ -47,3 +47,11 @@ test('dark mode toggle button switches the document theme class', async () => {
 
   await waitFor(() => expect(document.documentElement.classList.contains('dark')).toBe(!wasDark))
 })
+
+test('the footer carries the unofficial-fan-tool disclaimer', () => {
+  renderLayout()
+  const footer = screen.getByRole('contentinfo')
+  expect(footer).toHaveTextContent('independent, unofficial fan-made tool')
+  expect(footer).toHaveTextContent('not affiliated with')
+  expect(footer).toHaveTextContent('The Pokémon Company')
+})
