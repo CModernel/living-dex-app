@@ -5,7 +5,7 @@ function WelcomeCard({ onDismiss }: { onDismiss: () => void }) {
       <h2 className="mb-1 font-semibold">Welcome to Living Dex</h2>
       <ul className="mb-3 list-disc space-y-1 pl-5 text-muted">
         <li>Click a Pokémon (or its checkbox) to mark it as owned.</li>
-        <li>Use the book icon on a row to record which game you got it in.</li>
+        <li>Use the handheld icon on a row to record which game you got it in.</li>
         <li>Make several collections in the sidebar; each keeps its own progress.</li>
         <li>Back up or move your data from Settings → Export / Import.</li>
       </ul>
