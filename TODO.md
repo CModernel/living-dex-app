@@ -691,6 +691,12 @@ even if the `3.X` task order below does.
       Playwright's mobile project (known: the Owned column is tight at 375 px when many columns are
       visible), then decide responsive web vs native. Notes: Hermes lacks `crypto.randomUUID`; the
       mobile provider has the hydration race fixed on web only. No decision yet.
+- [ ] **3.24 IP compliance fixes (found 2026-11-12; guide: `obsidian/IP-Guide.md`, skill `pokemon-fan-ip-compliance`).**
+      (1) Header logo and favicon are almost a Pokéball: redesign (cut/colors/shape) — `Logo.tsx`,
+      `public/favicon.svg`. (2) Add the unofficial/not-affiliated disclaimer to the web footer
+      (`Layout.tsx`), Settings and the README. (3) Sprites stay runtime-fetched, never bundled; note the residual
+      risk. (4) Ads stay deferred; donation link external only. Tests: footer and Settings show the disclaimer
+      (component + e2e), logo has no red/white center-button composition (review).
 - [ ] **3.18 Grid view (idea)** — alternative to the table: tiles per Pokémon, simplified and easier to
       scan. `preferences.viewMode: 'table'|'grid'`; tile content and items-per-row still to decide.
 
@@ -1466,7 +1472,7 @@ even if the `3.X` task order below does.
   planned for all apps, per-app table prefixes + RLS). Design rules until then: the export envelope
   (`{app, version, exportedAt, state}`) is the future sync/migration format, so keep it versioned and
   backward-compatible; ids stay UUIDs and updaters stay pure (a cloud layer will replay them); the future
-  "upload to cloud" is just the existing import path pointed at Supabase. Monetization: measure first
+  "upload to cloud" is just the existing import path pointed at Supabase. Monetization: measure first (ads conflict with the IP guide, rule 5: prefer an external Ko-fi link)
   (cookieless analytics, donation link, cross-promo card) before ads.
 - **Phase 3** items are loosely ordered by dependency (earlier items don't need later ones), but
   can be done in parallel or reordered if a feature becomes urgent.
