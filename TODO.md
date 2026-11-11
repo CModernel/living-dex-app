@@ -676,6 +676,22 @@ even if the `3.X` task order below does.
       `TierChangeDialog` (Copy to a new list / Switch anyway / Cancel); Edit list has a "Box layout" select.
       Logic in `business-logic/src/layout.ts` (data-derived containment; floette case tested). Debug panel gained
       "Quick start". Web 169 tests, business-logic 80, 18 e2e. Design: `obsidian/3.19-Tier-Migration-Plan.md`.
+- [ ] **3.19b Tier picker + plan banner (replaces the 3.19 wizard; designed 2026-11-12, not built; Opus high, plan mode).**
+      - Welcome (no list yet): full-screen vertical list of 5 neutral tier tiles (icon lightly tinted, count, boxes,
+        one-line summary). Badges: "Quickest goal" light blue (Final Form), "Classic" orange (Living Lite),
+        "Everything" green (Living Form Full). Visible "What's the difference?" link. Tapping a tile creates the list
+        with plan = undecided. "+" (new list) opens the same screen.
+      - List header, one line: Tier select + amber banner "Planning to grow beyond <tier>? Reserve the slots now."
+        with outlined "Plan for bigger goal" (opens a popover listing only valid bigger tiers with "+N slots",
+        Living Form Full recommended) and grey outlined "Not now" (plan = current tier). Light and dark mode.
+      - Box/Slot locked until the plan is decided. Future-tier rows hidden by default; "Show future slots" toggle
+        shows them greyed with their real Box/Slot.
+      - Lists created before 3.19b count as decided (plan = their tier, no banner).
+      - Changing tier: inside the plan → silent; outside → existing Copy/Switch dialog; banner returns if the new
+        tier has bigger tiers and no plan beyond it.
+      - `/tiers` page (basic): set diagram (which tier contains which) + named examples per tier, no official art.
+      - Tests: unit (plan state), component (tiles, banner, popover, locked columns, toggle), e2e (welcome → tile →
+        plan / not now, light + dark screenshots).
 - [x] **3.23 UI polish round** ✅ **Done 2026-11-12.** Shared `Dialog` (blurred backdrop, scale/fade-in,
       reduced-motion safe) used by trophy case and list dialogs; trophy case redesigned as tier rows
       (medals + progress bar); button family (`btn`, `btn-primary`, `btn-ghost`, `btn-sm`) applied
