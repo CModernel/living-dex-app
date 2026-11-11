@@ -1,5 +1,6 @@
 import { functionalUpdate, type Updater } from '@tanstack/table-core'
 import { useCallback, useMemo } from 'react'
+import { DEFAULT_USER_STATE } from '@living-dex/business-logic'
 import { useUserState } from '../state/UserStateContext'
 
 // The columns HomePage's column-visibility menu (3.4) can hide. Kept here rather than
@@ -7,7 +8,7 @@ import { useUserState } from '../state/UserStateContext'
 // hideable without the table already existing, and this hook feeds the table's
 // visibility *input*. Must stay in sync with HomePage.tsx's `columnHelper.accessor`
 // calls that don't set `enableHiding: false`.
-export const HIDEABLE_COLUMN_IDS = ['species', 'dex', 'box', 'slot', 'position', 'generation', 'region', 'availability', 'evolutionStage'] as const
+export const HIDEABLE_COLUMN_IDS = ['species', 'types', 'dex', 'box', 'slot', 'position', 'generation', 'region', 'availability', 'evolutionStage'] as const
 
 type ColumnVisibilityState = Record<string, boolean>
 
@@ -52,5 +53,14 @@ export function useColumnVisibility() {
     [setState],
   )
 
-  return { columnVisibility, setColumnVisibility }
+  // Back to the shipped defaults: visibility, order and widths (not the user's lists or filters).
+  const resetColumns = useCallback(() => {
+    const { visibleColumns, columnOrder, columnSizing } = DEFAULT_USER_STATE.preferences
+    setState((prev) => ({
+      ...prev,
+      preferences: { ...prev.preferences, visibleColumns, columnOrder, columnSizing },
+    }))
+  }, [setState])
+
+  return { columnVisibility, setColumnVisibility, resetColumns }
 }

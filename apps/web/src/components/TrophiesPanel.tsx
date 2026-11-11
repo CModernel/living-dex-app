@@ -27,7 +27,7 @@ function TrophiesPanel({ trophies }: { trophies: Trophy[] }) {
       <button
         type="button"
         onClick={() => setCaseOpen(true)}
-        className="mt-2 cursor-pointer rounded-md border border-border px-2 py-1 text-xs hover:bg-border/30"
+        className="btn btn-sm mt-2"
       >
         View all
       </button>

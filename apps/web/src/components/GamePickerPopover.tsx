@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { computePopoverPosition } from '../lib/popoverPosition'
+import GameChips from './GameChips'
 
 export type GamePickerOption = {
   id: string
@@ -89,7 +90,7 @@ function GamePickerPopover({
       ref={popoverRef}
       role="dialog"
       aria-label={title}
-      className="fixed z-50 flex w-60 flex-col rounded-lg border border-border bg-surface p-2 text-sm shadow-lg"
+      className="fixed z-50 flex w-80 max-w-[calc(100vw-1rem)] flex-col rounded-xl border border-border bg-surface p-2 text-sm shadow-xl"
       style={position ?? { top: 0, left: 0, visibility: 'hidden' }}
     >
       <p className="shrink-0 px-1.5 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">{title}</p>
@@ -97,27 +98,9 @@ function GamePickerPopover({
         <p className="px-1.5 py-1 text-muted">{emptyMessage}</p>
       ) : (
         // Natural height capped at 18rem; on a short screen the container's maxHeight squeezes it further.
-        <div className="flex max-h-72 min-h-0 flex-col overflow-y-auto overscroll-contain">
-          {options.map((option) => (
-            <label
-              key={option.id}
-              // Taller rows on touch screens so each game is an easy tap target.
-              className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 hover:bg-border/30 pointer-coarse:py-2"
-            >
-              <input
-                type="checkbox"
-                checked={option.checked}
-                onChange={() => onToggle(option.id)}
-                className="cursor-pointer"
-              />
-              <span>
-                {option.name}
-                {/* Separate text node: a space inside the span is dropped from the accessible name. */}
-                {option.note && ' '}
-                {option.note && <span className="text-muted">({option.note})</span>}
-              </span>
-            </label>
-          ))}
+        // Natural height capped at 18rem; on a short screen the container's maxHeight squeezes it further.
+        <div className="max-h-72 min-h-0 overflow-y-auto overscroll-contain p-1">
+          <GameChips options={options} onToggle={onToggle} />
         </div>
       )}
     </div>,

@@ -82,7 +82,10 @@ test('getUserState reconciles a legacy stored state with the current default col
   const { getUserState } = createUserStateStorage(adapter)
   const loaded = await getUserState()
 
-  assert.deepEqual(loaded.preferences.columnOrder, DEFAULT_USER_STATE.preferences.columnOrder)
-  assert.deepEqual(loaded.preferences.visibleColumns, ['dex', 'box', 'slot'])
+  assert.deepEqual(loaded.preferences.columnOrder, [
+    'sprite', 'name', 'species', 'types', 'box', 'slot', 'position', 'dex', 'generation', 'region', 'availability', 'evolutionStage', 'owned',
+  ])
+  // Types predates hiding, so a legacy state keeps it visible.
+  assert.deepEqual(loaded.preferences.visibleColumns, ['dex', 'types'])
   assert.deepEqual(loaded.preferences.columnSizing, {})
 })

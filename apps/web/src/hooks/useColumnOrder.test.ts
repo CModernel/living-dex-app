@@ -18,10 +18,10 @@ describe('useColumnOrder', () => {
 
     expect(result.current.columnOrder).toEqual([
       'sprite',
+      'dex',
       'name',
       'species',
       'types',
-      'dex',
       'box',
       'slot',
       'position',

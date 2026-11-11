@@ -49,8 +49,12 @@ npm run dev -w apps/web           # web dev server
 npm run start -w apps/mobile      # mobile dev server (scan QR with Expo Go)
 
 npm run test                      # all workspaces' tests
+npm run test:e2e -w apps/web      # Playwright UI tests (desktop + 375 px)
 npm run build:web                 # typecheck + production build
 ```
+
+- **When the sheet's author publishes a new version**, rebuild the dataset by following
+  [`../living-dex-organizer/docs/UPDATING-SHEETS.md`](../living-dex-organizer/docs/UPDATING-SHEETS.md).
 
 ## Roadmap
 

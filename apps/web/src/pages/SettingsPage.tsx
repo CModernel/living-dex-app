@@ -37,7 +37,7 @@ function SettingsPage() {
     setStatus({ ok: true, message: `Imported ${n} collection${n === 1 ? '' : 's'}.` })
   }
 
-  const buttonClass = 'cursor-pointer rounded-md border border-border px-3 py-1.5 text-sm hover:bg-border/30'
+  const buttonClass = 'btn'
 
   return (
     <div className="w-full max-w-md">

@@ -1,3 +1,5 @@
+import GameChips from './GameChips'
+
 type FilterToggle = {
   id: string
   label: string
@@ -20,12 +22,12 @@ type GameSelection = {
 
 const OPTION_CLASS =
   'flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-sm whitespace-nowrap hover:bg-border/30'
-const LINK_BUTTON_CLASS = 'cursor-pointer text-xs text-muted hover:text-foreground'
+const LINK_BUTTON_CLASS = 'btn btn-ghost btn-sm'
 
 function FilterMenu({ toggles, games }: { toggles: FilterToggle[]; games?: GameSelection }) {
   return (
     <details className="relative">
-      <summary className="cursor-pointer rounded-md border border-border px-2.5 py-1.5 text-sm select-none hover:border-muted">
+      <summary className="btn list-none [&::-webkit-details-marker]:hidden">
         Filters
       </summary>
       <div className="absolute right-0 z-10 mt-1 flex flex-col gap-1 rounded-lg border border-border bg-surface p-2 shadow-lg">
@@ -49,18 +51,11 @@ function FilterMenu({ toggles, games }: { toggles: FilterToggle[]; games?: GameS
                 </button>
               </div>
             </div>
-            <div className="flex max-h-64 flex-col overflow-y-auto">
-              {games.options.map((game) => (
-                <label key={game.id} className={OPTION_CLASS}>
-                  <input
-                    type="checkbox"
-                    checked={game.selected}
-                    onChange={() => games.toggle(game.id)}
-                    className="cursor-pointer"
-                  />
-                  {game.name}
-                </label>
-              ))}
+            <div className="max-h-64 w-72 max-w-full overflow-y-auto p-1">
+              <GameChips
+                options={games.options.map((game) => ({ id: game.id, name: game.name, checked: game.selected }))}
+                onToggle={games.toggle}
+              />
             </div>
           </fieldset>
         )}

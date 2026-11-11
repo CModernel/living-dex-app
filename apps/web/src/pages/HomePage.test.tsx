@@ -1,4 +1,4 @@
-import { clearDatasetCache, type PokemonDataset } from '@living-dex/business-logic'
+import { DEFAULT_USER_STATE, clearDatasetCache, type PokemonDataset } from '@living-dex/business-logic'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { UserStateProvider } from '../state/UserStateContext'
@@ -83,10 +83,28 @@ const mockDataset: PokemonDataset = {
 
 let originalFetch: typeof fetch
 
+// Most tests below predate the 2026-11-12 default layout (Types/Box/Slot hidden, Dex beside the
+// sprite) and exercise those columns, so they start from the "classic" layout. Tests of the new
+// defaults call `window.localStorage.clear()` first.
+function seedClassicLayout() {
+  window.localStorage.setItem(
+    'living-dex:user-state',
+    JSON.stringify({
+      ...DEFAULT_USER_STATE,
+      preferences: {
+        ...DEFAULT_USER_STATE.preferences,
+        visibleColumns: ['types', 'dex', 'box', 'slot'],
+        columnOrder: ['sprite', 'name', 'species', 'types', 'dex', 'box', 'slot', 'position', 'generation', 'region', 'availability', 'evolutionStage', 'owned'],
+      },
+    }),
+  )
+}
+
 beforeEach(() => {
   originalFetch = global.fetch
   clearDatasetCache()
   window.localStorage.clear()
+  seedClassicLayout()
 })
 
 afterEach(() => {
@@ -205,13 +223,17 @@ test('clicking the checkbox directly does not double-toggle via the row handler'
   })
 })
 
-test('Dex, Box and Slot are visible by default; other optional columns start hidden', async () => {
+test('only Dex is visible by default, right after the sprite; Types, Box, Slot and the rest start hidden', async () => {
+  window.localStorage.clear()
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
   renderHomePage()
 
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
   expect(screen.getByText('0001')).toBeInTheDocument()
   expect(screen.queryByText(/^pre$/i)).not.toBeInTheDocument()
+  const headers = screen.getAllByRole('columnheader').map((th) => th.textContent?.replace(/[⠿▲▼]/g, '').trim())
+  expect(headers).toEqual(['Sprite', 'Dex', 'Name', 'Owned'])
+  expect(screen.queryByText('grass')).not.toBeInTheDocument()
 })
 
 test('toggling a column in the menu shows and hides it', async () => {
@@ -247,14 +269,14 @@ test('column visibility survives a reload (3.5 — persisted, not just in-sessio
   expect(screen.getByText(/^pre$/i)).toBeInTheDocument()
 })
 
-test('always-visible columns are not offered in the column menu', async () => {
+test('always-visible columns are not offered in the column menu; Types is now hideable', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
   renderHomePage()
 
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
   expect(screen.queryByRole('checkbox', { name: 'Name' })).not.toBeInTheDocument()
-  expect(screen.queryByRole('checkbox', { name: 'Types' })).not.toBeInTheDocument()
+  expect(screen.getByRole('checkbox', { name: 'Types' })).toBeInTheDocument()
   expect(screen.queryByRole('checkbox', { name: 'Owned' })).not.toBeInTheDocument()
 })
 
@@ -974,4 +996,16 @@ test('medals come from every tier at once and ignore the tier dropdown (3.14b)',
   fireEvent.change(screen.getByLabelText(/tier/i), { target: { value: 'final-form' } })
   await waitFor(() => expect(screen.queryByText('Bulbasaur')).not.toBeInTheDocument())
   expect(within(panel()).getAllByRole('img').map((m) => m.getAttribute('aria-label'))).toEqual(earnedBefore)
+})
+
+test('Reset columns in the menu restores the default layout', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+  expect(screen.getByText('grass')).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Reset columns' }))
+  await waitFor(() => expect(screen.queryByText('grass')).not.toBeInTheDocument())
+  const headers = screen.getAllByRole('columnheader').map((th) => th.textContent?.replace(/[⠿▲▼]/g, '').trim())
+  expect(headers).toEqual(['Sprite', 'Dex', 'Name', 'Owned'])
 })

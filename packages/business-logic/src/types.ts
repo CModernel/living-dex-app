@@ -30,6 +30,9 @@ export type UserPreferences = {
   darkMode?: 'system' | 'light' | 'dark';
   // Set once the user dismisses the Home welcome card (3.8 #13). Optional: absent means not yet.
   welcomeDismissed?: boolean;
+  // Preferences schema version: lets reconcilePreferences run one-off migrations on stored state.
+  // 1 = `types` became a hideable column (stored states from before it keep it visible).
+  prefsVersion?: number;
   // Games the user deselected in the Filters menu (ids from availability.ts GAMES). Stored as
   // the deselected set so every game, including ones added later, is selected by default.
   excludedGameIds: string[];
@@ -48,19 +51,21 @@ export const DEFAULT_USER_STATE: UserState = {
     // Only names the HIDEABLE columns that start visible (`sprite`/`name`/`types`/`owned`
     // are always shown regardless of this list — see HIDEABLE_COLUMN_IDS in
     // apps/web/src/hooks/useColumnVisibility.ts). `dex` starts visible per user request
-    // (2026-08-28), `box`/`slot` per the 3.8b spec — every other hideable column starts hidden.
-    visibleColumns: ['dex', 'box', 'slot'],
+    // (2026-08-28); `types`, `box` and `slot` start hidden since 2026-11-12 (UI polish) like every other
+    // hideable column.
+    visibleColumns: ['dex'],
     // Deliberately NOT `[]` even though TanStack's columnOrderingFeature treats an empty array
     // as "natural definition order" for rendering purposes — HomePage's own `reorderColumns`
     // logic reads and rewrites this array directly (so a hidden column's position is preserved
     // across a drag), and needs real ids to compute indices against, not an empty list.
-    columnOrder: ['sprite', 'name', 'species', 'types', 'dex', 'box', 'slot', 'position', 'generation', 'region', 'availability', 'evolutionStage', 'owned'],
+    columnOrder: ['sprite', 'dex', 'name', 'species', 'types', 'box', 'slot', 'position', 'generation', 'region', 'availability', 'evolutionStage', 'owned'],
     // Relative column weights (not pixels), keyed by column id. Empty is safe: a missing entry
     // falls back to DEFAULT_COLUMN_WEIGHTS in apps/web/src/lib/columnWeights.ts.
     columnSizing: {},
     compactMode: false,
     darkMode: 'system',
     excludedGameIds: [],
+    prefsVersion: 1,
   },
 };
 

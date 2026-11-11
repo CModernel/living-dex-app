@@ -53,3 +53,12 @@ test('generation medal shows a roman numeral', () => {
   render(<Medal trophy={{ ...trophies[3], earned: true, rank: 2, generation: 9 }} />)
   expect(screen.getByRole('img').textContent).toContain('IX')
 })
+
+test('trophy case rows show each tier with its progress percentage', () => {
+  render(<TrophiesPanel trophies={trophies} />)
+  fireEvent.click(screen.getByRole('button', { name: 'View all' }))
+  const row = within(screen.getByRole('dialog')).getByRole('region', { name: 'Final Form' })
+  expect(within(row).getAllByRole('img')).toHaveLength(2)
+  expect(within(row).getByText('30%')).toBeInTheDocument()
+  expect(screen.getByRole('dialog').parentElement).toHaveClass('backdrop-blur-sm')
+})

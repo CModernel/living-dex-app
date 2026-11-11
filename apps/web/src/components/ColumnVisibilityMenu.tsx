@@ -5,10 +5,10 @@ type HideableColumn = {
   toggle: () => void
 }
 
-function ColumnVisibilityMenu({ columns }: { columns: HideableColumn[] }) {
+function ColumnVisibilityMenu({ columns, onReset }: { columns: HideableColumn[]; onReset?: () => void }) {
   return (
     <details className="relative">
-      <summary className="cursor-pointer rounded-md border border-border px-2.5 py-1.5 text-sm select-none hover:border-muted">
+      <summary className="btn list-none [&::-webkit-details-marker]:hidden">
         Columns
       </summary>
       <div className="absolute right-0 z-10 mt-1 flex flex-col gap-1 rounded-lg border border-border bg-surface p-2 shadow-lg">
@@ -21,6 +21,11 @@ function ColumnVisibilityMenu({ columns }: { columns: HideableColumn[] }) {
             {column.label}
           </label>
         ))}
+        {onReset && (
+          <button type="button" onClick={onReset} className="btn btn-sm btn-ghost mt-1 justify-start">
+            Reset columns
+          </button>
+        )}
       </div>
     </details>
   )

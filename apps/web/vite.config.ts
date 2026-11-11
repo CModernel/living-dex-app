@@ -1,6 +1,6 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -20,6 +20,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // Playwright specs live in e2e/ and run with `npm run test:e2e`.
+    exclude: [...configDefaults.exclude, 'e2e/**'],
     globals: true,
     setupFiles: './src/test/setup.ts',
     // HomePage tests render ~1.4k-row tables in jsdom; the 5s default flakes on a busy machine.

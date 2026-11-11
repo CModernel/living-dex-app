@@ -85,6 +85,12 @@
   device for mobile) before being marked done in `TODO.md` — a passing test suite doesn't
   guarantee a working app (this repo has hit real bundle-succeeds-but-runtime-crashes bugs).
 - A feature is not considered complete if its core business logic isn't tested.
+- **UI tests are mandatory for UI-affecting work** (decided 2026-11-12): component tests (Vitest +
+  Testing Library) for behavior, plus a Playwright spec in `apps/web/e2e/` for anything visual or
+  layout-dependent (dialogs, overflow at 375 px and desktop, hidden/default columns). Every pending
+  `TODO.md` ticket must list its unit, component and e2e tests in its acceptance criteria.
+  Run the e2e suite with `npm run test:e2e -w apps/web` (set `PLAYWRIGHT_CHROMIUM_PATH` to reuse an
+  installed Chromium-based browser instead of downloading one).
 
 ## 7. TODO policy
 

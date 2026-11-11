@@ -12,7 +12,7 @@ function WelcomeCard({ onDismiss }: { onDismiss: () => void }) {
       <button
         type="button"
         onClick={onDismiss}
-        className="cursor-pointer rounded-md bg-brand px-2.5 py-1.5 text-sm font-medium text-white hover:bg-brand/90"
+        className="btn btn-primary"
       >
         Got it
       </button>

@@ -672,6 +672,25 @@ even if the `3.X` task order below does.
       choosing a tier outside the layout later shows Continue / Migrate (clone with new layout) / Cancel.
       Full design, dataset findings (all tiers fit in Living Form Full; Final Form does not fit in Living
       Lite) and test list: `obsidian/3.19-Tier-Migration-Plan.md`.
+- [x] **3.23 UI polish round** ✅ **Done 2026-11-12.** Shared `Dialog` (blurred backdrop, scale/fade-in,
+      reduced-motion safe) used by trophy case and list dialogs; trophy case redesigned as tier rows
+      (medals + progress bar); button family (`btn`, `btn-primary`, `btn-ghost`, `btn-sm`) applied
+      everywhere; original ball-mark `Logo` + favicon; Dex moved next to the sprite; smaller type badges;
+      **Types, Box and Slot hidden by default** (`prefsVersion` 1 keeps Types visible for existing
+      users) + "Reset columns"; colored handheld "obtained from" button; game options as colored chips
+      grouped by generation (`lib/gameColors.ts`, no official logos: trademarks). Playwright added
+      (`apps/web/e2e`, desktop + mobile, `npm run test:e2e -w apps/web`). Web 157 tests + 10 e2e.
+- [ ] **3.20 Debug / simulation environment (planned, after 3.19).** A dev-only `?debug` panel plus
+      Playwright scenarios simulating a brand-new user end to end: create a list through the wizard,
+      bulk-mark entries, switch tiers, export, clear storage, import, check trophies. Needs its own
+      flow plan first (scenarios, seed data, reset button). Tests: the scenarios themselves.
+- [ ] **3.21 Testing standard (rule recorded in `docs/RULES.md` §6, 2026-11-12).** Backfill: every
+      pending ticket (3.18, 3.19, 3.20, 3.22, Champions card, 3.10/3.11) lists its unit, component and
+      e2e tests in its acceptance criteria before it starts.
+- [ ] **3.22 Mobile check and design (deferred, undecided).** Verify the web app at phone widths with
+      Playwright's mobile project (known: the Owned column is tight at 375 px when many columns are
+      visible), then decide responsive web vs native. Notes: Hermes lacks `crypto.randomUUID`; the
+      mobile provider has the hydration race fixed on web only. No decision yet.
 - [ ] **3.18 Grid view (idea)** — alternative to the table: tiles per Pokémon, simplified and easier to
       scan. `preferences.viewMode: 'table'|'grid'`; tile content and items-per-row still to decide.
 

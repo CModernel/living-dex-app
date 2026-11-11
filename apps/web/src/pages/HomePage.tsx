@@ -232,15 +232,18 @@ function findNearestColumn(rects: { id: string; left: number; right: number }[],
   return closestId
 }
 
-// A small handheld-console glyph for the "obtained from" button. currentColor, so it follows the
-// muted/brand text color of its button.
-function GameIcon() {
+// Color handheld for the "obtained from" button: purple when no game is tagged, brand blue when
+// some are, so it reads as a pressable control rather than a plain icon.
+function GameIcon({ active }: { active: boolean }) {
+  const body = active ? '#208aef' : '#6C3FC4'
+  const edge = active ? '#0C447C' : '#3C2078'
   return (
-    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <rect x="3.5" y="1.5" width="9" height="13" rx="1.5" />
-      <rect x="5.5" y="3.5" width="5" height="4" rx="0.5" />
-      <path d="M6 10.5h2M7 9.5v2" strokeLinecap="round" />
-      <circle cx="10" cy="10.5" r="0.75" fill="currentColor" stroke="none" />
+    <svg viewBox="0 0 22 26" width="18" height="21" aria-hidden="true">
+      <rect x="1" y="1" width="20" height="24" rx="3" fill={body} stroke={edge} />
+      <rect x="4" y="4" width="14" height="10" rx="1.5" fill="#B9E3C6" stroke={edge} />
+      <path d="M6 19h4M8 17v4" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="15" cy="18" r="1.6" fill="#fff" />
+      <circle cx="17.5" cy="20.5" r="1.6" fill="#fff" />
     </svg>
   )
 }
@@ -317,12 +320,17 @@ const TableRow = memo(function TableRow({
                   e.stopPropagation()
                   openGamePicker(row.original.slug, e.currentTarget)
                 }}
-                className={`flex cursor-pointer items-center gap-0.5 rounded px-1 py-0.5 text-xs hover:bg-border/40 ${
-                  ownedGames.length > 0 ? 'text-brand' : 'text-muted'
+                className={`flex min-h-8 cursor-pointer items-center gap-1 rounded-lg border px-1.5 py-0.5 text-xs font-medium shadow-sm transition hover:brightness-95 active:translate-y-px active:shadow-none ${
+                  ownedGames.length > 0
+                    ? 'border-brand bg-brand/10 text-brand'
+                    : 'border-border bg-background text-muted hover:border-foreground/30'
                 }`}
               >
-                <GameIcon />
+                <GameIcon active={ownedGames.length > 0} />
                 {ownedGames.length > 0 && <span>{ownedGames.length}</span>}
+                <svg viewBox="0 0 10 6" width="8" height="5" aria-hidden="true" className="hidden sm:block" fill="none" stroke="currentColor" strokeWidth="1.6">
+                  <path d="M1 1l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </button>
             </div>
           </td>
@@ -347,7 +355,7 @@ const TableRow = memo(function TableRow({
 function HomePage() {
   const result = useDataset()
   const { activeList, toggleOwned, toggleOwnedGame } = useActiveList()
-  const { columnVisibility, setColumnVisibility } = useColumnVisibility()
+  const { columnVisibility, setColumnVisibility, resetColumns } = useColumnVisibility()
   const { columnOrder, setColumnOrder } = useColumnOrder()
   const { columnSizing, setColumnSizing } = useColumnSizing()
   const { filter, toggleFinalStageOnly, toggleRegionalFormsOnly, toggleHideGenderVariants, toggleHideInaccessible } =
@@ -454,7 +462,6 @@ function HomePage() {
         columnHelper.display({
           id: 'types',
           header: 'Types',
-          enableHiding: false,
           cell: (ctx) => (
             <div className="flex flex-wrap gap-1">
               {ctx.row.original.types.map((type) => (
@@ -692,7 +699,7 @@ function HomePage() {
                   <select
                     value={tierId}
                     onChange={(e) => setTierId(e.target.value as TierId)}
-                    className="cursor-pointer rounded-md border border-border bg-background px-2.5 py-1.5 hover:border-muted"
+                    className="btn"
                   >
                     {(Object.keys(TIER_LABELS) as TierId[]).map((id) => (
                       <option key={id} value={id}>
@@ -701,7 +708,7 @@ function HomePage() {
                     ))}
                   </select>
                 </label>
-                <ColumnVisibilityMenu columns={hideableColumns} />
+                <ColumnVisibilityMenu columns={hideableColumns} onReset={resetColumns} />
                 <FilterMenu
                   toggles={[
                     { id: 'finalStageOnly', label: 'Final stage only', checked: filter.finalStageOnly, toggle: toggleFinalStageOnly },

@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type MouseEvent } from 'react'
 import { useLists } from '../hooks/useLists'
+import Dialog from './Dialog'
 
 // Shared by ListsPage (full-page management) and HomePage's left sidebar (3.6 follow-up:
 // switching should refresh the table right there, not require a trip to /lists) — both
@@ -8,9 +9,6 @@ import { useLists } from '../hooks/useLists'
 // outer border of its own — each consumer wraps it in its own panel styling, so this never
 // ends up nested inside a second, redundant border.
 //
-// The create dialog here is intentionally plain (see TODO.md's "Polished create-list
-// dialog" idea for the animated/backdrop-blur version) — a user request for later, not
-// this pass.
 const LIST_ICONS = ['⭐', '🏆', '✨', '🔥', '💧', '🌿', '⚡', '🎮', '📦', '❤️']
 
 function ListSwitcher() {
@@ -66,7 +64,7 @@ function ListSwitcher() {
           onClick={openCreateDialog}
           aria-label="Create new list"
           title="Create new list"
-          className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-border text-base leading-none hover:bg-border/30"
+          className="btn btn-sm btn-icon h-7 w-7 text-base leading-none"
         >
           +
         </button>
@@ -121,104 +119,68 @@ function ListSwitcher() {
       </ul>
 
       {isCreateOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={() => setIsCreateOpen(false)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Create new list"
-            onClick={(e) => e.stopPropagation()}
-            className="w-72 rounded-lg border border-border bg-background p-4 shadow-lg"
-          >
-            <form onSubmit={handleCreate} className="flex flex-col gap-3">
-              <h3 className="text-sm font-semibold">New list</h3>
-              <input
-                type="text"
-                value={newListName}
-                onChange={(e) => setNewListName(e.target.value)}
-                placeholder="List name"
-                aria-label="New list name"
-                autoFocus
-                className="rounded-md border border-border bg-background px-2.5 py-1.5 text-sm"
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateOpen(false)}
-                  className="cursor-pointer rounded-md border border-border px-2.5 py-1.5 text-sm hover:bg-border/30"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="cursor-pointer rounded-md bg-brand px-2.5 py-1.5 text-sm font-medium text-white hover:bg-brand/90"
-                >
-                  Create
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <Dialog label="Create new list" onClose={() => setIsCreateOpen(false)}>
+          <form onSubmit={handleCreate} className="flex flex-col gap-3">
+            <h3 className="text-base font-semibold">New list</h3>
+            <input
+              type="text"
+              value={newListName}
+              onChange={(e) => setNewListName(e.target.value)}
+              placeholder="List name"
+              aria-label="New list name"
+              autoFocus
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            />
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setIsCreateOpen(false)} className="btn btn-ghost">
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Create
+              </button>
+            </div>
+          </form>
+        </Dialog>
       )}
       {editingId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={() => setEditingId(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Edit list"
-            onClick={(e) => e.stopPropagation()}
-            className="w-72 rounded-lg border border-border bg-background p-4 shadow-lg"
-          >
-            <form onSubmit={handleEdit} className="flex flex-col gap-3">
-              <h3 className="text-sm font-semibold">Edit list</h3>
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                placeholder="List name"
-                aria-label="List name"
-                autoFocus
-                className="rounded-md border border-border bg-background px-2.5 py-1.5 text-sm"
-              />
-              <div role="group" aria-label="Icon" className="flex flex-wrap gap-1">
-                {['', ...LIST_ICONS].map((icon) => (
-                  <button
-                    key={icon || 'none'}
-                    type="button"
-                    onClick={() => setEditIcon(icon)}
-                    aria-label={icon ? `Icon ${icon}` : 'No icon'}
-                    aria-pressed={editIcon === icon}
-                    className={`h-8 w-8 cursor-pointer rounded-md border text-base ${
-                      editIcon === icon ? 'border-brand bg-brand/15' : 'border-border hover:bg-border/30'
-                    }`}
-                  >
-                    {icon || '∅'}
-                  </button>
-                ))}
-              </div>
-              <div className="flex justify-end gap-2">
+        <Dialog label="Edit list" onClose={() => setEditingId(null)}>
+          <form onSubmit={handleEdit} className="flex flex-col gap-3">
+            <h3 className="text-base font-semibold">Edit list</h3>
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="List name"
+              aria-label="List name"
+              autoFocus
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            />
+            <div role="group" aria-label="Icon" className="flex flex-wrap gap-1">
+              {['', ...LIST_ICONS].map((icon) => (
                 <button
+                  key={icon || 'none'}
                   type="button"
-                  onClick={() => setEditingId(null)}
-                  className="cursor-pointer rounded-md border border-border px-2.5 py-1.5 text-sm hover:bg-border/30"
+                  onClick={() => setEditIcon(icon)}
+                  aria-label={icon ? `Icon ${icon}` : 'No icon'}
+                  aria-pressed={editIcon === icon}
+                  className={`h-9 w-9 cursor-pointer rounded-lg border text-base transition active:translate-y-px ${
+                    editIcon === icon ? 'border-brand bg-brand/15' : 'border-border hover:bg-border/30'
+                  }`}
                 >
-                  Cancel
+                  {icon || '∅'}
                 </button>
-                <button
-                  type="submit"
-                  className="cursor-pointer rounded-md bg-brand px-2.5 py-1.5 text-sm font-medium text-white hover:bg-brand/90"
-                >
-                  Save
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setEditingId(null)} className="btn btn-ghost">
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Save
+              </button>
+            </div>
+          </form>
+        </Dialog>
       )}
     </div>
   )

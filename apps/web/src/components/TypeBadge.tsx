@@ -9,7 +9,7 @@ function TypeBadge({ type }: { type: string }) {
       // `min-w-0` overrides the flex-item default (`min-width: auto`, i.e. "never shrink below
       // content size") — without it, `max-w-full`/`truncate` above have nothing to act on when
       // this badge sits inside the Types cell's `flex` row.
-      className="inline-block min-w-0 max-w-full truncate rounded px-2 py-0.5 text-center text-xs font-medium text-black uppercase dark:text-neutral-100"
+      className="inline-block min-w-0 max-w-full truncate rounded px-1.5 py-px text-center text-[10px] leading-4 font-semibold text-black uppercase dark:text-neutral-100"
       style={{ backgroundColor: typeColor(type) }}
     >
       {type}

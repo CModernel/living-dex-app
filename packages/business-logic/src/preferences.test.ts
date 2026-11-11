@@ -7,10 +7,12 @@ const defaults = DEFAULT_USER_STATE.preferences
 
 const legacyOrder = ['sprite', 'name', 'types', 'dex', 'generation', 'region', 'evolutionStage', 'owned']
 
-test('a legacy state without box/slot gets them inserted after dex and made visible', () => {
+test('a legacy state gets new columns inserted after their default predecessor, hidden', () => {
   const result = reconcilePreferences({ ...defaults, columnOrder: legacyOrder, visibleColumns: ['dex', 'region'] })
-  assert.deepEqual(result.columnOrder, defaults.columnOrder)
-  assert.deepEqual(result.visibleColumns, ['dex', 'region', 'box', 'slot'])
+  assert.deepEqual(result.columnOrder, [
+    'sprite', 'name', 'species', 'types', 'box', 'slot', 'position', 'dex', 'generation', 'region', 'availability', 'evolutionStage', 'owned',
+  ])
+  assert.deepEqual(result.visibleColumns, ['dex', 'region'])
 })
 
 test('a user-reordered legacy state keeps its order; new columns follow their default predecessor', () => {
@@ -20,7 +22,7 @@ test('a user-reordered legacy state keeps its order; new columns follow their de
     visibleColumns: [],
   })
   assert.deepEqual(result.columnOrder, [
-    'owned', 'dex', 'box', 'slot', 'position', 'name', 'species', 'sprite', 'types', 'generation', 'region', 'availability', 'evolutionStage',
+    'owned', 'dex', 'name', 'species', 'sprite', 'types', 'box', 'slot', 'position', 'generation', 'region', 'availability', 'evolutionStage',
   ])
 })
 
@@ -36,7 +38,8 @@ test('missing keys are filled from the defaults', () => {
   assert.deepEqual(result.columnSizing, {})
   assert.deepEqual(result.excludedGameIds, [])
   assert.deepEqual(result.columnOrder, defaults.columnOrder)
-  assert.deepEqual(result.visibleColumns, [])
+  // No prefsVersion stored: `types` (hideable since v1) is kept visible once.
+  assert.deepEqual(result.visibleColumns, ['types'])
 })
 
 test('a pre-3.8d state gets the Availability column inserted after region, hidden', () => {
@@ -53,4 +56,24 @@ test('undefined preferences become the defaults', () => {
 test('is idempotent', () => {
   const once = reconcilePreferences({ ...defaults, columnOrder: legacyOrder, visibleColumns: ['dex'] })
   assert.deepEqual(reconcilePreferences(once), once)
+})
+
+test('fresh defaults show only Dex next to the sprite; Types, Box and Slot start hidden', () => {
+  assert.deepEqual(defaults.visibleColumns, ['dex'])
+  assert.deepEqual(defaults.columnOrder.slice(0, 3), ['sprite', 'dex', 'name'])
+  assert.equal(defaults.prefsVersion, 1)
+})
+
+test('a pre-prefsVersion state keeps Types visible once, then respects a later hide', () => {
+  const stored = { ...defaults, prefsVersion: undefined, visibleColumns: ['dex', 'box'] }
+  const once = reconcilePreferences(stored)
+  assert.deepEqual(once.visibleColumns, ['dex', 'box', 'types'])
+  assert.equal(once.prefsVersion, 1)
+  const hidden = reconcilePreferences({ ...once, visibleColumns: ['dex'] })
+  assert.deepEqual(hidden.visibleColumns, ['dex'])
+})
+
+test('Types is not duplicated when a legacy state already lists it', () => {
+  const result = reconcilePreferences({ ...defaults, prefsVersion: undefined, visibleColumns: ['types', 'dex'] })
+  assert.deepEqual(result.visibleColumns, ['types', 'dex'])
 })

@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test } from 'vitest'
-import { UserStateProvider } from '../state/UserStateContext'
+import { UserStateProvider, useUserState } from '../state/UserStateContext'
+import { DEFAULT_USER_STATE } from '@living-dex/business-logic'
 import { useColumnVisibility } from './useColumnVisibility'
 
 beforeEach(() => {
@@ -11,13 +12,14 @@ afterEach(() => {
   window.localStorage.clear()
 })
 
-test('dex, box and slot start visible by default; every other hideable column starts hidden', () => {
+test('only dex starts visible by default; every other hideable column (types, box, slot...) starts hidden', () => {
   const { result } = renderHook(() => useColumnVisibility(), { wrapper: UserStateProvider })
   expect(result.current.columnVisibility).toEqual({
     species: false,
+    types: false,
     dex: true,
-    box: true,
-    slot: true,
+    box: false,
+    slot: false,
     position: false,
     generation: false,
     region: false,
@@ -60,11 +62,35 @@ test('visibility persists to localStorage and survives a fresh hook instance', a
   act(() => result.current.setColumnVisibility((prev) => ({ ...prev, generation: true })))
   await waitFor(() => {
     const stored = JSON.parse(window.localStorage.getItem('living-dex:user-state') ?? '{}')
-    // dex/box/slot are already true by default, so they're included alongside the newly-toggled column.
-    expect(stored.preferences.visibleColumns).toEqual(['dex', 'box', 'slot', 'generation'])
+    // dex is already true by default, so it's included alongside the newly-toggled column.
+    expect(stored.preferences.visibleColumns).toEqual(['dex', 'generation'])
   })
   unmount()
 
   const { result: reloaded } = renderHook(() => useColumnVisibility(), { wrapper: UserStateProvider })
   await waitFor(() => expect(reloaded.current.columnVisibility.generation).toBe(true))
+})
+
+test('resetColumns restores default visibility, order and widths', async () => {
+  const { result } = renderHook(
+    () => ({ visibility: useColumnVisibility(), state: useUserState() }),
+    { wrapper: UserStateProvider },
+  )
+  await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
+
+  act(() => {
+    result.current.visibility.setColumnVisibility((prev) => ({ ...prev, types: true, box: true }))
+    result.current.state[1]((prev) => ({
+      ...prev,
+      preferences: { ...prev.preferences, columnOrder: ['owned', 'sprite'], columnSizing: { name: 500 } },
+    }))
+  })
+  await waitFor(() => expect(result.current.visibility.columnVisibility.types).toBe(true))
+
+  act(() => result.current.visibility.resetColumns())
+  await waitFor(() => expect(result.current.visibility.columnVisibility.types).toBe(false))
+  const prefs = result.current.state[0].preferences
+  expect(prefs.visibleColumns).toEqual(DEFAULT_USER_STATE.preferences.visibleColumns)
+  expect(prefs.columnOrder).toEqual(DEFAULT_USER_STATE.preferences.columnOrder)
+  expect(prefs.columnSizing).toEqual({})
 })
