@@ -1425,6 +1425,13 @@ even if the `3.X` task order below does.
 ## How we work
 
 - **Phase 1 & 2** are blockers — everything else depends on them. Do them fully before Phase 3.
+- **Strategy (decided 2026-11-11): local-first, cloud later.** Living Dex and leetcode-tracker ship with
+  import/export only; Supabase login is deferred until popularity shows it is viable (one shared project
+  planned for all apps, per-app table prefixes + RLS). Design rules until then: the export envelope
+  (`{app, version, exportedAt, state}`) is the future sync/migration format, so keep it versioned and
+  backward-compatible; ids stay UUIDs and updaters stay pure (a cloud layer will replay them); the future
+  "upload to cloud" is just the existing import path pointed at Supabase. Monetization: measure first
+  (cookieless analytics, donation link, cross-promo card) before ads.
 - **Phase 3** items are loosely ordered by dependency (earlier items don't need later ones), but
   can be done in parallel or reordered if a feature becomes urgent.
 - Every item in Phase 3 gets tests (unit or integration) — standing rule.
