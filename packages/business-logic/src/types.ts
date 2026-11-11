@@ -1,3 +1,5 @@
+import type { TierId } from './layout.js'
+
 export type ListFilter = {
   finalStageOnly: boolean;
   regionalFormsOnly: boolean;
@@ -20,6 +22,10 @@ export type PokemonList = {
   // order), only for entries with at least one tag. Optional: lists saved before 3.7b lack it.
   // Kept consistent by owned.ts: a tagged slug is always in `ownedIds`.
   ownedGames?: Record<string, string[]>;
+  // 3.19: working tier and the tier whose full order defines Box/Slot. Optional: lists saved before 3.19
+  // lack both and resolve to Living Form (see resolveListTiers in layout.ts).
+  tier?: TierId;
+  layoutTier?: TierId;
 };
 
 export type UserPreferences = {

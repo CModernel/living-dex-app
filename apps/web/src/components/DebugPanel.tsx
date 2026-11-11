@@ -1,6 +1,7 @@
 import { clearOwned, DEFAULT_USER_STATE, markOwned, type PokemonList } from '@living-dex/business-logic'
 import { useState } from 'react'
 import { useActiveList } from '../hooks/useActiveList'
+import { useLists } from '../hooks/useLists'
 import { useDataset } from '../hooks/useDataset'
 import { useUserState } from '../state/UserStateContext'
 
@@ -11,6 +12,7 @@ export default function DebugPanel() {
   const [state, setState] = useUserState()
   const { dataset } = useDataset()
   const { activeList } = useActiveList()
+  const { createNewList } = useLists()
   const slugs = dataset ? Object.keys(dataset.pokemon) : []
   const update = (fn: (list: PokemonList) => PokemonList) =>
     setState((prev) => {
@@ -32,6 +34,13 @@ export default function DebugPanel() {
           <p>
             {Object.keys(state.lists).length} list(s), {activeList?.ownedIds.length ?? 0} owned
           </p>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => createNewList('Debug list', { tier: 'living-form', layoutTier: 'living-form' })}
+          >
+            Quick start
+          </button>
           <button type="button" className="btn btn-sm" onClick={() => update((l) => markOwned(l, slugs.slice(0, 10)))}>
             Mark first 10
           </button>

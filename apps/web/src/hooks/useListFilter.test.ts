@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, test } from 'vitest'
 import { UserStateProvider } from '../state/UserStateContext'
  import { DEFAULT_LIST_FILTER } from '@living-dex/business-logic'
 import { useListFilter } from './useListFilter'
+import { seedDefaultList } from '../test/seed'
 
 const KEY = 'living-dex:user-state'
 
@@ -14,7 +15,8 @@ test('starts with the default filter', () => {
   expect(result.current.filter).toEqual(DEFAULT_LIST_FILTER)
 })
 
-test('each toggle flips only its own key, creating the list if none exists', async () => {
+test('each toggle flips only its own key on the active list', async () => {
+  seedDefaultList()
   const { result } = renderHook(() => useListFilter(), { wrapper: UserStateProvider })
 
   act(() => result.current.toggleFinalStageOnly())

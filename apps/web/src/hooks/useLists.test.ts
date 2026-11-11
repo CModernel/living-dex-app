@@ -158,3 +158,21 @@ test('cloneList deep-copies owned data, gets a new id and becomes active', async
   act(() => result.current.cloneList('nope'))
   expect(result.current.lists).toHaveLength(2)
 })
+
+test('tiers: createNewList stores them, updateList changes them, cloneList overrides them (3.19)', async () => {
+  const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
+  act(() => result.current.createNewList('Dex', { tier: 'final-form', layoutTier: 'living-form-full' }))
+  await waitFor(() => expect(result.current.lists).toHaveLength(1))
+  const id = result.current.lists[0].id
+  expect(result.current.lists[0]).toMatchObject({ tier: 'final-form', layoutTier: 'living-form-full' })
+
+  act(() => result.current.updateList(id, { tier: 'living-form' }))
+  await waitFor(() => expect(result.current.lists[0].tier).toBe('living-form'))
+  expect(result.current.lists[0].layoutTier).toBe('living-form-full')
+
+  act(() => result.current.cloneList(id, { name: 'Dex (Full)', tier: 'living-form-full', layoutTier: 'living-form-full' }))
+  await waitFor(() => expect(result.current.lists).toHaveLength(2))
+  expect(result.current.lists[1]).toMatchObject({ name: 'Dex (Full)', tier: 'living-form-full', layoutTier: 'living-form-full' })
+  expect(result.current.activeListId).toBe(result.current.lists[1].id)
+  expect(result.current.lists[0]).toMatchObject({ name: 'Dex', tier: 'living-form' })
+})

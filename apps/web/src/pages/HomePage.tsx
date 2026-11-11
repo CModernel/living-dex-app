@@ -8,10 +8,14 @@ import {
   getOwnedGames,
   getPokeJungleSpriteUrl,
   getSpriteUrl,
+  effectiveLayoutTier,
+  layoutPositions,
+  resolveListTiers,
   type PokemonEntry,
   type PokemonDataset,
 } from '@living-dex/business-logic'
-import { TIERS, type TierId } from '@cmodernel/living-dex-tiers'
+import { TIERS } from '@cmodernel/living-dex-tiers'
+import type { TierId } from '@living-dex/business-logic'
 import { flexRender, useTable } from '@tanstack/react-table'
 import {
   columnOrderingFeature,
@@ -41,12 +45,18 @@ import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
 import FilterMenu from '../components/FilterMenu'
 import GamePickerPopover, { type GamePickerOption } from '../components/GamePickerPopover'
 import ListSwitcher from '../components/ListSwitcher'
+import StartWizard from '../components/StartWizard'
+import TierCards from '../components/TierCards'
+import TierChangeDialog from '../components/TierChangeDialog'
+import Dialog from '../components/Dialog'
 import OwnedProgress from '../components/OwnedProgress'
 import TrophiesPanel from '../components/TrophiesPanel'
 import WelcomeCard from '../components/WelcomeCard'
 import TypeBadge from '../components/TypeBadge'
 import { useActiveList } from '../hooks/useActiveList'
-import { useUserState } from '../state/UserStateContext'
+import { useIsHydrated, useUserState } from '../state/UserStateContext'
+import { useLists } from '../hooks/useLists'
+import { TIER_LABELS, TROPHY_TIER_ORDER, useTierSets } from '../lib/tiers'
 import { useColumnOrder } from '../hooks/useColumnOrder'
 import { useColumnSizing } from '../hooks/useColumnSizing'
 import { useColumnVisibility } from '../hooks/useColumnVisibility'
@@ -54,17 +64,6 @@ import { useDataset } from '../hooks/useDataset'
 import { useGameSelection } from '../hooks/useGameSelection'
 import { useListFilter } from '../hooks/useListFilter'
 import { getColumnMinPx, getColumnWeight, resizeAdjacentPair } from '../lib/columnWeights'
-
-// Trophy rank order: smallest / easiest tier first.
-const TROPHY_TIER_ORDER: TierId[] = ['final-form', 'final-form-full', 'living-lite', 'living-form', 'living-form-full']
-
-const TIER_LABELS: Record<TierId, string> = {
-  'living-form-full': 'Living Form Full',
-  'living-form': 'Living Form',
-  'living-lite': 'Living Lite',
-  'final-form-full': 'Final Form Full',
-  'final-form': 'Final Form',
-}
 
 // Module-level: no runtime data dependency, must stay stable across renders.
 const features = tableFeatures({
@@ -74,12 +73,11 @@ const features = tableFeatures({
   sortedRowModel: createSortedRowModel(),
 })
 
-// `box`/`slot` are derived from the filtered, canonical-`sortIndex`-ordered list (see `entries`
-// below), never from the order the table currently displays. `availableIn` is the selected games
+// `box`/`slot` are the position in the list's layout tier (3.19, see `entries` below), computed from the
+// full dataset before any filter, never from the order the table currently displays. `availableIn` is the selected games
 // (3.8d) where the entry is obtainable or conditional — null when the dataset has no availability
 // data for it — and `selectedGameCount` the denominator shown next to it.
 type TableEntry = PokemonEntry & { box: number; slot: number; availableIn: string[] | null; selectedGameCount: number }
-const BOX_SIZE = 30
 // A header press that moves less than this before release is a click (sort), not a reorder drag.
 const CLICK_MOVE_THRESHOLD_PX = 4
 const columnHelper = createColumnHelper<typeof features, TableEntry>()
@@ -361,7 +359,12 @@ function HomePage() {
   const { filter, toggleFinalStageOnly, toggleRegionalFormsOnly, toggleHideGenderVariants, toggleHideInaccessible } =
     useListFilter()
   const { selectedGameIds, toggleGame, selectAllGames, selectNoGames } = useGameSelection()
-  const [tierId, setTierId] = useState<TierId>('living-form')
+  const hydrated = useIsHydrated()
+  const { updateList, cloneList } = useLists()
+  const { tier: tierId, layoutTier } = resolveListTiers(activeList)
+  const [pendingTier, setPendingTier] = useState<TierId | null>(null)
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const [tierGuideOpen, setTierGuideOpen] = useState(false)
   // Pointer-based column drag (not native HTML5 DnD — draggable/dragstart/drop on table cells is
   // a well-documented cross-browser reliability sink hole). `columnId`/`label` identify the
   // dragged column; `hoverColumnId` is whichever header the pointer is currently over, used for
@@ -378,21 +381,34 @@ function HomePage() {
   const [resizingColumnId, setResizingColumnId] = useState<string | null>(null)
 
   const dataset = result.loading || result.error ? null : result.dataset
+  const tierSets = useTierSets(dataset)
+  // 3.19: Box/Slot = position in the layout tier's full order, computed before filters and games, so
+  // neither (nor re-sorting) can move it. Falls back to the working tier when the layout doesn't hold it.
+  const layoutTierUsed = tierSets ? effectiveLayoutTier(tierSets, tierId, layoutTier) : tierId
+  const positions = useMemo(
+    () => (dataset ? layoutPositions(Object.values(dataset.pokemon), TIERS[layoutTierUsed].predicate) : new Map()),
+    [dataset, layoutTierUsed],
+  )
   const entries = useMemo(() => {
     if (!dataset) return []
     return Object.values(dataset.pokemon)
       .filter(applyListFilter(TIERS[tierId].predicate, filter, selectedGameIds))
       .sort((a, b) => a.sortIndex - b.sortIndex)
-      // Position in the canonical order, baked into each row's data before the table (and its
-      // display sorting) ever sees it — so re-sorting can never change a Pokémon's Box/Slot.
-      .map((entry, index) => ({
+      .map((entry) => ({
         ...entry,
-        box: Math.floor(index / BOX_SIZE) + 1,
-        slot: (index % BOX_SIZE) + 1,
+        box: positions.get(entry.slug)?.box ?? 0,
+        slot: positions.get(entry.slug)?.slot ?? 0,
         availableIn: entry.availability ? availableGames(entry, selectedGameIds) : null,
         selectedGameCount: selectedGameIds.length,
       }))
-  }, [dataset, tierId, filter, selectedGameIds])
+  }, [dataset, tierId, filter, selectedGameIds, positions])
+
+  function changeTier(next: TierId) {
+    if (!activeList || next === tierId) return
+    if (!tierSets || effectiveLayoutTier(tierSets, next, layoutTier) === layoutTier) {
+      updateList(activeList.id, { tier: next, layoutTier })
+    } else setPendingTier(next)
+  }
   const ownedIds = useMemo(() => new Set(activeList?.ownedIds ?? []), [activeList])
   const [userState, setUserState] = useUserState()
   const dismissWelcome = useCallback(
@@ -688,7 +704,23 @@ function HomePage() {
       <div className="min-w-0 flex-1">
         {result.loading && <p className="text-muted">Loading Pokémon data…</p>}
         {result.error && <p className="text-muted">Failed to load dataset: {result.error.message}</p>}
-        {!result.loading && !result.error && (
+        {!result.loading && !result.error && hydrated && !activeList && (
+          <>
+            {!userState.preferences.welcomeDismissed && <WelcomeCard onDismiss={dismissWelcome} />}
+            <section aria-label="Get started" className="rounded-2xl border border-border bg-surface p-6 text-center">
+              <h1 className="text-2xl font-semibold tracking-tight">Start your Living Dex</h1>
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted">
+                Choose which Pokémon you want to collect. We'll explain each option and plan your boxes so nothing has
+                to move when your collection grows.
+              </p>
+              <button type="button" onClick={() => setWizardOpen(true)} className="btn btn-primary mt-4">
+                Start
+              </button>
+            </section>
+          </>
+        )}
+        {wizardOpen && <StartWizard onClose={() => setWizardOpen(false)} />}
+        {!result.loading && !result.error && activeList && (
           <>
             {!userState.preferences.welcomeDismissed && <WelcomeCard onDismiss={dismissWelcome} />}
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -698,7 +730,7 @@ function HomePage() {
                   Tier
                   <select
                     value={tierId}
-                    onChange={(e) => setTierId(e.target.value as TierId)}
+                    onChange={(e) => changeTier(e.target.value as TierId)}
                     className="btn"
                   >
                     {(Object.keys(TIER_LABELS) as TierId[]).map((id) => (
@@ -708,6 +740,15 @@ function HomePage() {
                     ))}
                   </select>
                 </label>
+                <button
+                  type="button"
+                  onClick={() => setTierGuideOpen(true)}
+                  aria-label="Explain the collection goals"
+                  title="What are tiers?"
+                  className="btn btn-sm btn-icon h-7 w-7"
+                >
+                  ?
+                </button>
                 <ColumnVisibilityMenu columns={hideableColumns} onReset={resetColumns} />
                 <FilterMenu
                   toggles={[
@@ -839,6 +880,49 @@ function HomePage() {
           </>
         )}
       </div>
+      {pendingTier && activeList && tierSets && (
+        <TierChangeDialog
+          sets={tierSets}
+          to={pendingTier}
+          layoutTier={layoutTier}
+          onCancel={() => setPendingTier(null)}
+          onContinue={() => {
+            updateList(activeList.id, { tier: pendingTier, layoutTier })
+            setPendingTier(null)
+          }}
+          onMigrate={() => {
+            cloneList(activeList.id, {
+              name: `${activeList.name} (${TIER_LABELS[pendingTier]})`,
+              tier: pendingTier,
+              layoutTier: pendingTier,
+            })
+            setPendingTier(null)
+          }}
+        />
+      )}
+      {tierGuideOpen && (
+        <Dialog label="What are tiers?" onClose={() => setTierGuideOpen(false)} className="w-[34rem]">
+          <div className="flex flex-col gap-3">
+            <h3 className="text-base font-semibold">What are tiers?</h3>
+            <p className="text-sm text-muted">
+              A tier is the goal of your collection: which Pokémon count. Smaller tiers are a quicker goal; bigger ones
+              include more forms. Your list is on <strong>{TIER_LABELS[tierId]}</strong>
+              {layoutTier !== tierId && (
+                <>
+                  , with boxes planned for <strong>{TIER_LABELS[layoutTier]}</strong>
+                </>
+              )}
+              .
+            </p>
+            <TierCards sets={tierSets} value={tierId} label="Tiers" />
+            <div className="flex justify-end">
+              <button type="button" onClick={() => setTierGuideOpen(false)} className="btn btn-primary">
+                Got it
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
       {picker && pickerEntry && (
         <GamePickerPopover
           anchor={picker.anchor}

@@ -32,6 +32,16 @@ test('round-trips lists through serialize and parse', () => {
   if (result.ok) assert.deepEqual(result.lists, [src])
 })
 
+test('keeps known tier ids and drops unknown ones (3.19)', () => {
+  const src = list('1', 'Dex', { tier: 'final-form', layoutTier: 'living-form-full' })
+  const ok = parseImport(serializeExport(stateWith(src)))
+  if (ok.ok) assert.deepEqual([ok.lists[0].tier, ok.lists[0].layoutTier], ['final-form', 'living-form-full'])
+  else assert.fail('expected ok')
+  const bad = parseImport(envelope({ state: { lists: { x: { id: 'x', name: 'X', ownedIds: [], tier: 'nope', layoutTier: 3 } } } }))
+  if (bad.ok) assert.equal('tier' in bad.lists[0] || 'layoutTier' in bad.lists[0], false)
+  else assert.fail('expected ok')
+})
+
 test('rejects invalid JSON, wrong app, newer version and missing lists', () => {
   assert.equal(parseImport('nope').ok, false)
   assert.equal(parseImport(envelope({ app: 'other' })).ok, false)

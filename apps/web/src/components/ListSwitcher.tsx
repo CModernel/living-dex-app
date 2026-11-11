@@ -1,6 +1,10 @@
+import { resolveListTiers, TIER_IDS, coversTier, type TierId } from '@living-dex/business-logic'
 import { useState, type FormEvent, type MouseEvent } from 'react'
+import { useDataset } from '../hooks/useDataset'
 import { useLists } from '../hooks/useLists'
+import { TIER_LABELS, useTierSets } from '../lib/tiers'
 import Dialog from './Dialog'
+import StartWizard from './StartWizard'
 
 // Shared by ListsPage (full-page management) and HomePage's left sidebar (3.6 follow-up:
 // switching should refresh the table right there, not require a trip to /lists) — both
@@ -12,37 +16,31 @@ import Dialog from './Dialog'
 const LIST_ICONS = ['⭐', '🏆', '✨', '🔥', '💧', '🌿', '⚡', '🎮', '📦', '❤️']
 
 function ListSwitcher() {
-  const { lists, activeListId, createNewList, switchTo, deleteList, updateList, cloneList } = useLists()
-  const [newListName, setNewListName] = useState('')
+  const { lists, activeListId, switchTo, deleteList, updateList, cloneList } = useLists()
+  const { dataset } = useDataset()
+  const tierSets = useTierSets(dataset)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editIcon, setEditIcon] = useState('')
-
-  function openCreateDialog() {
-    setNewListName('')
-    setIsCreateOpen(true)
-  }
-
-  function handleCreate(e: FormEvent) {
-    e.preventDefault()
-    const name = newListName.trim()
-    if (!name) return
-    createNewList(name)
-    setIsCreateOpen(false)
-  }
+  const [editLayout, setEditLayout] = useState<TierId>('living-form')
+  const editingList = editingId ? lists.find((l) => l.id === editingId) : undefined
+  const editingTier = resolveListTiers(editingList).tier
+  // Box layout choices: tiers that hold the list's working tier (3.19), so the plan can only grow.
+  const layoutOptions = TIER_IDS.filter((id) => !tierSets || coversTier(tierSets, id, editingTier))
 
   function openEditDialog(e: MouseEvent, id: string, name: string, icon?: string) {
     e.stopPropagation()
     setEditName(name)
     setEditIcon(icon ?? '')
+    setEditLayout(resolveListTiers(lists.find((l) => l.id === id)).layoutTier)
     setEditingId(id)
   }
 
   function handleEdit(e: FormEvent) {
     e.preventDefault()
     if (!editingId || !editName.trim()) return
-    updateList(editingId, { name: editName, icon: editIcon })
+    updateList(editingId, { name: editName, icon: editIcon, tier: editingTier, layoutTier: editLayout })
     setEditingId(null)
   }
 
@@ -61,7 +59,7 @@ function ListSwitcher() {
       <div className="mb-2 flex justify-end">
         <button
           type="button"
-          onClick={openCreateDialog}
+          onClick={() => setIsCreateOpen(true)}
           aria-label="Create new list"
           title="Create new list"
           className="btn btn-sm btn-icon h-7 w-7 text-base leading-none"
@@ -118,30 +116,7 @@ function ListSwitcher() {
         ))}
       </ul>
 
-      {isCreateOpen && (
-        <Dialog label="Create new list" onClose={() => setIsCreateOpen(false)}>
-          <form onSubmit={handleCreate} className="flex flex-col gap-3">
-            <h3 className="text-base font-semibold">New list</h3>
-            <input
-              type="text"
-              value={newListName}
-              onChange={(e) => setNewListName(e.target.value)}
-              placeholder="List name"
-              aria-label="New list name"
-              autoFocus
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            />
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setIsCreateOpen(false)} className="btn btn-ghost">
-                Cancel
-              </button>
-              <button type="submit" className="btn btn-primary">
-                Create
-              </button>
-            </div>
-          </form>
-        </Dialog>
-      )}
+      {isCreateOpen && <StartWizard onClose={() => setIsCreateOpen(false)} />}
       {editingId && (
         <Dialog label="Edit list" onClose={() => setEditingId(null)}>
           <form onSubmit={handleEdit} className="flex flex-col gap-3">
@@ -171,6 +146,19 @@ function ListSwitcher() {
                 </button>
               ))}
             </div>
+            <label className="flex flex-col gap-1 text-sm">
+              Box layout
+              <select value={editLayout} onChange={(e) => setEditLayout(e.target.value as TierId)} className="btn">
+                {layoutOptions.map((id) => (
+                  <option key={id} value={id}>
+                    {TIER_LABELS[id]}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-muted">
+                Box/Slot follow this tier's order. Pick a bigger tier if you plan to grow into it.
+              </span>
+            </label>
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setEditingId(null)} className="btn btn-ghost">
                 Cancel

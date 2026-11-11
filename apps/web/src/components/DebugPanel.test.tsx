@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, expect, test, vi } from 'vitest'
 import { UserStateProvider } from '../state/UserStateContext'
 import DebugPanel from './DebugPanel'
+import { seedDefaultList } from '../test/seed'
 
 vi.mock('../hooks/useDataset', () => ({
   useDataset: () => ({
@@ -11,7 +12,10 @@ vi.mock('../hooks/useDataset', () => ({
   }),
 }))
 
-beforeEach(() => window.localStorage.clear())
+beforeEach(() => {
+  window.localStorage.clear()
+  seedDefaultList()
+})
 
 const status = () => screen.getByText(/list\(s\)/).textContent
 
@@ -31,5 +35,7 @@ test('marks, clears and resets through the buttons', async () => {
   expect(status()).toMatch(/0 owned/)
   fireEvent.click(screen.getByRole('button', { name: 'Mark all' }))
   fireEvent.click(screen.getByRole('button', { name: 'Reset all data' }))
+  await screen.findByText(/0 list\(s\), 0 owned/)
+  fireEvent.click(screen.getByRole('button', { name: 'Quick start' }))
   await screen.findByText(/1 list\(s\), 0 owned/)
 })

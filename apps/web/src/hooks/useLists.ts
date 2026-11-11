@@ -1,10 +1,11 @@
-import { DEFAULT_LIST_FILTER, type PokemonList } from '@living-dex/business-logic'
+import { DEFAULT_LIST_FILTER, type PokemonList, type TierId } from '@living-dex/business-logic'
 import { useCallback, useMemo } from 'react'
 import { useUserState } from '../state/UserStateContext'
 
-// Shared with useActiveList.ts's bootstrap-on-first-visit list, so both paths that can create a
-// list use the exact same defaults.
-export function createList(name: string): PokemonList {
+export type ListTiers = { tier: TierId; layoutTier: TierId }
+
+// Every list is created through the start wizard (3.19), which always sets both tiers.
+export function createList(name: string, tiers?: ListTiers): PokemonList {
   return {
     id: crypto.randomUUID(),
     name,
@@ -13,6 +14,7 @@ export function createList(name: string): PokemonList {
     variant: 'normal',
     filter: DEFAULT_LIST_FILTER,
     ownedIds: [],
+    ...tiers,
   }
 }
 
@@ -25,9 +27,9 @@ export function useLists() {
   )
 
   const createNewList = useCallback(
-    (name: string) => {
+    (name: string, tiers?: ListTiers) => {
       // Built outside the updater: a pre-hydration update is replayed, and must produce the same id.
-      const list = createList(name)
+      const list = createList(name, tiers)
       setState((prev) => ({ ...prev, lists: { ...prev.lists, [list.id]: list }, activeListId: list.id }))
     },
     [setState],
@@ -47,11 +49,8 @@ export function useLists() {
       setState((prev) => {
         if (!prev.lists[id]) return prev
         const { [id]: _removed, ...rest } = prev.lists
-        // Deleting the active list falls back to another remaining one (whichever was
-        // created first) rather than nulling activeListId outright — no reason to force
-        // useActiveList's bootstrap to spin up a brand new default list when a perfectly
-        // good one is already sitting right there. Only truly empty falls back to null,
-        // which useActiveList's own bootstrap effect handles the next time Home renders.
+        // Deleting the active list falls back to another remaining one; only truly empty falls back
+        // to null, and Home then shows the "Start" empty state (3.19).
         const remainingIds = Object.keys(rest)
         const activeListId = prev.activeListId !== id ? prev.activeListId : (remainingIds[0] ?? null)
         return { ...prev, lists: rest, activeListId }
@@ -60,24 +59,28 @@ export function useLists() {
     [setState],
   )
 
-  // Edit name and/or icon. An empty/whitespace name is ignored (keeps the old one); an empty
+  // Edit name, icon and/or tiers. An empty/whitespace name is ignored (keeps the old one); an empty
   // icon clears it. No-ops for an unknown id.
   const updateList = useCallback(
-    (id: string, changes: { name?: string; icon?: string }) => {
+    (id: string, changes: { name?: string; icon?: string; tier?: TierId; layoutTier?: TierId }) => {
       setState((prev) => {
         const list = prev.lists[id]
         if (!list) return prev
         const name = changes.name?.trim() || list.name
         const icon = changes.icon === undefined ? list.icon : changes.icon.trim() || undefined
-        return { ...prev, lists: { ...prev.lists, [id]: { ...list, name, icon } } }
+        const tier = changes.tier ?? list.tier
+        const layoutTier = changes.layoutTier ?? list.layoutTier
+        const next: PokemonList = { ...list, name, icon, ...(tier ? { tier } : {}), ...(layoutTier ? { layoutTier } : {}) }
+        return { ...prev, lists: { ...prev.lists, [id]: next } }
       })
     },
     [setState],
   )
 
   // Deep copy (filter, owned, per-game tags) with a new id; the clone becomes the active list.
+  // `overrides` is the 3.19 "Migrate" path: same collection, new name and tiers.
   const cloneList = useCallback(
-    (id: string) => {
+    (id: string, overrides?: { name?: string } & Partial<ListTiers>) => {
       // Identity generated outside the updater so a replayed (pre-hydration) update yields the same copy id.
       const copyId = crypto.randomUUID()
       const createdAt = new Date().toISOString()
@@ -87,13 +90,15 @@ export function useLists() {
         const copy: PokemonList = {
           ...src,
           id: copyId,
-          name: `${src.name} (copy)`,
+          name: overrides?.name ?? `${src.name} (copy)`,
           createdAt,
           filter: { ...src.filter },
           ownedIds: [...src.ownedIds],
           ownedGames: src.ownedGames
             ? Object.fromEntries(Object.entries(src.ownedGames).map(([k, v]) => [k, [...v]]))
             : undefined,
+          ...(overrides?.tier ? { tier: overrides.tier } : {}),
+          ...(overrides?.layoutTier ? { layoutTier: overrides.layoutTier } : {}),
         }
         return { ...prev, lists: { ...prev.lists, [copy.id]: copy }, activeListId: copy.id }
       })

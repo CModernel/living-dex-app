@@ -1,31 +1,11 @@
 import { toggleOwnedEntry, toggleOwnedGame as toggleGameOnList, type PokemonList } from '@living-dex/business-logic'
-import { useCallback, useEffect } from 'react'
-import { useIsHydrated, useUserState } from '../state/UserStateContext'
-import { createList } from './useLists'
+import { useCallback } from 'react'
+import { useUserState } from '../state/UserStateContext'
 
-function createDefaultList() {
-  return createList('My Living Dex')
-}
-
+// No list is created implicitly any more (3.19): a new user goes through the start wizard, which picks
+// the tiers. With no active list, every update here is a no-op and Home shows the "Start" empty state.
 export function useActiveList() {
   const [state, setState] = useUserState()
-  const hydrated = useIsHydrated()
-
-  useEffect(() => {
-    // Wait for storage: before that, state is just the defaults and a list created here would be
-    // layered over the user's real one.
-    if (!hydrated) return
-    if (state.activeListId && state.lists[state.activeListId]) return
-    const list = createDefaultList()
-    // Several components use this hook, so their effects all fire in the same pass: re-check inside the
-    // updater so only the first one creates a list (the debug panel's reset exposed duplicates).
-    setState((prev) =>
-      prev.activeListId && prev.lists[prev.activeListId]
-        ? prev
-        : { ...prev, lists: { ...prev.lists, [list.id]: list }, activeListId: list.id },
-    )
-  }, [hydrated, state.activeListId, state.lists, setState])
-
   const activeList = state.activeListId ? state.lists[state.activeListId] : undefined
 
   // Stable across renders (setState from useState is always stable) — HomePage's memoized
@@ -33,17 +13,11 @@ export function useActiveList() {
   // "changed" (a new onToggle reference) on every single toggle, defeating that memoization.
   const updateActiveList = useCallback(
     (update: (list: PokemonList) => PokemonList) => {
-      let fallback: PokemonList | undefined
       setState((prev) => {
-        // Don't rely on the mount effect above having already run — a click can land before
-        // that effect commits (e.g. right after the dataset resolves), and a plain "no active
-        // list yet, so no-op" here would silently drop it. Create the list inline instead, so
-        // this is correct regardless of timing.
-        const existing = prev.activeListId ? prev.lists[prev.activeListId] : undefined
-        // Created once per call, so a replayed (pre-hydration) update reuses the same list id.
-        const list = existing ?? (fallback ??= createDefaultList())
+        const list = prev.activeListId ? prev.lists[prev.activeListId] : undefined
+        if (!list) return prev
         const next = update(list)
-        return { ...prev, lists: { ...prev.lists, [next.id]: next }, activeListId: next.id }
+        return { ...prev, lists: { ...prev.lists, [next.id]: next } }
       })
     },
     [setState],
@@ -57,5 +31,5 @@ export function useActiveList() {
     [updateActiveList],
   )
 
-  return { activeList, toggleOwned, toggleOwnedGame }
+  return { activeList, updateActiveList, toggleOwned, toggleOwnedGame }
 }

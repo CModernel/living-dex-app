@@ -665,13 +665,17 @@ even if the `3.X` task order below does.
       SVG `Medal` (ring = milestone, hexagon = generation, diamond = regional; bronze/silver/gold/teal/
       purple, grey when locked); sidebar shows earned medals only + "View all" `TrophyCase` dialog.
       Web 144 tests, business-logic 68.
-- [ ] **3.19 Tier migration: stable Box/Slot (planned 2026-11-11, not built; Opus high, plan mode).**
-      Starting at a low tier and later advancing must not re-box everything. Plan: each list gets
-      `tier` + `layoutTier`; Box/Slot come from the layout tier's full order (gaps for later-tier entries);
-      a "Comenzar" wizard at list creation asks the start tier and whether/where the user will advance;
-      choosing a tier outside the layout later shows Continue / Migrate (clone with new layout) / Cancel.
-      Full design, dataset findings (all tiers fit in Living Form Full; Final Form does not fit in Living
-      Lite) and test list: `obsidian/3.19-Tier-Migration-Plan.md`.
+- [x] **3.19 Tier migration: stable Box/Slot** ✅ **Done 2026-11-12.** Each list stores `tier` + `layoutTier`
+      (missing = Living Form, so old lists and backups are unchanged; export stays version 1). Box/Slot = position in
+      the layout tier's full order, computed before filters and games, so filters no longer move it (changes 3.8b);
+      entries outside the working tier leave numbers unused (hidden, not shown as rows). No list is auto-created any
+      more: a new user gets a "Start" empty state and the 2-step `StartWizard` (name + starting tier, then "final
+      goal" or "I'll grow it later" into a tier that contains it; step skipped when none does). Tier guide for
+      beginners: `TierCards` (plain-language includes/skips, Pokémon and box counts from the data, beginner tip),
+      reused in the wizard and the "?" button next to the Tier select. Changing to a tier outside the box plan opens
+      `TierChangeDialog` (Copy to a new list / Switch anyway / Cancel); Edit list has a "Box layout" select.
+      Logic in `business-logic/src/layout.ts` (data-derived containment; floette case tested). Debug panel gained
+      "Quick start". Web 169 tests, business-logic 80, 18 e2e. Design: `obsidian/3.19-Tier-Migration-Plan.md`.
 - [x] **3.23 UI polish round** ✅ **Done 2026-11-12.** Shared `Dialog` (blurred backdrop, scale/fade-in,
       reduced-motion safe) used by trophy case and list dialogs; trophy case redesigned as tier rows
       (medals + progress bar); button family (`btn`, `btn-primary`, `btn-ghost`, `btn-sm`) applied

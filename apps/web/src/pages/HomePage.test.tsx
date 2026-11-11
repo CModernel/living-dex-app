@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { UserStateProvider } from '../state/UserStateContext'
 import HomePage from './HomePage'
+import { seedDefaultList, seedState, testList } from '../test/seed'
 
 const mockDataset: PokemonDataset = {
   count: 3,
@@ -91,6 +92,9 @@ function seedClassicLayout() {
     'living-dex:user-state',
     JSON.stringify({
       ...DEFAULT_USER_STATE,
+      // 3.19: lists come from the start wizard; tests start with one seeded list.
+      lists: { seed: testList('seed', 'My Living Dex') },
+      activeListId: 'seed',
       preferences: {
         ...DEFAULT_USER_STATE.preferences,
         visibleColumns: ['types', 'dex', 'box', 'slot'],
@@ -225,6 +229,7 @@ test('clicking the checkbox directly does not double-toggle via the row handler'
 
 test('only Dex is visible by default, right after the sprite; Types, Box, Slot and the rest start hidden', async () => {
   window.localStorage.clear()
+  seedDefaultList()
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
   renderHomePage()
 
@@ -311,6 +316,7 @@ test('a sprite that fails to load falls back to the PokeAPI url', async () => {
 })
 
 test('switching the active list (via HomePage\'s own sidebar) changes which ownedIds the table reads and writes (3.6)', async () => {
+  seedState([testList('seed', 'My Living Dex'), testList('list-b', 'List B')])
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
   renderHomePage()
 
@@ -319,17 +325,13 @@ test('switching the active list (via HomePage\'s own sidebar) changes which owne
   // for the same guard, and TODO.md for why this is left as-is for now).
   await waitFor(() => expect(window.localStorage.getItem('living-dex:user-state')).not.toBeNull())
 
-  // Owning Bulbasaur creates the default first list ("My Living Dex") implicitly, same as
-  // every other test in this file.
   await screen.findByRole('checkbox', { name: /mark bulbasaur as owned/i })
   fireEvent.click(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i }))
   await waitFor(() => expect(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i })).toBeChecked())
 
-  // Create a second list right from HomePage's own sidebar (ListSwitcher) — no navigation
+  // Switch to the second list right from HomePage's own sidebar (ListSwitcher) — no navigation
   // to /lists needed, per the follow-up request that switching refresh the table in place.
-  fireEvent.click(screen.getByRole('button', { name: /create new list/i }))
-  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'List B' } })
-  fireEvent.click(screen.getByRole('button', { name: /^create$/i }))
+  fireEvent.click(screen.getByText('List B'))
 
   // A fresh list has nothing owned, even though the same Bulbasaur row is showing.
   await waitFor(() => expect(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i })).not.toBeChecked())
@@ -356,6 +358,7 @@ test('toggling finalStageOnly narrows the visible rows (3.7)', async () => {
 })
 
 test('each list keeps its own filter state independently (3.7)', async () => {
+  seedState([testList('seed', 'My Living Dex'), testList('list-b', 'List B')])
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
   renderHomePage()
 
@@ -367,10 +370,8 @@ test('each list keeps its own filter state independently (3.7)', async () => {
   fireEvent.click(screen.getByRole('checkbox', { name: /final stage only/i }))
   await waitFor(() => expect(screen.queryByText('Bulbasaur')).not.toBeInTheDocument())
 
-  // Create a second list — it starts with DEFAULT_LIST_FILTER, so Bulbasaur reappears.
-  fireEvent.click(screen.getByRole('button', { name: /create new list/i }))
-  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'List B' } })
-  fireEvent.click(screen.getByRole('button', { name: /^create$/i }))
+  // Switch to a second list — it has DEFAULT_LIST_FILTER, so Bulbasaur reappears.
+  fireEvent.click(screen.getByText('List B'))
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
   // Switching back to the original list restores its own finalStageOnly toggle.
@@ -1008,4 +1009,138 @@ test('Reset columns in the menu restores the default layout', async () => {
   await waitFor(() => expect(screen.queryByText('grass')).not.toBeInTheDocument())
   const headers = screen.getAllByRole('columnheader').map((th) => th.textContent?.replace(/[⠿▲▼]/g, '').trim())
   expect(headers).toEqual(['Sprite', 'Dex', 'Name', 'Owned'])
+})
+
+// --- 3.19: tier per list, stable Box/Slot, start wizard, tier change dialog ---------------------------
+// mockDataset: bulbasaur (pre, #0), pikachu-female (gender variant, #1), charizard (final, #2).
+// Living Form = {bulbasaur, charizard}; Living Form Full adds pikachu-female; Final Form = {charizard}.
+
+const classicPrefs = () => JSON.parse(window.localStorage.getItem('living-dex:user-state')!).preferences
+const slotOf = (name: string) => {
+  const row = bodyRows().find((cells) => cells[1] === name)
+  return row ? [row[4], row[5]] : null
+}
+const storedLists = () =>
+  Object.values(JSON.parse(window.localStorage.getItem('living-dex:user-state')!).lists) as Array<{
+    name: string
+    tier?: string
+    layoutTier?: string
+    ownedIds: string[]
+  }>
+
+test('a new user sees the Start empty state, and the wizard explains tiers and plans the boxes (3.19)', async () => {
+  const preferences = classicPrefs()
+  window.localStorage.clear()
+  window.localStorage.setItem('living-dex:user-state', JSON.stringify({ ...DEFAULT_USER_STATE, preferences }))
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  const start = await screen.findByRole('region', { name: 'Get started' })
+  expect(screen.queryByText('Bulbasaur')).not.toBeInTheDocument()
+  fireEvent.click(within(start).getByRole('button', { name: 'Start' }))
+
+  const wizard = screen.getByRole('dialog', { name: 'Start a new list' })
+  // Every tier is explained with its size; Final Form is the smallest here.
+  expect(within(wizard).getByText('Only fully evolved Pokémon, one of each.')).toBeInTheDocument()
+  expect((await within(wizard).findAllByText(/1 Pokémon · 1 box/)).length).toBeGreaterThan(0)
+  fireEvent.click(within(wizard).getByRole('radio', { name: 'Final Form' }))
+  fireEvent.click(within(wizard).getByRole('button', { name: 'Next' }))
+
+  expect(within(wizard).getByRole('heading', { name: 'Is Final Form your final goal?' })).toBeInTheDocument()
+  fireEvent.click(within(wizard).getByRole('radio', { name: "I'll grow it later" }))
+  expect(within(wizard).getByRole('radio', { name: 'Living Form Full' })).toBeChecked()
+  fireEvent.click(within(wizard).getByRole('button', { name: 'Create' }))
+
+  await waitFor(() => expect(screen.getByText('Charizard')).toBeInTheDocument())
+  expect(screen.queryByText('Bulbasaur')).not.toBeInTheDocument()
+  // Boxes planned for Living Form Full: Charizard keeps its slot 3, slots 1-2 stay free.
+  expect(slotOf('Charizard')).toEqual(['1', '3'])
+  expect(storedLists()).toMatchObject([{ name: 'My Living Dex', tier: 'final-form', layoutTier: 'living-form-full' }])
+})
+
+test('the wizard skips step 2 when nothing is bigger than the starting tier (3.19)', async () => {
+  window.localStorage.clear()
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+  fireEvent.click(await screen.findByRole('button', { name: 'Start' }))
+  const wizard = screen.getByRole('dialog', { name: 'Start a new list' })
+  fireEvent.click(within(wizard).getByRole('radio', { name: 'Living Form Full' }))
+  const create = within(wizard).getByRole('button', { name: 'Create' })
+  await waitFor(() => expect(create).toBeEnabled())
+  fireEvent.click(create)
+  await waitFor(() => expect(screen.getByText('Pikachu (female)')).toBeInTheDocument())
+  expect(storedLists()).toMatchObject([{ tier: 'living-form-full', layoutTier: 'living-form-full' }])
+})
+
+test('Box/Slot no longer move when a filter hides rows (3.19)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Charizard')).toBeInTheDocument())
+  expect(slotOf('Charizard')).toEqual(['1', '2'])
+
+  fireEvent.click(screen.getByText('Filters'))
+  fireEvent.click(screen.getByRole('checkbox', { name: /final stage only/i }))
+  await waitFor(() => expect(screen.queryByText('Bulbasaur')).not.toBeInTheDocument())
+  expect(slotOf('Charizard')).toEqual(['1', '2'])
+})
+
+test('a tier the box plan covers switches silently and is saved on the list (3.19)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+  fireEvent.change(screen.getByLabelText(/tier/i), { target: { value: 'final-form' } })
+  await waitFor(() => expect(screen.queryByText('Bulbasaur')).not.toBeInTheDocument())
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(slotOf('Charizard')).toEqual(['1', '2'])
+  await waitFor(() => expect(storedLists()[0]).toMatchObject({ tier: 'final-form', layoutTier: 'living-form' }))
+})
+
+test('a tier outside the box plan asks first: Cancel, Switch anyway, Copy to a new list (3.19)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+  fireEvent.click(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i }))
+
+  const select = () => screen.getByLabelText(/tier/i)
+  fireEvent.change(select(), { target: { value: 'living-form-full' } })
+  let dialog = screen.getByRole('dialog', { name: 'Change tier' })
+  expect(within(dialog).getByText(/adds 1/)).toBeInTheDocument()
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+  expect(screen.queryByText('Pikachu (female)')).not.toBeInTheDocument()
+  expect(select()).toHaveValue('living-form')
+
+  fireEvent.change(select(), { target: { value: 'living-form-full' } })
+  dialog = screen.getByRole('dialog', { name: 'Change tier' })
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Copy to a new list' }))
+  await waitFor(() => expect(screen.getByText('Pikachu (female)')).toBeInTheDocument())
+  expect(screen.getByRole('checkbox', { name: /mark bulbasaur as owned/i })).toBeChecked()
+  // The copy is laid out on the new tier; the original list is untouched.
+  expect(slotOf('Charizard')).toEqual(['1', '3'])
+  await waitFor(() => expect(storedLists()).toHaveLength(2))
+  expect(storedLists()).toMatchObject([
+    { name: 'My Living Dex', ownedIds: ['bulbasaur'] },
+    { name: 'My Living Dex (Living Form Full)', tier: 'living-form-full', layoutTier: 'living-form-full', ownedIds: ['bulbasaur'] },
+  ])
+  expect(storedLists()[0].tier).toBeUndefined()
+
+  // Back on the original: "Switch anyway" keeps the list and lays it out on the working tier.
+  fireEvent.click(screen.getByText('My Living Dex'))
+  await waitFor(() => expect(screen.queryByText('Pikachu (female)')).not.toBeInTheDocument())
+  fireEvent.change(select(), { target: { value: 'living-form-full' } })
+  fireEvent.click(within(screen.getByRole('dialog', { name: 'Change tier' })).getByRole('button', { name: 'Switch anyway' }))
+  await waitFor(() => expect(screen.getByText('Pikachu (female)')).toBeInTheDocument())
+  expect(storedLists()[0]).toMatchObject({ name: 'My Living Dex', tier: 'living-form-full', layoutTier: 'living-form' })
+})
+
+test('the tier guide explains every tier with its size (3.19)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+  fireEvent.click(screen.getByRole('button', { name: 'Explain the collection goals' }))
+  const guide = screen.getByRole('dialog', { name: 'What are tiers?' })
+  expect(within(guide).getAllByRole('listitem')).toHaveLength(5)
+  expect(within(guide).getByText('Absolutely everything.')).toBeInTheDocument()
+  expect(within(guide).getByText(/3 Pokémon · 1 box/)).toBeInTheDocument()
+  fireEvent.click(within(guide).getByRole('button', { name: 'Got it' }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })

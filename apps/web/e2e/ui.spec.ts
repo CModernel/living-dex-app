@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test'
-import { mockNetwork } from './fixture'
+import { mockNetwork, startList } from './fixture'
 
 test.beforeEach(async ({ page }) => {
   await mockNetwork(page)
   await page.goto('./')
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await expect(page.getByText('Mon 1', { exact: true })).toBeVisible()
+  await startList(page)
 })
 
 test('header shows the logo and the page has no horizontal scroll', async ({ page }) => {
@@ -59,13 +59,14 @@ test('the obtained-from button opens a picker of colored game chips and tags a g
   await expect(page.getByRole('checkbox', { name: 'Mark Mon 1 as owned' })).toBeChecked()
 })
 
-test('creating a list opens a styled dialog and the new list becomes active', async ({ page }) => {
+test('creating a list opens the start wizard and the new list becomes active', async ({ page }) => {
   await page.getByRole('button', { name: 'Create new list' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Create new list' })
-  await expect(dialog).toBeVisible()
-  await dialog.getByLabel('New list name').fill('Shinies')
-  await dialog.getByRole('button', { name: 'Create' }).click()
+  const wizard = page.getByRole('dialog', { name: 'Start a new list' })
+  await expect(wizard).toBeVisible()
+  await wizard.getByLabel('New list name').fill('Shinies')
+  await wizard.getByRole('button', { name: 'Create' }).click()
   await expect(page.getByText('Shinies')).toBeVisible()
+  await expect(wizard).toHaveCount(0)
 })
 
 test('the disclaimer is visible in the footer and in Settings, and the page does not overflow', async ({ page }) => {

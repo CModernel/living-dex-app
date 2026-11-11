@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
 // A small synthetic dataset (same shape as the published one) so UI tests don't hit the network.
 function entry(i: number) {
@@ -40,4 +40,14 @@ export const dataset = {
 export async function mockNetwork(page: Page) {
   await page.route('**/living-form-full-data.json*', (route) => route.fulfill({ json: dataset }))
   await page.route(/\.(png|gif|webp)(\?.*)?$/, (route) => route.abort())
+}
+
+// 3.19: a new user has no list until the start wizard creates one. With this fixture every Living
+// tier is the same 40 entries, so Living Form has nothing bigger and the wizard creates it in one step.
+export async function startList(page: Page, name = 'My Living Dex') {
+  await page.getByRole('region', { name: 'Get started' }).getByRole('button', { name: 'Start' }).click()
+  const wizard = page.getByRole('dialog', { name: 'Start a new list' })
+  await wizard.getByLabel('New list name').fill(name)
+  await wizard.getByRole('button', { name: 'Create' }).click()
+  await expect(page.getByText('Mon 1', { exact: true })).toBeVisible()
 }

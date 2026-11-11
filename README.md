@@ -1,7 +1,8 @@
 # Living Dex App
 
 Web and mobile app for tracking a Pokémon Living Dex — mark which entries you own across one or
-more custom lists, filtered by tier (Living Form, Living Lite, Final Form Full, Final Form).
+more custom lists, each with its own tier (Living Form Full, Living Form, Living Lite, Final Form Full, Final Form)
+and a box plan so Box/Slot stay put when the collection grows.
 TypeScript monorepo sharing business logic between a React 19 web app and a React Native + Expo
 mobile app.
 

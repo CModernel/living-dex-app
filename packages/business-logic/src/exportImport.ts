@@ -1,3 +1,4 @@
+import { isTierId } from './layout.js'
 import { DEFAULT_LIST_FILTER, type PokemonList, type UserState } from './types.js'
 
 // Export/import (TODO 3.9). Export is the whole state; import only ever ADDS collections (fresh
@@ -43,6 +44,9 @@ function parseList(raw: unknown): PokemonList | null {
     filter: { ...DEFAULT_LIST_FILTER, ...(isRecord(raw.filter) ? raw.filter : {}) },
     ownedIds,
     ownedGames,
+    // 3.19: only known tier ids survive; the keys are omitted otherwise so the list resolves to the default.
+    ...(isTierId(raw.tier) ? { tier: raw.tier } : {}),
+    ...(isTierId(raw.layoutTier) ? { layoutTier: raw.layoutTier } : {}),
   }
 }
 
