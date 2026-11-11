@@ -665,6 +665,13 @@ even if the `3.X` task order below does.
       SVG `Medal` (ring = milestone, hexagon = generation, diamond = regional; bronze/silver/gold/teal/
       purple, grey when locked); sidebar shows earned medals only + "View all" `TrophyCase` dialog.
       Web 144 tests, business-logic 68.
+- [ ] **3.19 Tier migration: stable Box/Slot (planned 2026-11-11, not built; Opus high, plan mode).**
+      Starting at a low tier and later advancing must not re-box everything. Plan: each list gets
+      `tier` + `layoutTier`; Box/Slot come from the layout tier's full order (gaps for later-tier entries);
+      a "Comenzar" wizard at list creation asks the start tier and whether/where the user will advance;
+      choosing a tier outside the layout later shows Continue / Migrate (clone with new layout) / Cancel.
+      Full design, dataset findings (all tiers fit in Living Form Full; Final Form does not fit in Living
+      Lite) and test list: `obsidian/3.19-Tier-Migration-Plan.md`.
 - [ ] **3.18 Grid view (idea)** — alternative to the table: tiles per Pokémon, simplified and easier to
       scan. `preferences.viewMode: 'table'|'grid'`; tile content and items-per-row still to decide.
 
