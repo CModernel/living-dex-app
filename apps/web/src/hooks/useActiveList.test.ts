@@ -49,3 +49,9 @@ test('a toggle made before hydration is not lost and does not create a second li
   await waitFor(() => expect(Object.keys(stored().lists)).toHaveLength(1))
   expect(Object.values(stored().lists as Record<string, { ownedIds: string[] }>)[0].ownedIds).toEqual(['pikachu'])
 })
+
+test('two consumers bootstrapping in the same pass create only one default list', async () => {
+  const { result } = renderHook(() => [useActiveList(), useActiveList()] as const, { wrapper: UserStateProvider })
+  await waitFor(() => expect(result.current[0].activeList).toBeDefined())
+  expect(Object.keys(stored().lists)).toHaveLength(1)
+})

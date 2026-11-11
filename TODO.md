@@ -680,10 +680,13 @@ even if the `3.X` task order below does.
       users) + "Reset columns"; colored handheld "obtained from" button; game options as colored chips
       grouped by generation (`lib/gameColors.ts`, no official logos: trademarks). Playwright added
       (`apps/web/e2e`, desktop + mobile, `npm run test:e2e -w apps/web`). Web 157 tests + 10 e2e.
-- [ ] **3.20 Debug / simulation environment (planned, after 3.19).** A dev-only `?debug` panel plus
-      Playwright scenarios simulating a brand-new user end to end: create a list through the wizard,
-      bulk-mark entries, switch tiers, export, clear storage, import, check trophies. Needs its own
-      flow plan first (scenarios, seed data, reset button). Tests: the scenarios themselves.
+- [x] **3.20 Debug / simulation environment** ✅ **Done 2026-11-12 (on today's flows; the "Comenzar" wizard step
+      waits for 3.19).** Dev-only `?debug` panel (`components/DebugPanel.tsx`: Mark first 10, Mark all, Clear owned,
+      Reset all data) behind `import.meta.env.DEV` + lazy import, so it is absent from the production bundle
+      (checked by grepping `dist`). Pure helpers `markOwned`/`clearOwned` in `business-logic/src/debug.ts`.
+      `e2e/new-user.spec.ts`: new-user journey, export/reset/import round trip, panel gating. Also fixed:
+      `useActiveList`'s bootstrap could create duplicate default lists when several components mounted at once.
+      Web 163 tests, business-logic 74, 18 e2e (desktop + mobile).
 - [ ] **3.21 Testing standard (rule recorded in `docs/RULES.md` §6, 2026-11-12).** Backfill: every
       pending ticket (3.18, 3.19, 3.20, 3.22, Champions card, 3.10/3.11) lists its unit, component and
       e2e tests in its acceptance criteria before it starts.

@@ -17,11 +17,13 @@ export function useActiveList() {
     if (!hydrated) return
     if (state.activeListId && state.lists[state.activeListId]) return
     const list = createDefaultList()
-    setState((prev) => ({
-      ...prev,
-      lists: { ...prev.lists, [list.id]: list },
-      activeListId: list.id,
-    }))
+    // Several components use this hook, so their effects all fire in the same pass: re-check inside the
+    // updater so only the first one creates a list (the debug panel's reset exposed duplicates).
+    setState((prev) =>
+      prev.activeListId && prev.lists[prev.activeListId]
+        ? prev
+        : { ...prev, lists: { ...prev.lists, [list.id]: list }, activeListId: list.id },
+    )
   }, [hydrated, state.activeListId, state.lists, setState])
 
   const activeList = state.activeListId ? state.lists[state.activeListId] : undefined
