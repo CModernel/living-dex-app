@@ -1,24 +1,55 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import type { Trophy } from '@living-dex/business-logic'
 import { expect, test } from 'vitest'
+import Medal from './Medal'
 import TrophiesPanel from './TrophiesPanel'
 
-const trophies = [
-  { id: 'pct-25', name: '25% complete', description: 'd', earned: true, progress: { owned: 30, total: 100 } },
-  { id: 'gen-1', name: 'Generation 1', description: 'd', earned: false, progress: { owned: 3, total: 10 } },
+const base = { description: 'd', progress: { owned: 3, total: 10 } }
+const trophies: Trophy[] = [
+  { ...base, id: 'pct-living-lite-25', kind: 'milestone', name: 'Living Lite 25%', earned: true, rank: 3, tierId: 'living-lite', tierName: 'Living Lite', milestone: 25 },
+  { ...base, id: 'pct-final-form-25', kind: 'milestone', name: 'Final Form 25%', earned: true, rank: 1, tierId: 'final-form', tierName: 'Final Form', milestone: 25 },
+  { ...base, id: 'pct-final-form-50', kind: 'milestone', name: 'Final Form 50%', earned: false, rank: 1, tierId: 'final-form', tierName: 'Final Form', milestone: 50 },
+  { ...base, id: 'gen-1', kind: 'generation', name: 'Generation 1', earned: false, rank: 0, generation: 1 },
+  { ...base, id: 'regional-forms', kind: 'regional', name: 'Regional forms', earned: true, rank: 2 },
 ]
 
-test('shows the earned counter, names and progress', () => {
+test('counter and only earned medals, highest rank first', () => {
   render(<TrophiesPanel trophies={trophies} />)
-  expect(screen.getByRole('heading', { name: 'Trophies 1/2' })).toBeInTheDocument()
-  expect(screen.getByText('30/100')).toBeInTheDocument()
-  expect(screen.getByText('3/10')).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Trophies 3/5' })).toBeInTheDocument()
+  const medals = screen.getAllByRole('img')
+  expect(medals.map((m) => m.getAttribute('aria-label'))).toEqual([
+    'Living Lite 25% (earned)',
+    'Regional forms (earned)',
+    'Final Form 25% (earned)',
+  ])
 })
 
-test('marks earned trophies and leaves the rest unmarked', () => {
+test('shows a hint when nothing is earned', () => {
+  render(<TrophiesPanel trophies={trophies.map((t) => ({ ...t, earned: false }))} />)
+  expect(screen.getByText(/No medals yet/)).toBeInTheDocument()
+  expect(screen.queryAllByRole('img')).toHaveLength(0)
+})
+
+test('View all opens the trophy case with locked medals and progress, and closes', () => {
   render(<TrophiesPanel trophies={trophies} />)
-  const items = screen.getAllByRole('listitem')
-  expect(items[0]).toHaveAttribute('data-earned', 'true')
-  expect(items[0]).toHaveTextContent('🏆')
-  expect(items[1]).toHaveAttribute('data-earned', 'false')
-  expect(items[1]).not.toHaveTextContent('🏆')
+  fireEvent.click(screen.getByRole('button', { name: 'View all' }))
+  const dialog = screen.getByRole('dialog', { name: 'Trophy case' })
+  expect(within(dialog).getByRole('region', { name: 'Final Form' })).toBeInTheDocument()
+  expect(within(dialog).getByRole('region', { name: 'Generations' })).toBeInTheDocument()
+  expect(within(dialog).getByRole('region', { name: 'Regional forms' })).toBeInTheDocument()
+  expect(within(dialog).getByRole('img', { name: 'Generation 1 (locked, 3/10)' })).toBeInTheDocument()
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+test('medal colour follows rank and locked medals are grey', () => {
+  const { rerender } = render(<Medal trophy={trophies[0]} />)
+  expect(screen.getByRole('img')).toHaveAttribute('data-rank', '3')
+  rerender(<Medal trophy={{ ...trophies[0], earned: false }} />)
+  expect(screen.getByRole('img')).toHaveAttribute('data-rank', '0')
+})
+
+test('generation medal shows a roman numeral', () => {
+  render(<Medal trophy={{ ...trophies[3], earned: true, rank: 2, generation: 9 }} />)
+  expect(screen.getByRole('img').textContent).toContain('IX')
 })

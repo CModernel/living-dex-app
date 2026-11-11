@@ -55,6 +55,9 @@ import { useGameSelection } from '../hooks/useGameSelection'
 import { useListFilter } from '../hooks/useListFilter'
 import { getColumnMinPx, getColumnWeight, resizeAdjacentPair } from '../lib/columnWeights'
 
+// Trophy rank order: smallest / easiest tier first.
+const TROPHY_TIER_ORDER: TierId[] = ['final-form', 'final-form-full', 'living-lite', 'living-form', 'living-form-full']
+
 const TIER_LABELS: Record<TierId, string> = {
   'living-form-full': 'Living Form Full',
   'living-form': 'Living Form',
@@ -389,7 +392,14 @@ function HomePage() {
     [setUserState],
   )
   const progress = useMemo(() => ownedProgress(entries, ownedIds), [entries, ownedIds])
-  const trophies = useMemo(() => evaluateTrophies(entries, ownedIds), [entries, ownedIds])
+  // Trophies use the FULL entry set of every tier (smallest first = lowest rank), never the
+  // filtered `entries`, so display filters and the tier dropdown can't move a medal.
+  const trophyTiers = useMemo(() => {
+    if (!dataset) return []
+    const all = Object.values(dataset.pokemon)
+    return TROPHY_TIER_ORDER.map((id) => ({ id, name: TIER_LABELS[id], entries: all.filter(TIERS[id].predicate) }))
+  }, [dataset])
+  const trophies = useMemo(() => evaluateTrophies(trophyTiers, ownedIds), [trophyTiers, ownedIds])
   const entriesBySlug = useMemo(() => new Map(entries.map((entry) => [entry.slug, entry])), [entries])
 
   // 3.7b "obtained from" picker: which entry it's open for, and the element it's anchored to.

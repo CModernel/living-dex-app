@@ -658,6 +658,16 @@ even if the `3.X` task order below does.
       regional forms; computed over the collection's visible entries, never stored) +
       `TrophiesPanel` in the Home sidebar under the collections list. Tests: business-logic 57,
       web 119. Deferred: game-tag trophies, starters/legendaries (no flag in the dataset), social.
+- [x] **3.14b Trophy medals (rank per tier)** ✅ **Done 2026-11-11.** Trophies now evaluated for all 5
+      tiers at once over the FULL tier set (ignore display filters/tier dropdown): 25/50/75/100% per tier
+      (`pct-{tier}-{n}`), plus one generation medal and one regional medal whose metal is the best tier
+      completed. Rank order: Final Form < Final Form Full < Living Lite < Living Form < Living Form Full.
+      SVG `Medal` (ring = milestone, hexagon = generation, diamond = regional; bronze/silver/gold/teal/
+      purple, grey when locked); sidebar shows earned medals only + "View all" `TrophyCase` dialog.
+      Web 144 tests, business-logic 68.
+- [ ] **3.18 Grid view (idea)** — alternative to the table: tiles per Pokémon, simplified and easier to
+      scan. `preferences.viewMode: 'table'|'grid'`; tile content and items-per-row still to decide.
+
 - [ ] **3.15 Sheet-update guide** — `living-dex-organizer/docs/UPDATING-SHEETS.md` (docs only; ask
       before committing in the organizer repo).
 - [x] **3.16 Remaining UI tests** ✅ Done 2026-11-10 — UserStateProvider hydration (2 tests) + edit-cancel; ListSwitcher edit/clone covered via ListsPage tests. Web: 117 tests. (Root cause of the early-mutation race — setState(loaded) clobbers pre-hydration changes — is unchanged; tests keep the waitFor guard.)

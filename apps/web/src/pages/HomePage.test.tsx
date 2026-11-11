@@ -957,3 +957,21 @@ test('the Species column shows the bare species name and starts hidden (3.8b)', 
   // Same text as Name for these fixtures, so each species now appears in two cells of its row.
   expect(screen.getAllByText('Charizard')).toHaveLength(2)
 })
+
+test('medals come from every tier at once and ignore the tier dropdown (3.14b)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  renderHomePage()
+
+  await screen.findByRole('checkbox', { name: /mark charizard as owned/i })
+  fireEvent.click(screen.getByRole('checkbox', { name: /mark charizard as owned/i }))
+
+  // Charizard is the only Final Form entry, so owning it completes that tier but only half of Living Form.
+  const panel = () => screen.getByRole('region', { name: 'Trophies' })
+  await waitFor(() => expect(within(panel()).getByRole('img', { name: 'Final Form 100% (earned)' })).toBeInTheDocument())
+  expect(within(panel()).queryByRole('img', { name: /Living Form 100%/ })).not.toBeInTheDocument()
+  const earnedBefore = within(panel()).getAllByRole('img').map((m) => m.getAttribute('aria-label'))
+
+  fireEvent.change(screen.getByLabelText(/tier/i), { target: { value: 'final-form' } })
+  await waitFor(() => expect(screen.queryByText('Bulbasaur')).not.toBeInTheDocument())
+  expect(within(panel()).getAllByRole('img').map((m) => m.getAttribute('aria-label'))).toEqual(earnedBefore)
+})

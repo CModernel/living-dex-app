@@ -1,32 +1,37 @@
 import type { Trophy } from '@living-dex/business-logic'
+import { useState } from 'react'
+import Medal from './Medal'
+import TrophyCase from './TrophyCase'
 
-// Sidebar panel under the collections list: earned trophies highlighted, the rest dimmed with
-// their progress. Pure presentation — HomePage computes the trophies.
+// Sidebar panel under the collections list: only the earned medals, highest rank first, plus a
+// button that opens the full trophy case. Pure presentation — HomePage computes the trophies.
 function TrophiesPanel({ trophies }: { trophies: Trophy[] }) {
-  const earnedCount = trophies.filter((t) => t.earned).length
+  const [caseOpen, setCaseOpen] = useState(false)
+  const earned = trophies.filter((t) => t.earned).sort((a, b) => b.rank - a.rank)
   return (
     <section aria-label="Trophies" className="mt-4 border-t border-border pt-3">
       <h2 className="mb-2 text-sm font-semibold">
-        Trophies {earnedCount}/{trophies.length}
+        Trophies {earned.length}/{trophies.length}
       </h2>
-      <ul className="flex flex-col gap-1">
-        {trophies.map((t) => (
-          <li
-            key={t.id}
-            title={t.description}
-            data-earned={t.earned}
-            className={`flex items-center justify-between gap-2 text-xs ${t.earned ? 'font-medium' : 'text-muted'}`}
-          >
-            <span className="truncate">
-              {t.earned ? '🏆 ' : ''}
-              {t.name}
-            </span>
-            <span className="shrink-0">
-              {t.progress.owned}/{t.progress.total}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {earned.length === 0 ? (
+        <p className="text-xs text-muted">No medals yet. Mark Pokémon as owned to earn them.</p>
+      ) : (
+        <ul className="flex flex-wrap gap-1">
+          {earned.map((t) => (
+            <li key={t.id} data-earned="true">
+              <Medal trophy={t} size={34} />
+            </li>
+          ))}
+        </ul>
+      )}
+      <button
+        type="button"
+        onClick={() => setCaseOpen(true)}
+        className="mt-2 cursor-pointer rounded-md border border-border px-2 py-1 text-xs hover:bg-border/30"
+      >
+        View all
+      </button>
+      {caseOpen && <TrophyCase trophies={trophies} onClose={() => setCaseOpen(false)} />}
     </section>
   )
 }
