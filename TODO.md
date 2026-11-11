@@ -699,7 +699,10 @@ even if the `3.X` task order below does.
 - [ ] **3.25 IP audit run (skill `pokemon-ip-audit`, created 2026-11-12).** Run the audit skill against
       this repo (names/IDs, bundled art, runtime art, logo/favicon, game refs, ads, disclaimer, deploy URL) and
       file any new findings as tickets. Re-run before every public release and after changing names, logos,
-      images or monetization. Last run: never (3.24 was a manual audit). Tests: none (read-only audit).
+      images or monetization. Last run: 2026-11-12, no FAIL. Notes: mobile app icon/splash are still the default Expo template
+      (not an IP issue, but replace with the box mark before any store publish); mobile has no bundle ID yet,
+      so set one without "pokemon"; sprites stay runtime-fetched from PokeJungle/PokeAPI (residual risk).
+      Tests: none (read-only audit).
 - [ ] **3.18 Grid view (idea)** — alternative to the table: tiles per Pokémon, simplified and easier to
       scan. `preferences.viewMode: 'table'|'grid'`; tile content and items-per-row still to decide.
 
