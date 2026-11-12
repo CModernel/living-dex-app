@@ -1,5 +1,6 @@
 import { mergeImportedLists, parseImport, serializeExport } from '@living-dex/business-logic'
 import { useRef, useState, type ChangeEvent } from 'react'
+import CloudSection from '../components/CloudSection'
 import { useInstallPrompt } from '../hooks/usePwa'
 import { DISCLAIMER } from '../lib/disclaimer'
 import { useUserState } from '../state/UserStateContext'
@@ -75,6 +76,8 @@ function SettingsPage() {
           </p>
         )}
       </section>
+
+      <CloudSection />
 
       <section aria-label="Install" className="mt-4 rounded-lg border border-border bg-surface p-4">
         <h2 className="mb-1 text-sm font-semibold">Install and offline</h2>

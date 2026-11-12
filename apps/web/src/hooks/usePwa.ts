@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { registerServiceWorker, type PwaHandle } from '../lib/pwa'
 
 type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> }
@@ -6,12 +6,12 @@ type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{
 /** Registers the worker in production and exposes "a new version is ready" plus how to apply it. */
 export function useServiceWorkerUpdate() {
   const [ready, setReady] = useState(false)
-  const [handle, setHandle] = useState<PwaHandle | null>(null)
+  const handle = useRef<PwaHandle | null>(null)
   useEffect(() => {
     if (!import.meta.env.PROD) return
-    setHandle(registerServiceWorker(() => setReady(true)))
+    handle.current = registerServiceWorker(() => setReady(true))
   }, [])
-  return { updateReady: ready, applyUpdate: () => handle?.applyUpdate() }
+  return { updateReady: ready, applyUpdate: () => handle.current?.applyUpdate() }
 }
 
 /** The browser's install prompt (Chrome/Edge/Android) when it is offered; `install()` shows it. */

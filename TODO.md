@@ -810,12 +810,18 @@ even if the `3.X` task order below does.
       "Install and offline" (`beforeinstallprompt`, iPhone hint). Registered in production only. Tests: pwa lib,
       usePwa, UpdateToast, Settings, e2e project `pwa` (production build in `dist-e2e`, offline reload with saved list;
       negative-checked). Web 206, business-logic 97, e2e 34.
-- [ ] **3.40 Supabase foundation** (2026-11-12). Own schema `living_dex` in the project shared with
-      leetcode-tracker-board, RLS per user, auth (magic link/Google), optional sign-in in Settings; signed-out use
-      unchanged (local-first). Champions Trainer uses Firebase separately. Tests: mocked client unit, Settings
-      component, e2e signed-out unchanged. Opus high, plan mode.
-- [ ] **3.41 Sync v1: manual upload/download** (2026-11-12). Reuse the export envelope, one JSON row per user;
-      download only adds, never deletes owned. Tests: envelope round trip, e2e mocked Supabase. Sonnet medium.
+- [x] **3.40 Supabase foundation** ✅ **Code done 2026-11-13; project setup pending (user).** Schema `living_dex` (table
+      `user_state`: one row per user with the export envelope, RLS own-row only, nothing for anon), migration
+      `supabase/migrations/20261113000000_living_dex_init.sql`, setup guide `docs/SUPABASE.md` (create project, run SQL,
+      expose schema, Email magic link + Google, redirect URLs …/living-dex-app/settings, Actions Variables).
+      `lib/cloud.ts` (lazy supabase-js 2.118.0 chunk, PKCE; absent env = no cloud UI, chunk tree-shaken).
+      Settings → "Cloud sync" (magic link, Continue with Google, sign out). leetcode-tracker-board has no Supabase yet:
+      this app is the first on the shared project. Tests: cloud lib (mocked client), CloudSection.
+- [x] **3.41 Sync v1: "Sync now"** ✅ **Done 2026-11-13.** One button: pull → `mergeLists` (business-logic `sync.ts`: by
+      list id, owned + game tags union, this device's names/settings win, lists on one side kept, idempotent) → save
+      locally → push. Only lists sync (preferences and active list stay per device). Known v1 limitation until 3.42:
+      un-marking or deleting a list comes back from a device that still has it. Tests: sync (5), CloudSection (merge +
+      push, failure changes nothing). Web 214, business-logic 102, e2e 34.
 - [ ] **3.42 Automatic sync** (2026-11-12, needs 3.36). Per-list rows, debounced upload, pull on open/focus,
       offline queue, owned = union merge (nothing ever lost), last-writer-wins for names/settings, status
       indicator. Tests: conflict matrix unit, two-tab e2e. Opus high, plan mode.

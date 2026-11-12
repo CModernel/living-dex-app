@@ -47,6 +47,10 @@ jobs:
       - name: Build web app
         working-directory: living-dex-app
         run: npm run build:web
+        # Optional cloud sync (docs/SUPABASE.md): public values from the repo's Actions Variables; unset = local-only build.
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
