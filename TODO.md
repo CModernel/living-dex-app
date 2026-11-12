@@ -791,10 +791,13 @@ even if the `3.X` task order below does.
       Tests: HomePage, e2e.
 - [ ] **3.35 Filters in grid** (2026-11-12). Filters button in grid too; table and grid keep separate filter
       sets, both default to "show all". Tests: HomePage, useListFilter.
-- [ ] **3.36 Per-list settings** (2026-11-12, do before 3.33/3.35). Move `viewMode`, `showFutureSlots`, per-view
-      filters and selected games from user `preferences` to the list (`list.settings`), migrate old values, copy on
-      clone; columns stay per user. Plan mode, Sonnet high. Tests: business-logic migration + clone, hooks,
-      HomePage, e2e.
+- [x] **3.36 Per-list settings** ✅ **Done 2026-11-12.** `PokemonList.settings` = `{viewMode, showFutureSlots,
+      excludedGameIds}` (defaults in `DEFAULT_LIST_SETTINGS`); `list.filter` was already per list (grid filter keys
+      arrive with 3.35). Columns, density and theme stay per user. One-time migration on load
+      (`migrateListSettings`) copies the old user-level values to every list and drops them from preferences;
+      `parseList` validates imports; `cloneList` deep-copies settings. New `useListSettings` hook; `useGameSelection`
+      is per list. Tests: migration (idempotent, owned untouched), storage load, parseList, hooks, HomePage per-list
+      view, e2e two lists. Web 186, business-logic 90, e2e 28. Plan: `obsidian/3.36-Per-List-Settings-Plan.md`.
 - [ ] **3.37 Clone list (check)** (2026-11-12). Already exists (ListSwitcher "Clone", `cloneList`, tier dialog
       "Copy to a new list"); only keep it in the 3.29 "⋯" menu and make it copy 3.36 settings. Tests: ListsPage.
 - [ ] **3.38 Game badges** (2026-11-12). Replace full game names ("Blue", "Yellow") with coloured letter circles

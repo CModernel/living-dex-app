@@ -36,7 +36,6 @@ test('a state that already knows the columns is left alone (a hidden Box stays h
 test('missing keys are filled from the defaults', () => {
   const result = reconcilePreferences({ visibleColumns: [], compactMode: false } as never)
   assert.deepEqual(result.columnSizing, {})
-  assert.deepEqual(result.excludedGameIds, [])
   assert.deepEqual(result.columnOrder, defaults.columnOrder)
   // No prefsVersion stored: `types` (hideable since v1) is kept visible once.
   assert.deepEqual(result.visibleColumns, ['types'])

@@ -66,6 +66,7 @@ import { useDataset } from '../hooks/useDataset'
 import { useSpriteSource } from '../hooks/useSpriteSource'
 import { useGameSelection } from '../hooks/useGameSelection'
 import { useListFilter } from '../hooks/useListFilter'
+import { useListSettings } from '../hooks/useListSettings'
 import { getColumnMinPx, getColumnWeight, resizeAdjacentPair } from '../lib/columnWeights'
 
 // Module-level: no runtime data dependency, must stay stable across renders.
@@ -402,7 +403,8 @@ function HomePage() {
   const plan = planState(activeList, tierSets)
   const { tier: tierId, layoutTier, decided } = plan
   const [userState, setUserState] = useUserState()
-  const showFutureSlots = !!userState.preferences.showFutureSlots
+  const { settings: listSettings, updateSettings } = useListSettings()
+  const showFutureSlots = listSettings.showFutureSlots
   const positions = useMemo(
     () => (dataset ? layoutPositions(Object.values(dataset.pokemon), TIERS[layoutTier].predicate) : new Map()),
     [dataset, layoutTier],
@@ -454,16 +456,14 @@ function HomePage() {
   const advanceTargets =
     tierSets && decided ? validTargets(tierSets, tierId).filter((t) => coversTier(tierSets, layoutTier, t)) : []
   // 3.18 grid view: boxes of the planned tier, which slugs are tappable (in tier + filters/games), which are in tier.
-  const viewMode = userState.preferences.viewMode ?? 'table'
-  const setViewMode = (mode: 'table' | 'grid') =>
-    setUserState((prev) => ({ ...prev, preferences: { ...prev.preferences, viewMode: mode } }))
+  const viewMode = listSettings.viewMode
+  const setViewMode = (mode: 'table' | 'grid') => updateSettings({ viewMode: mode })
   const boxes = useMemo(
     () => (dataset && viewMode === 'grid' ? layoutBoxes(Object.values(dataset.pokemon), TIERS[layoutTier].predicate) : []),
     [dataset, layoutTier, viewMode],
   )
   const visibleInTier = useMemo(() => new Set(entries.filter((e) => !e.future).map((e) => e.slug)), [entries])
-  const toggleFutureSlots = () =>
-    setUserState((prev) => ({ ...prev, preferences: { ...prev.preferences, showFutureSlots: !prev.preferences.showFutureSlots } }))
+  const toggleFutureSlots = () => updateSettings((current) => ({ showFutureSlots: !current.showFutureSlots }))
   const ownedIds = useMemo(() => new Set(activeList?.ownedIds ?? []), [activeList])
   const dismissWelcome = useCallback(
     () => setUserState((prev) => ({ ...prev, preferences: { ...prev.preferences, welcomeDismissed: true } })),

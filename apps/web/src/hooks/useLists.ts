@@ -1,4 +1,4 @@
-import { DEFAULT_LIST_FILTER, type PokemonList, type TierId } from '@living-dex/business-logic'
+import { copySettings, DEFAULT_LIST_FILTER, type PokemonList, type TierId } from '@living-dex/business-logic'
 import { useCallback, useMemo } from 'react'
 import { useUserState } from '../state/UserStateContext'
 
@@ -98,6 +98,7 @@ export function useLists() {
           name: overrides?.name ?? `${src.name} (copy)`,
           createdAt,
           filter: { ...src.filter },
+          ...(src.settings ? { settings: copySettings(src.settings) } : {}),
           ownedIds: [...src.ownedIds],
           ownedGames: src.ownedGames
             ? Object.fromEntries(Object.entries(src.ownedGames).map(([k, v]) => [k, [...v]]))

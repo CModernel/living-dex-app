@@ -1,27 +1,20 @@
 import { GAMES, selectedGameIds as toSelectedGameIds } from '@living-dex/business-logic'
 import { useCallback, useMemo } from 'react'
-import { useUserState } from '../state/UserStateContext'
-
-const NO_EXCLUDED_GAMES: string[] = []
+import { useListSettings } from './useListSettings'
 
 /**
- * The games that count for availability (3.8d), persisted per user as
- * `preferences.excludedGameIds` — like `visibleColumns`, it's about the user, not a list.
+ * The games that count for availability (3.8d), persisted per list (3.36) as `settings.excludedGameIds`:
+ * every list keeps its own game selection.
  */
 export function useGameSelection() {
-  const [state, setState] = useUserState()
+  const { settings, updateSettings } = useListSettings()
 
-  const excludedGameIds = state.preferences.excludedGameIds ?? NO_EXCLUDED_GAMES
+  const excludedGameIds = settings.excludedGameIds
   const selectedGameIds = useMemo(() => toSelectedGameIds(excludedGameIds), [excludedGameIds])
 
   const setExcluded = useCallback(
-    (update: (prev: string[]) => string[]) => {
-      setState((prev) => ({
-        ...prev,
-        preferences: { ...prev.preferences, excludedGameIds: update(prev.preferences.excludedGameIds ?? []) },
-      }))
-    },
-    [setState],
+    (update: (prev: string[]) => string[]) => updateSettings((current) => ({ excludedGameIds: update(current.excludedGameIds) })),
+    [updateSettings],
   )
 
   const toggleGame = useCallback(

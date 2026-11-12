@@ -25,3 +25,35 @@ for (const scheme of ['light', 'dark'] as const) {
     await expect(page.getByRole('checkbox', { name: 'Mark Mon 3 as owned', exact: true })).toBeChecked()
   })
 }
+
+// 3.36: view settings belong to each list.
+test('each list keeps its own view (grid on one, table on the other) across a reload', async ({ page }) => {
+  await mockNetwork(page)
+  await page.goto('./')
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await startList(page)
+  await page.getByRole('group', { name: 'View' }).getByRole('button', { name: /Grid/ }).click()
+  await expect(page.getByRole('region', { name: 'Box 1' })).toBeVisible()
+
+  // A second list starts in the table.
+  await page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem('living-dex:user-state')!)
+    const [first] = Object.values<{ id: string }>(state.lists)
+    const id = 'second'
+    state.lists[id] = { ...state.lists[first.id], id, name: 'Second', settings: undefined, createdAt: '2099-01-01T00:00:00.000Z' }
+    state.activeListId = id
+    localStorage.setItem('living-dex:user-state', JSON.stringify(state))
+  })
+  await page.reload()
+  await expect(page.getByRole('table')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Box 1' })).toHaveCount(0)
+
+  await page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem('living-dex:user-state')!)
+    state.activeListId = Object.keys(state.lists).find((id) => id !== 'second')
+    localStorage.setItem('living-dex:user-state', JSON.stringify(state))
+  })
+  await page.reload()
+  await expect(page.getByRole('region', { name: 'Box 1' })).toBeVisible()
+})

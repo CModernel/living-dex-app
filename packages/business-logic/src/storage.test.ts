@@ -89,3 +89,14 @@ test('getUserState reconciles a legacy stored state with the current default col
   assert.deepEqual(loaded.preferences.visibleColumns, ['dex', 'types'])
   assert.deepEqual(loaded.preferences.columnSizing, {})
 })
+
+test('loading migrates legacy user-level view settings onto the lists (3.36)', async () => {
+  const store = new Map<string, string>()
+  const adapter = { getItem: async (k: string) => store.get(k) ?? null, setItem: async (k: string, v: string) => void store.set(k, v) }
+  const list = { id: '1', name: 'L', createdAt: 'x', dataVersion: 'v1', variant: 'normal', filter: {}, ownedIds: ['a'] }
+  store.set('living-dex:user-state', JSON.stringify({ lists: { '1': list }, activeListId: '1', preferences: { viewMode: 'grid', excludedGameIds: ['red'] } }))
+  const state = await createUserStateStorage(adapter).getUserState()
+  assert.deepEqual(state.lists['1'].settings, { viewMode: 'grid', excludedGameIds: ['red'] })
+  assert.deepEqual(state.lists['1'].ownedIds, ['a'])
+  assert.ok(!('viewMode' in state.preferences))
+})

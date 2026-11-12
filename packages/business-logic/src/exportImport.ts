@@ -1,5 +1,5 @@
 import { isTierId } from './layout.js'
-import { DEFAULT_LIST_FILTER, type PokemonList, type UserState } from './types.js'
+import { DEFAULT_LIST_FILTER, type ListSettings, type PokemonList, type UserState } from './types.js'
 
 // Export/import (TODO 3.9). Export is the whole state; import only ever ADDS collections (fresh
 // ids, never overwrites), so preferences in a file are kept for backup but not applied.
@@ -44,10 +44,21 @@ function parseList(raw: unknown): PokemonList | null {
     filter: { ...DEFAULT_LIST_FILTER, ...(isRecord(raw.filter) ? raw.filter : {}) },
     ownedIds,
     ownedGames,
+    ...(parseSettings(raw.settings) ? { settings: parseSettings(raw.settings) } : {}),
     // 3.19: only known tier ids survive; the keys are omitted otherwise so the list resolves to the default.
     ...(isTierId(raw.tier) ? { tier: raw.tier } : {}),
     ...(isTierId(raw.layoutTier) ? { layoutTier: raw.layoutTier } : {}),
   }
+}
+
+// 3.36: keeps only well-typed keys; undefined when nothing valid remains (the list then uses the defaults).
+function parseSettings(raw: unknown): ListSettings | undefined {
+  if (!isRecord(raw)) return undefined
+  const settings: ListSettings = {}
+  if (raw.viewMode === 'table' || raw.viewMode === 'grid') settings.viewMode = raw.viewMode
+  if (typeof raw.showFutureSlots === 'boolean') settings.showFutureSlots = raw.showFutureSlots
+  if (isStringArray(raw.excludedGameIds)) settings.excludedGameIds = [...raw.excludedGameIds]
+  return Object.keys(settings).length ? settings : undefined
 }
 
 export function parseImport(text: string): ImportResult {

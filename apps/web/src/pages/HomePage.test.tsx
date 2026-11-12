@@ -1,5 +1,5 @@
 import { DEFAULT_USER_STATE, clearDatasetCache, type PokemonDataset } from '@living-dex/business-logic'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { UserStateProvider } from '../state/UserStateContext'
 import HomePage from './HomePage'
@@ -754,7 +754,7 @@ test('deselecting a game in Filters updates the counts, and the selection is per
 
   await waitFor(() => expect(availabilityCell('Alpha').textContent).toBe('1 / 40'))
   await waitFor(() =>
-    expect(JSON.parse(window.localStorage.getItem('living-dex:user-state')!).preferences.excludedGameIds).toEqual(['red']),
+    expect(JSON.parse(window.localStorage.getItem('living-dex:user-state')!).lists[Object.keys(JSON.parse(window.localStorage.getItem('living-dex:user-state')!).lists)[0]].settings.excludedGameIds).toEqual(['red']),
   )
 })
 
@@ -1246,17 +1246,33 @@ test('the grid shows HOME-style boxes by the plan, marks owned, and the choice p
   fireEvent.click(within(box).getByRole('button', { name: 'Mark Charizard as owned' }))
   await waitFor(() => expect(storedLists()[0].ownedIds).toEqual(['charizard']))
   expect(within(box).getByRole('heading')).toHaveTextContent('1/1')
-  expect(stored().preferences.viewMode).toBe('grid')
+  expect(storedLists()[0].settings?.viewMode).toBe('grid')
 })
 
 test('with an undecided plan the grid asks to decide it first (3.18)', async () => {
   seedTieredList({ tier: 'final-form' })
   const state = stored()
-  state.preferences.viewMode = 'grid'
+  Object.values(state.lists).forEach((l) => (l.settings = { viewMode: 'grid' }))
   window.localStorage.setItem('living-dex:user-state', JSON.stringify(state))
   renderWithData()
   expect(await screen.findByText(/Decide your box plan above to see your boxes/)).toBeInTheDocument()
   expect(screen.queryByRole('region', { name: 'Box 1' })).not.toBeInTheDocument()
   fireEvent.click(within(screen.getByRole('region', { name: 'Plan your boxes' })).getByRole('button', { name: 'Not now' }))
   expect(await screen.findByRole('region', { name: 'Box 1' })).toBeInTheDocument()
+})
+
+test('view settings belong to each list: grid on one list does not change the other (3.36)', async () => {
+  seedState([
+    testList('1', 'One', { tier: 'living-form', layoutTier: 'living-form', settings: { viewMode: 'grid' } }),
+    testList('2', 'Two', { tier: 'living-form', layoutTier: 'living-form' }),
+  ])
+  renderWithData()
+  expect(await screen.findByRole('region', { name: 'Box 1' })).toBeInTheDocument()
+  const state = stored()
+  state.activeListId = '2'
+  window.localStorage.setItem('living-dex:user-state', JSON.stringify(state))
+  cleanup()
+  renderWithData()
+  expect(await screen.findByRole('table')).toBeInTheDocument()
+  expect(screen.queryByRole('region', { name: 'Box 1' })).not.toBeInTheDocument()
 })

@@ -92,3 +92,13 @@ test('merging nothing is a no-op', () => {
   const existing = { k: list('k', 'Dex') }
   assert.deepEqual(mergeImportedLists(existing, [], () => 'x'), existing)
 })
+
+test('keeps valid list settings and drops invalid ones (3.36)', () => {
+  const good = list('1', 'Dex', { settings: { viewMode: 'grid', showFutureSlots: true, excludedGameIds: ['red'] } })
+  const result = parseImport(serializeExport(stateWith(good)))
+  assert.ok(result.ok)
+  assert.deepEqual(result.lists[0].settings, { viewMode: 'grid', showFutureSlots: true, excludedGameIds: ['red'] })
+  const bad = parseImport(envelope({ state: { lists: { a: { ...list('a', 'X'), settings: { viewMode: 'cube', showFutureSlots: 'yes', excludedGameIds: [1] } } } } }))
+  assert.ok(bad.ok)
+  assert.equal(bad.lists[0].settings, undefined)
+})

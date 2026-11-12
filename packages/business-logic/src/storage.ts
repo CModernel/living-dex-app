@@ -1,3 +1,4 @@
+import { migrateListSettings } from './listSettings.js'
 import { reconcilePreferences } from './preferences.js'
 import { UserState, DEFAULT_USER_STATE } from './types.js'
 
@@ -22,7 +23,7 @@ export function createUserStateStorage(adapter: StorageAdapter): UserStateStorag
     try {
       const stored = await adapter.getItem(STORAGE_KEY)
       if (!stored) return DEFAULT_USER_STATE
-      const parsed = JSON.parse(stored) as UserState
+      const parsed = migrateListSettings(JSON.parse(stored) as UserState)
       return { ...parsed, preferences: reconcilePreferences(parsed.preferences) }
     } catch {
       return DEFAULT_USER_STATE

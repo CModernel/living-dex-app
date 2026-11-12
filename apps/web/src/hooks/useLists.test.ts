@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test } from 'vitest'
+import { seedState, testList } from '../test/seed'
 import { UserStateProvider } from '../state/UserStateContext'
 import { useLists } from './useLists'
 
@@ -175,4 +176,15 @@ test('tiers: createNewList stores them, updateList changes them, cloneList overr
   expect(result.current.lists[1]).toMatchObject({ name: 'Dex (Full)', tier: 'living-form-full', layoutTier: 'living-form-full' })
   expect(result.current.activeListId).toBe(result.current.lists[1].id)
   expect(result.current.lists[0]).toMatchObject({ name: 'Dex', tier: 'living-form' })
+})
+
+test('cloneList copies the per-list settings without sharing them (3.36)', async () => {
+  seedState([testList('1', 'Dex', { settings: { viewMode: 'grid', excludedGameIds: ['red'] } })])
+  const { result } = renderHook(() => useLists(), { wrapper: UserStateProvider })
+  await waitFor(() => expect(result.current.lists).toHaveLength(1))
+  act(() => result.current.cloneList('1'))
+  await waitFor(() => expect(result.current.lists).toHaveLength(2))
+  const [src, copy] = result.current.lists
+  expect(copy.settings).toEqual({ viewMode: 'grid', excludedGameIds: ['red'] })
+  expect(copy.settings!.excludedGameIds).not.toBe(src.settings!.excludedGameIds)
 })
