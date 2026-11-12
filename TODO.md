@@ -692,6 +692,22 @@ even if the `3.X` task order below does.
       - `/tiers` page (basic): set diagram (which tier contains which) + named examples per tier, no official art.
       - Tests: unit (plan state), component (tiles, banner, popover, locked columns, toggle), e2e (welcome → tile →
         plan / not now, light + dark screenshots).
+      - Rules (2026-11-12): the plan can only be a strict superset of the current tier (never smaller, never a tier
+        that misses some of it, e.g. Living Lite for Final Form); the popover lists only those. Any tier change resets
+        the plan to undecided (banner back, Box/Slot locked); if the old plan still contains the new tier it is offered
+        first as "Keep boxes planned for X". Banner has an info tooltip: why planning matters (Box/Slot = where each
+        Pokémon goes in HOME; planning now avoids re-boxing later).
+      - Owned data is per list and never touched by tier/plan changes (owned outside the current tier is kept, just not
+        shown; show "N owned outside this tier"). Migrate copy keeps all owned + game tags.
+      - Tier complete with a bigger plan: success banner "Final Form complete" + "Advance to …" listing tiers inside
+        the plan (no re-boxing). Complete with no bigger plan: trophy + link to the tier picker.
+      - Edge cases to cover: popover open while tier changes (close it); double-tap on a tile (one list only); "Not
+        now" then planning later (chip "Boxes: same as tier · change"); Edit list "Box layout" follows the same
+        superset rule; dataset update where the plan no longer contains the tier (fall back to undecided); delete the
+        last list (back to welcome); import of legacy lists (decided) and of lists with an invalid plan (undecided);
+        clone keeps tier and plan; Box/Slot sorting disabled while locked; future-slots toggle with filters on.
+      - Tests must prove no owned entry is ever lost: switch every tier pair (incl. not-contained ones) and back, plan /
+        not now / migrate in different orders, compare ownedIds and ownedGames before and after.
 - [x] **3.23 UI polish round** ✅ **Done 2026-11-12.** Shared `Dialog` (blurred backdrop, scale/fade-in,
       reduced-motion safe) used by trophy case and list dialogs; trophy case redesigned as tier rows
       (medals + progress bar); button family (`btn`, `btn-primary`, `btn-ghost`, `btn-sm`) applied
