@@ -12,37 +12,50 @@ async function freshStart(page: Page, query = '') {
   await page.goto(`./${query}`)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await expect(page.getByRole('region', { name: 'Get started' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Choose what to collect' })).toBeVisible()
 }
 
-test('new user: tier guide in the wizard, plan to grow, switch tier, earn medals', async ({ page }) => {
+for (const scheme of ['light', 'dark'] as const) {
+  test(`new user (${scheme}): pick a tier, plan the boxes, own entries, advance inside the plan`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme })
+    await freshStart(page)
+    const picker = page.getByRole('region', { name: 'Choose what to collect' })
+    await expect(picker.getByText('Quickest goal')).toBeVisible()
+    await expect(picker.getByText('13', { exact: true }).first()).toBeVisible()
+    await page.screenshot({ path: `e2e/results/tier-picker-${scheme}.png`, fullPage: true })
+    await picker.getByRole('button', { name: 'Final Form', exact: true }).click()
+
+    // Final Form: only fully evolved entries (mon-2, mon-5, ...). Box/Slot locked until the plan is decided.
+    await expect(page.getByText('Mon 2', { exact: true })).toBeVisible()
+    await expect(page.getByText('Mon 1', { exact: true })).toHaveCount(0)
+    const banner = page.getByRole('region', { name: 'Plan your boxes' })
+    await expect(banner).toContainText('Planning to grow beyond Final Form?')
+    await page.screenshot({ path: `e2e/results/plan-banner-${scheme}.png` })
+    await banner.getByRole('button', { name: 'Plan for bigger goal' }).click()
+    const popover = page.getByRole('dialog', { name: 'Choose a bigger goal' })
+    await expect(popover.getByRole('button')).toHaveCount(3)
+    await popover.getByRole('button', { name: /Living Form Full/ }).click()
+    await expect(banner).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Boxes planned for Living Form Full/ })).toBeVisible()
+
+    for (const i of [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35, 38]) {
+      await page.getByRole('checkbox', { name: `Mark Mon ${i} as owned`, exact: true }).check()
+    }
+    await expect(page.getByText('Final Form complete!')).toBeVisible()
+    await page.getByRole('button', { name: 'Advance to Living Form', exact: true }).click()
+    await expect(page.getByText('Mon 1', { exact: true })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Plan your boxes' })).toHaveCount(0)
+    await expect(page.getByRole('checkbox', { name: 'Mark Mon 2 as owned', exact: true })).toBeChecked()
+    await expect(page.getByRole('region', { name: 'Trophies' }).getByRole('img').first()).toBeVisible()
+  })
+}
+
+test('the tiers guide explains the differences', async ({ page }) => {
   await freshStart(page)
-  await expect(page.getByRole('region', { name: 'Welcome' })).toBeVisible()
-  await page.getByRole('button', { name: 'Start' }).click()
-
-  const wizard = page.getByRole('dialog', { name: 'Start a new list' })
-  await expect(wizard.getByText('Only fully evolved Pokémon, one of each.')).toBeVisible()
-  await expect(wizard.getByText('13 Pokémon · 1 box').first()).toBeVisible()
-  await wizard.getByLabel('New list name').fill('Fresh run')
-  await wizard.getByText('Final Form', { exact: true }).click()
-  await wizard.getByRole('button', { name: 'Next' }).click()
-  await wizard.getByText("I'll grow it later").click()
-  await wizard.getByRole('button', { name: 'Create' }).click()
-
-  // Final Form: only fully evolved entries (mon-2, mon-5, ...). 4 of 13 earns the 25% medal.
-  await expect(page.getByText('Mon 2', { exact: true })).toBeVisible()
-  await expect(page.getByText('Mon 1', { exact: true })).toHaveCount(0)
-  for (const i of [2, 5, 8, 11]) await page.getByRole('checkbox', { name: `Mark Mon ${i} as owned`, exact: true }).check()
-
-  // Living Form fits the box plan: it switches without asking.
-  await page.getByLabel('Tier').selectOption('living-form')
-  await expect(page.getByText('Mon 1', { exact: true })).toBeVisible()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.getByRole('region', { name: 'Trophies' }).getByRole('img').first()).toBeVisible()
-
-  await page.getByRole('button', { name: 'Explain the collection goals' }).click()
-  await expect(page.getByRole('dialog', { name: 'What are tiers?' })).toBeVisible()
-  await page.screenshot({ path: 'e2e/results/tier-guide.png' })
+  await page.getByRole('link', { name: "What's the difference?" }).click()
+  await expect(page.getByRole('heading', { name: "What's the difference between tiers?" })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Which tier contains which' })).toBeVisible()
+  await page.screenshot({ path: 'e2e/results/tiers-page.png', fullPage: true })
 })
 
 test('backup round trip: export, reset, import', async ({ page }) => {
@@ -88,5 +101,5 @@ test('debug panel: hidden without ?debug; quick start, mark all, clear and reset
   await debug.getByRole('button', { name: 'Clear owned' }).click()
   await expect(debug.getByText('0 owned')).toBeVisible()
   await debug.getByRole('button', { name: 'Reset all data' }).click()
-  await expect(page.getByRole('region', { name: 'Get started' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Choose what to collect' })).toBeVisible()
 })

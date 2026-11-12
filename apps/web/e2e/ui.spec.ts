@@ -59,14 +59,13 @@ test('the obtained-from button opens a picker of colored game chips and tags a g
   await expect(page.getByRole('checkbox', { name: 'Mark Mon 1 as owned' })).toBeChecked()
 })
 
-test('creating a list opens the start wizard and the new list becomes active', async ({ page }) => {
+test('"+" opens the tier picker and the new list becomes active', async ({ page }) => {
   await page.getByRole('button', { name: 'Create new list' }).click()
-  const wizard = page.getByRole('dialog', { name: 'Start a new list' })
-  await expect(wizard).toBeVisible()
-  await wizard.getByLabel('New list name').fill('Shinies')
-  await wizard.getByRole('button', { name: 'Create' }).click()
-  await expect(page.getByText('Shinies')).toBeVisible()
-  await expect(wizard).toHaveCount(0)
+  const dialog = page.getByRole('dialog', { name: 'Create new list' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: 'Final Form', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Plan your boxes' })).toBeVisible()
 })
 
 test('the disclaimer is visible in the footer and in Settings, and the page does not overflow', async ({ page }) => {

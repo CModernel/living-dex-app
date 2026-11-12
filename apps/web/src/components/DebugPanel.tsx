@@ -41,6 +41,13 @@ export default function DebugPanel() {
           >
             Quick start
           </button>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => update(({ layoutTier: _plan, ...rest }) => rest)}
+          >
+            Undecide plan
+          </button>
           <button type="button" className="btn btn-sm" onClick={() => update((l) => markOwned(l, slugs.slice(0, 10)))}>
             Mark first 10
           </button>

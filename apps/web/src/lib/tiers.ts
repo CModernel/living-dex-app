@@ -43,8 +43,23 @@ export const TIER_INFO: Record<TierId, { summary: string; includes: string; skip
   },
 }
 
-export const BEGINNER_TIP =
-  'New to this? Start small with Final Form or Living Lite and choose "I\'ll grow it later": your boxes are planned for the bigger goal, so nothing has to move when you advance.'
+// 3.19b tier picker: neutral tiles, a lightly tinted icon each, badges on three tiers only (user's choice).
+export const TIER_ICON: Record<TierId, { glyph: string; tint: string }> = {
+  'final-form': { glyph: '🏁', tint: 'bg-sky-500/10' },
+  'final-form-full': { glyph: '🎨', tint: 'bg-pink-500/10' },
+  'living-lite': { glyph: '📖', tint: 'bg-orange-500/10' },
+  'living-form': { glyph: '📚', tint: 'bg-violet-500/10' },
+  'living-form-full': { glyph: '👑', tint: 'bg-emerald-500/10' },
+}
+
+export const TIER_BADGE: Partial<Record<TierId, { label: string; className: string }>> = {
+  'final-form': { label: 'Quickest goal', className: 'bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-200' },
+  'living-lite': { label: 'Classic', className: 'bg-orange-100 text-orange-800 dark:bg-orange-500/20 dark:text-orange-200' },
+  'living-form-full': { label: 'Everything', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200' },
+}
+
+export const WHY_PLAN =
+  'Box and Slot tell you where each Pokémon goes in your storage boxes. If you later grow into a bigger goal without a plan, every Box/Slot shifts and you have to re-sort your boxes. Planning now reserves the slots, so nothing ever has to move.'
 
 const TIER_PREDICATES = Object.fromEntries(TIER_IDS.map((id) => [id, TIERS[id].predicate])) as Record<
   TierId,

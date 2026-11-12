@@ -3,6 +3,7 @@ import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import ListsPage from './pages/ListsPage'
 import SettingsPage from './pages/SettingsPage'
+import TiersPage from './pages/TiersPage'
 
 function AppRoutes() {
   return (
@@ -11,6 +12,7 @@ function AppRoutes() {
         <Route index element={<HomePage />} />
         <Route path="lists" element={<ListsPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="tiers" element={<TiersPage />} />
       </Route>
     </Routes>
   )

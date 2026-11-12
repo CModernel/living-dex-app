@@ -42,12 +42,9 @@ export async function mockNetwork(page: Page) {
   await page.route(/\.(png|gif|webp)(\?.*)?$/, (route) => route.abort())
 }
 
-// 3.19: a new user has no list until the start wizard creates one. With this fixture every Living
-// tier is the same 40 entries, so Living Form has nothing bigger and the wizard creates it in one step.
-export async function startList(page: Page, name = 'My Living Dex') {
-  await page.getByRole('region', { name: 'Get started' }).getByRole('button', { name: 'Start' }).click()
-  const wizard = page.getByRole('dialog', { name: 'Start a new list' })
-  await wizard.getByLabel('New list name').fill(name)
-  await wizard.getByRole('button', { name: 'Create' }).click()
+// 3.19b: a new user has no list until a tier tile is tapped. With this fixture every Living tier is the same 40
+// entries, so Living Form has nothing bigger: its box plan is decided at once (no banner).
+export async function startList(page: Page) {
+  await page.getByRole('region', { name: 'Choose what to collect' }).getByRole('button', { name: 'Living Form', exact: true }).click()
   await expect(page.getByText('Mon 1', { exact: true })).toBeVisible()
 }

@@ -1,10 +1,10 @@
-import { resolveListTiers, TIER_IDS, coversTier, type TierId } from '@living-dex/business-logic'
+import { resolveListTiers, validTargets, type TierId } from '@living-dex/business-logic'
 import { useState, type FormEvent, type MouseEvent } from 'react'
 import { useDataset } from '../hooks/useDataset'
 import { useLists } from '../hooks/useLists'
 import { TIER_LABELS, useTierSets } from '../lib/tiers'
 import Dialog from './Dialog'
-import StartWizard from './StartWizard'
+import TierPicker from './TierPicker'
 
 // Shared by ListsPage (full-page management) and HomePage's left sidebar (3.6 follow-up:
 // switching should refresh the table right there, not require a trip to /lists) — both
@@ -26,8 +26,8 @@ function ListSwitcher() {
   const [editLayout, setEditLayout] = useState<TierId>('living-form')
   const editingList = editingId ? lists.find((l) => l.id === editingId) : undefined
   const editingTier = resolveListTiers(editingList).tier
-  // Box layout choices: tiers that hold the list's working tier (3.19), so the plan can only grow.
-  const layoutOptions = TIER_IDS.filter((id) => !tierSets || coversTier(tierSets, id, editingTier))
+  // Box layout choices (3.19b rule): the tier itself or a strict superset of it, never smaller.
+  const layoutOptions: TierId[] = [editingTier, ...(tierSets ? validTargets(tierSets, editingTier) : [])]
 
   function openEditDialog(e: MouseEvent, id: string, name: string, icon?: string) {
     e.stopPropagation()
@@ -116,7 +116,11 @@ function ListSwitcher() {
         ))}
       </ul>
 
-      {isCreateOpen && <StartWizard onClose={() => setIsCreateOpen(false)} />}
+      {isCreateOpen && (
+        <Dialog label="Create new list" onClose={() => setIsCreateOpen(false)} className="w-[36rem]">
+          <TierPicker onCreated={() => setIsCreateOpen(false)} />
+        </Dialog>
+      )}
       {editingId && (
         <Dialog label="Edit list" onClose={() => setEditingId(null)}>
           <form onSubmit={handleEdit} className="flex flex-col gap-3">

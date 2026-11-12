@@ -59,26 +59,23 @@ test('shows an empty-state prompt when there are no lists yet', () => {
 test('the create dialog is closed until the "+" button is clicked', () => {
   renderListsPage()
 
-  expect(screen.queryByLabelText(/new list name/i)).not.toBeInTheDocument()
+  expect(screen.queryByRole('dialog', { name: 'Create new list' })).not.toBeInTheDocument()
 
   fireEvent.click(screen.getByRole('button', { name: /create new list/i }))
-  expect(screen.getByLabelText(/new list name/i)).toBeInTheDocument()
+  expect(screen.getByRole('dialog', { name: 'Create new list' })).toBeInTheDocument()
 })
 
-test('creating a list through the start wizard shows it, marks it active, and closes the dialog', async () => {
+test('"+" opens the tier picker; tapping a tier creates the list, marks it active and closes the dialog', async () => {
   renderListsPage()
 
   fireEvent.click(screen.getByRole('button', { name: /create new list/i }))
-  fireEvent.change(screen.getByLabelText(/new list name/i), { target: { value: 'Shinies' } })
-  const create = screen.getByRole('button', { name: /^create$/i })
-  await waitFor(() => expect(create).toBeEnabled())
-  fireEvent.click(create)
+  const tile = await screen.findByRole('button', { name: 'Final Form' })
+  await waitFor(() => expect(tile).toBeEnabled())
+  fireEvent.click(tile)
 
-  await waitFor(() => expect(screen.getByText('Shinies')).toBeInTheDocument())
-  // Query and assert in the same statement — see HomePage.test.tsx for why (TanStack's own
-  // row rendering isn't at play here, but a re-render on state change can still replace nodes).
-  expect(screen.getByText('Shinies').closest('li')).toHaveClass('bg-brand/15')
-  expect(screen.queryByLabelText(/new list name/i)).not.toBeInTheDocument()
+  await waitFor(() => expect(screen.getByText('My Living Dex')).toBeInTheDocument())
+  expect(screen.getByText('My Living Dex').closest('li')).toHaveClass('bg-brand/15')
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 
 test('clicking a different list switches which one is marked active', async () => {
@@ -175,4 +172,13 @@ test('cancelling the edit dialog keeps the list unchanged', async () => {
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(screen.getByText('Dex')).toBeInTheDocument()
   expect(screen.queryByText('Changed')).not.toBeInTheDocument()
+})
+
+test('the Box layout choices are the tier itself and bigger tiers that contain it, never smaller (3.19b)', async () => {
+  seedState([testList('x', 'Dex', { tier: 'living-lite', layoutTier: 'living-lite' })])
+  renderListsPage()
+  fireEvent.click(await screen.findByRole('button', { name: /edit dex/i }))
+  const select = screen.getByLabelText(/box layout/i)
+  await waitFor(() => expect(select.querySelectorAll('option')).toHaveLength(1))
+  expect(Array.from(select.querySelectorAll('option')).map((o) => o.textContent)).toEqual(['Living Lite'])
 })

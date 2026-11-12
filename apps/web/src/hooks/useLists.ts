@@ -2,7 +2,7 @@ import { DEFAULT_LIST_FILTER, type PokemonList, type TierId } from '@living-dex/
 import { useCallback, useMemo } from 'react'
 import { useUserState } from '../state/UserStateContext'
 
-export type ListTiers = { tier: TierId; layoutTier: TierId }
+export type ListTiers = { tier: TierId; layoutTier?: TierId }
 
 // Every list is created through the start wizard (3.19), which always sets both tiers.
 export function createList(name: string, tiers?: ListTiers): PokemonList {
@@ -62,15 +62,17 @@ export function useLists() {
   // Edit name, icon and/or tiers. An empty/whitespace name is ignored (keeps the old one); an empty
   // icon clears it. No-ops for an unknown id.
   const updateList = useCallback(
-    (id: string, changes: { name?: string; icon?: string; tier?: TierId; layoutTier?: TierId }) => {
+    // `layoutTier: null` clears the box plan (3.19b: back to "undecided").
+    (id: string, changes: { name?: string; icon?: string; tier?: TierId; layoutTier?: TierId | null }) => {
       setState((prev) => {
         const list = prev.lists[id]
         if (!list) return prev
         const name = changes.name?.trim() || list.name
         const icon = changes.icon === undefined ? list.icon : changes.icon.trim() || undefined
         const tier = changes.tier ?? list.tier
-        const layoutTier = changes.layoutTier ?? list.layoutTier
-        const next: PokemonList = { ...list, name, icon, ...(tier ? { tier } : {}), ...(layoutTier ? { layoutTier } : {}) }
+        const layoutTier = changes.layoutTier === null ? undefined : (changes.layoutTier ?? list.layoutTier)
+        const { layoutTier: _old, ...rest } = list
+        const next: PokemonList = { ...rest, name, icon, ...(tier ? { tier } : {}), ...(layoutTier ? { layoutTier } : {}) }
         return { ...prev, lists: { ...prev.lists, [id]: next } }
       })
     },
@@ -80,15 +82,18 @@ export function useLists() {
   // Deep copy (filter, owned, per-game tags) with a new id; the clone becomes the active list.
   // `overrides` is the 3.19 "Migrate" path: same collection, new name and tiers.
   const cloneList = useCallback(
-    (id: string, overrides?: { name?: string } & Partial<ListTiers>) => {
+    (id: string, overrides?: { name?: string; tier?: TierId; layoutTier?: TierId | null }) => {
       // Identity generated outside the updater so a replayed (pre-hydration) update yields the same copy id.
       const copyId = crypto.randomUUID()
       const createdAt = new Date().toISOString()
       setState((prev) => {
         const src = prev.lists[id]
         if (!src) return prev
+        const { layoutTier: srcLayout, ...srcRest } = src
+        // `layoutTier: null` → the copy starts with an undecided plan (3.19b).
+        const layoutTier = overrides?.layoutTier === null ? undefined : (overrides?.layoutTier ?? srcLayout)
         const copy: PokemonList = {
-          ...src,
+          ...srcRest,
           id: copyId,
           name: overrides?.name ?? `${src.name} (copy)`,
           createdAt,
@@ -98,7 +103,7 @@ export function useLists() {
             ? Object.fromEntries(Object.entries(src.ownedGames).map(([k, v]) => [k, [...v]]))
             : undefined,
           ...(overrides?.tier ? { tier: overrides.tier } : {}),
-          ...(overrides?.layoutTier ? { layoutTier: overrides.layoutTier } : {}),
+          ...(layoutTier ? { layoutTier } : {}),
         }
         return { ...prev, lists: { ...prev.lists, [copy.id]: copy }, activeListId: copy.id }
       })

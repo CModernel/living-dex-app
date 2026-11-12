@@ -68,3 +68,44 @@ export function layoutPositions(
     })
   return positions
 }
+
+// --- 3.19b: plan state. A list created from the tier picker has `tier` but no `layoutTier` yet: its box plan is
+// undecided and Box/Slot stay hidden until the user plans a bigger goal or answers "Not now" (plan = tier).
+
+export type PlanState = { tier: TierId; layoutTier: TierId; decided: boolean }
+
+/**
+ * Lists saved before 3.19b (no `tier`) are decided, as before. A tier with nothing bigger is always decided. A stored
+ * plan that no longer contains the tier (dataset update, edited import) counts as undecided, never as a silent
+ * re-numbering. `sets` may be null while the dataset loads: the stored fields are trusted until then.
+ */
+export function planState(
+  list: Pick<PokemonList, 'tier' | 'layoutTier'> | undefined,
+  sets: TierSlugSets | null,
+): PlanState {
+  const { tier, layoutTier } = resolveListTiers(list)
+  if (!isTierId(list?.tier)) return { tier, layoutTier, decided: true }
+  const hasPlan = isTierId(list.layoutTier)
+  if (!sets) return { tier, layoutTier, decided: hasPlan }
+  if (validTargets(sets, tier).length === 0) return { tier, layoutTier: tier, decided: true }
+  if (hasPlan && (layoutTier === tier || validTargets(sets, tier).includes(layoutTier))) {
+    return { tier, layoutTier, decided: true }
+  }
+  return { tier, layoutTier: tier, decided: false }
+}
+
+export type PlanOption = { tier: TierId; extraSlots: number; keep: boolean }
+
+/** Bigger goals for `tier` (strict supersets only), the previous plan first when it still fits. */
+export function planOptions(sets: TierSlugSets, tier: TierId, previous?: TierId): PlanOption[] {
+  const targets = validTargets(sets, tier)
+  const ordered = previous && targets.includes(previous) ? [previous, ...targets.filter((t) => t !== previous)] : targets
+  return ordered.map((t) => ({ tier: t, extraSlots: sets[t].size - sets[tier].size, keep: t === previous }))
+}
+
+/** Owned entries that are not part of `tier` (kept on the list, just not shown). */
+export function ownedOutsideTier(sets: TierSlugSets, tier: TierId, ownedIds: readonly string[]): number {
+  let n = 0
+  for (const slug of ownedIds) if (!sets[tier].has(slug)) n += 1
+  return n
+}

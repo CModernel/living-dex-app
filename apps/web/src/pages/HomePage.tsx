@@ -8,9 +8,11 @@ import {
   getOwnedGames,
   getPokeJungleSpriteUrl,
   getSpriteUrl,
-  effectiveLayoutTier,
+  coversTier,
   layoutPositions,
-  resolveListTiers,
+  ownedOutsideTier,
+  planState,
+  validTargets,
   type PokemonEntry,
   type PokemonDataset,
 } from '@living-dex/business-logic'
@@ -45,10 +47,10 @@ import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
 import FilterMenu from '../components/FilterMenu'
 import GamePickerPopover, { type GamePickerOption } from '../components/GamePickerPopover'
 import ListSwitcher from '../components/ListSwitcher'
-import StartWizard from '../components/StartWizard'
-import TierCards from '../components/TierCards'
+import GuideLink from '../components/GuideLink'
+import PlanBanner from '../components/PlanBanner'
 import TierChangeDialog from '../components/TierChangeDialog'
-import Dialog from '../components/Dialog'
+import TierPicker from '../components/TierPicker'
 import OwnedProgress from '../components/OwnedProgress'
 import TrophiesPanel from '../components/TrophiesPanel'
 import WelcomeCard from '../components/WelcomeCard'
@@ -77,7 +79,15 @@ const features = tableFeatures({
 // full dataset before any filter, never from the order the table currently displays. `availableIn` is the selected games
 // (3.8d) where the entry is obtainable or conditional — null when the dataset has no availability
 // data for it — and `selectedGameCount` the denominator shown next to it.
-type TableEntry = PokemonEntry & { box: number; slot: number; availableIn: string[] | null; selectedGameCount: number }
+// `box`/`slot` are 0 while the box plan is undecided (3.19b: shown as a lock). `future` rows belong to a bigger
+// planned tier: greyed, not ownable, shown only with "Show future slots".
+type TableEntry = PokemonEntry & {
+  box: number
+  slot: number
+  future: boolean
+  availableIn: string[] | null
+  selectedGameCount: number
+}
 // A header press that moves less than this before release is a click (sort), not a reorder drag.
 const CLICK_MOVE_THRESHOLD_PX = 4
 const columnHelper = createColumnHelper<typeof features, TableEntry>()
@@ -257,6 +267,15 @@ function isInaccessible(entry: TableEntry): boolean {
 // row list was recreated on every render. The "owned" cell is rendered directly here (using the
 // owned/onToggle props) rather than through the column's own cell definition + flexRender,
 // specifically so the column definitions never need to depend on ownedIds/toggleOwned either.
+// 3.19b: Box/Slot stay hidden until the list's box plan is decided (plan a bigger goal or "Not now").
+function Locked() {
+  return (
+    <span role="img" aria-label="Locked until you plan your boxes" title="Decide your box plan above to see Box and Slot">
+      🔒
+    </span>
+  )
+}
+
 const TableRow = memo(function TableRow({
   row,
   position,
@@ -282,14 +301,20 @@ const TableRow = memo(function TableRow({
   columnsKey: string
 }) {
   const openGamePicker = useContext(GamePickerContext)
+  const future = row.original.future
   return (
     <tr
-      onClick={() => onToggle(row.original.slug)}
+      onClick={future ? undefined : () => onToggle(row.original.slug)}
+      data-future={future || undefined}
       // No hover tint for an already-owned row — it would sit on top of and wash out the
       // owned highlight, hiding the very state the highlight exists to show.
       // 3.8e: inaccessible (obtainable in none of the selected games) rows are muted and their
       // sprites desaturated, so they stay in the list but read as "not for you" at a glance.
-      className={`cursor-pointer border-b border-border last:border-b-0 ${owned ? 'bg-brand/15' : 'hover:bg-border/20'} ${isInaccessible(row.original) ? 'text-muted [&_img]:grayscale' : ''}`}
+      className={
+        future
+          ? 'border-b border-border bg-border/10 text-muted opacity-60 last:border-b-0 [&_img]:grayscale'
+          : `cursor-pointer border-b border-border last:border-b-0 ${owned ? 'bg-brand/15' : 'hover:bg-border/20'} ${isInaccessible(row.original) ? 'text-muted [&_img]:grayscale' : ''}`
+      }
     >
       {row.getVisibleCells().map((cell) =>
         cell.column.id === 'owned' ? (
@@ -298,6 +323,8 @@ const TableRow = memo(function TableRow({
               <input
                 type="checkbox"
                 checked={owned}
+                disabled={future}
+                title={future ? 'Part of your planned goal: unlocks when you advance to it' : undefined}
                 onChange={() => onToggle(row.original.slug)}
                 onClick={(e) => e.stopPropagation()}
                 aria-label={`Mark ${row.original.name} as owned`}
@@ -309,6 +336,7 @@ const TableRow = memo(function TableRow({
                 aria-label={`Obtained from games for ${row.original.name}`}
                 aria-haspopup="dialog"
                 aria-expanded={pickerOpen}
+                disabled={future}
                 title={
                   ownedGames.length > 0
                     ? `Obtained from: ${ownedGames.map((id) => GAME_NAMES[id] ?? id).join(', ')}`
@@ -361,10 +389,9 @@ function HomePage() {
   const { selectedGameIds, toggleGame, selectAllGames, selectNoGames } = useGameSelection()
   const hydrated = useIsHydrated()
   const { updateList, cloneList } = useLists()
-  const { tier: tierId, layoutTier } = resolveListTiers(activeList)
   const [pendingTier, setPendingTier] = useState<TierId | null>(null)
-  const [wizardOpen, setWizardOpen] = useState(false)
-  const [tierGuideOpen, setTierGuideOpen] = useState(false)
+  // The plan the list had before its tier last changed (3.19b): offered first as "Keep …" in the plan popover.
+  const [previousPlan, setPreviousPlan] = useState<{ listId: string; tier: TierId } | null>(null)
   // Pointer-based column drag (not native HTML5 DnD — draggable/dragstart/drop on table cells is
   // a well-documented cross-browser reliability sink hole). `columnId`/`label` identify the
   // dragged column; `hoverColumnId` is whichever header the pointer is currently over, used for
@@ -382,40 +409,70 @@ function HomePage() {
 
   const dataset = result.loading || result.error ? null : result.dataset
   const tierSets = useTierSets(dataset)
-  // 3.19: Box/Slot = position in the layout tier's full order, computed before filters and games, so
-  // neither (nor re-sorting) can move it. Falls back to the working tier when the layout doesn't hold it.
-  const layoutTierUsed = tierSets ? effectiveLayoutTier(tierSets, tierId, layoutTier) : tierId
+  // 3.19 / 3.19b: Box/Slot = position in the planned (layout) tier's full order, computed before filters and
+  // games, so neither (nor re-sorting) can move it. Hidden (0) while the plan is undecided.
+  const plan = planState(activeList, tierSets)
+  const { tier: tierId, layoutTier, decided } = plan
+  const [userState, setUserState] = useUserState()
+  const showFutureSlots = !!userState.preferences.showFutureSlots
   const positions = useMemo(
-    () => (dataset ? layoutPositions(Object.values(dataset.pokemon), TIERS[layoutTierUsed].predicate) : new Map()),
-    [dataset, layoutTierUsed],
+    () => (dataset ? layoutPositions(Object.values(dataset.pokemon), TIERS[layoutTier].predicate) : new Map()),
+    [dataset, layoutTier],
   )
   const entries = useMemo(() => {
     if (!dataset) return []
+    const inTier = TIERS[tierId].predicate
+    // Future rows: in the planned tier, not in the working one. Only when asked for, with the same filters.
+    const base =
+      decided && showFutureSlots && layoutTier !== tierId
+        ? (e: PokemonEntry) => inTier(e) || TIERS[layoutTier].predicate(e)
+        : inTier
     return Object.values(dataset.pokemon)
-      .filter(applyListFilter(TIERS[tierId].predicate, filter, selectedGameIds))
+      .filter(applyListFilter(base, filter, selectedGameIds))
       .sort((a, b) => a.sortIndex - b.sortIndex)
       .map((entry) => ({
         ...entry,
-        box: positions.get(entry.slug)?.box ?? 0,
-        slot: positions.get(entry.slug)?.slot ?? 0,
+        box: decided ? (positions.get(entry.slug)?.box ?? 0) : 0,
+        slot: decided ? (positions.get(entry.slug)?.slot ?? 0) : 0,
+        future: !inTier(entry),
         availableIn: entry.availability ? availableGames(entry, selectedGameIds) : null,
         selectedGameCount: selectedGameIds.length,
       }))
-  }, [dataset, tierId, filter, selectedGameIds, positions])
+  }, [dataset, tierId, layoutTier, decided, showFutureSlots, filter, selectedGameIds, positions])
+
+  // Tier/plan changes only ever write `tier`/`layoutTier` (updateList / cloneList): owned data is never touched.
+  function switchTier(next: TierId, keepPlan: TierId | null) {
+    if (!activeList) return
+    setPreviousPlan(keepPlan ? { listId: activeList.id, tier: keepPlan } : null)
+    updateList(activeList.id, { tier: next, layoutTier: null }) // rule: any tier change asks for the plan again
+  }
 
   function changeTier(next: TierId) {
     if (!activeList || next === tierId) return
-    if (!tierSets || effectiveLayoutTier(tierSets, next, layoutTier) === layoutTier) {
-      updateList(activeList.id, { tier: next, layoutTier })
-    } else setPendingTier(next)
+    const hadBiggerPlan = decided && layoutTier !== tierId
+    if (!tierSets || !decided) return switchTier(next, null)
+    // Inside the current plan: nothing renumbers; the old plan is offered first again.
+    if (coversTier(tierSets, layoutTier, next)) return switchTier(next, hadBiggerPlan ? layoutTier : null)
+    // Outside it, Box/Slot would renumber: ask (copy to a new list, switch anyway, cancel).
+    setPendingTier(next)
   }
+
+  const setPlan = (target: TierId) => activeList && updateList(activeList.id, { tier: tierId, layoutTier: target })
+  const keepFor = previousPlan && previousPlan.listId === activeList?.id ? previousPlan.tier : undefined
+  const ownedInTier = tierSets && activeList ? activeList.ownedIds.length - ownedOutsideTier(tierSets, tierId, activeList.ownedIds) : 0
+  const ownedOutside = tierSets && activeList ? ownedOutsideTier(tierSets, tierId, activeList.ownedIds) : 0
+  const tierComplete = !!tierSets && tierSets[tierId].size > 0 && ownedInTier === tierSets[tierId].size
+  // Advancing inside the plan keeps it: the only tier change that doesn't reset the plan (nothing moves).
+  const advanceTargets =
+    tierSets && decided ? validTargets(tierSets, tierId).filter((t) => coversTier(tierSets, layoutTier, t)) : []
+  const toggleFutureSlots = () =>
+    setUserState((prev) => ({ ...prev, preferences: { ...prev.preferences, showFutureSlots: !prev.preferences.showFutureSlots } }))
   const ownedIds = useMemo(() => new Set(activeList?.ownedIds ?? []), [activeList])
-  const [userState, setUserState] = useUserState()
   const dismissWelcome = useCallback(
     () => setUserState((prev) => ({ ...prev, preferences: { ...prev.preferences, welcomeDismissed: true } })),
     [setUserState],
   )
-  const progress = useMemo(() => ownedProgress(entries, ownedIds), [entries, ownedIds])
+  const progress = useMemo(() => ownedProgress(entries.filter((e) => !e.future), ownedIds), [entries, ownedIds])
   // Trophies use the FULL entry set of every tier (smallest first = lowest rank), never the
   // filtered `entries`, so display filters and the tier dropdown can't move a medal.
   const trophyTiers = useMemo(() => {
@@ -487,8 +544,8 @@ function HomePage() {
           ),
         }),
         columnHelper.accessor('dex', { header: 'Dex', sortFn: sortFn_alphanumeric }),
-        columnHelper.accessor('box', { header: 'Box', enableSorting: false }),
-        columnHelper.accessor('slot', { header: 'Slot', enableSorting: false }),
+        columnHelper.accessor('box', { header: 'Box', enableSorting: false, cell: (info) => info.getValue() || <Locked /> }),
+        columnHelper.accessor('slot', { header: 'Slot', enableSorting: false, cell: (info) => info.getValue() || <Locked /> }),
         // Place in the displayed list (see TableRow's `position`); the cell is rendered there, so
         // this definition only supplies the header and the visibility-menu entry.
         columnHelper.display({ id: 'position', header: '#', cell: () => null }),
@@ -704,51 +761,13 @@ function HomePage() {
       <div className="min-w-0 flex-1">
         {result.loading && <p className="text-muted">Loading Pokémon data…</p>}
         {result.error && <p className="text-muted">Failed to load dataset: {result.error.message}</p>}
-        {!result.loading && !result.error && hydrated && !activeList && (
-          <>
-            {!userState.preferences.welcomeDismissed && <WelcomeCard onDismiss={dismissWelcome} />}
-            <section aria-label="Get started" className="rounded-2xl border border-border bg-surface p-6 text-center">
-              <h1 className="text-2xl font-semibold tracking-tight">Start your Living Dex</h1>
-              <p className="mx-auto mt-2 max-w-md text-sm text-muted">
-                Choose which Pokémon you want to collect. We'll explain each option and plan your boxes so nothing has
-                to move when your collection grows.
-              </p>
-              <button type="button" onClick={() => setWizardOpen(true)} className="btn btn-primary mt-4">
-                Start
-              </button>
-            </section>
-          </>
-        )}
-        {wizardOpen && <StartWizard onClose={() => setWizardOpen(false)} />}
+        {!result.loading && !result.error && hydrated && !activeList && <TierPicker />}
         {!result.loading && !result.error && activeList && (
           <>
             {!userState.preferences.welcomeDismissed && <WelcomeCard onDismiss={dismissWelcome} />}
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h1 className="text-2xl font-semibold tracking-tight">Living Dex</h1>
               <div className="flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-2 text-sm">
-                  Tier
-                  <select
-                    value={tierId}
-                    onChange={(e) => changeTier(e.target.value as TierId)}
-                    className="btn"
-                  >
-                    {(Object.keys(TIER_LABELS) as TierId[]).map((id) => (
-                      <option key={id} value={id}>
-                        {TIER_LABELS[id]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setTierGuideOpen(true)}
-                  aria-label="Explain the collection goals"
-                  title="What are tiers?"
-                  className="btn btn-sm btn-icon h-7 w-7"
-                >
-                  ?
-                </button>
                 <ColumnVisibilityMenu columns={hideableColumns} onReset={resetColumns} />
                 <FilterMenu
                   toggles={[
@@ -766,7 +785,77 @@ function HomePage() {
                 />
               </div>
             </div>
+            {/* 3.19b: Tier and the box plan on one line. */}
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm">
+                Tier
+                <select value={tierId} onChange={(e) => changeTier(e.target.value as TierId)} className="btn">
+                  {(Object.keys(TIER_LABELS) as TierId[]).map((id) => (
+                    <option key={id} value={id}>
+                      {TIER_LABELS[id]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <GuideLink className="btn btn-sm btn-icon h-7 w-7" label="Explain the collection goals">
+                ?
+              </GuideLink>
+              {tierSets && !decided && (
+                <PlanBanner
+                  mode="banner"
+                  sets={tierSets}
+                  tier={tierId}
+                  layoutTier={layoutTier}
+                  previousPlan={keepFor}
+                  onPlan={setPlan}
+                  onNotNow={() => setPlan(tierId)}
+                />
+              )}
+              {tierSets && decided && validTargets(tierSets, tierId).length > 0 && (
+                <PlanBanner
+                  mode="chip"
+                  sets={tierSets}
+                  tier={tierId}
+                  layoutTier={layoutTier}
+                  previousPlan={layoutTier !== tierId ? layoutTier : undefined}
+                  onPlan={setPlan}
+                  onNotNow={() => setPlan(tierId)}
+                />
+              )}
+              {decided && layoutTier !== tierId && (
+                <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted">
+                  <input type="checkbox" checked={showFutureSlots} onChange={toggleFutureSlots} />
+                  Show future slots
+                </label>
+              )}
+            </div>
+            {tierComplete && (
+              <div
+                role="status"
+                className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-100"
+              >
+                <span className="flex-1">🎉 {TIER_LABELS[tierId]} complete!</span>
+                {advanceTargets.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => activeList && updateList(activeList.id, { tier: t, layoutTier })}
+                    className="cursor-pointer rounded-lg border border-emerald-600 px-2.5 py-1 text-xs font-medium hover:bg-emerald-500/10 dark:border-emerald-300"
+                  >
+                    Advance to {TIER_LABELS[t]}
+                  </button>
+                ))}
+                {advanceTargets.length === 0 && validTargets(tierSets, tierId).length > 0 && (
+                  <GuideLink className="text-xs underline">Looking for a bigger goal?</GuideLink>
+                )}
+              </div>
+            )}
             <OwnedProgress progress={progress} />
+            {ownedOutside > 0 && (
+              <p className="-mt-2 mb-3 text-xs text-muted">
+                {ownedOutside} owned outside this tier (kept, shown again when you switch back)
+              </p>
+            )}
             {/* Column widths are percentages that always sum to 100% (see lib/columnWeights.ts), so
                 the table can never be wider or narrower than its container — nothing to scroll. */}
             <div className="overflow-clip rounded-lg border border-border">
@@ -887,41 +976,15 @@ function HomePage() {
           layoutTier={layoutTier}
           onCancel={() => setPendingTier(null)}
           onContinue={() => {
-            updateList(activeList.id, { tier: pendingTier, layoutTier })
+            switchTier(pendingTier, null)
             setPendingTier(null)
           }}
           onMigrate={() => {
-            cloneList(activeList.id, {
-              name: `${activeList.name} (${TIER_LABELS[pendingTier]})`,
-              tier: pendingTier,
-              layoutTier: pendingTier,
-            })
+            // The copy has the new tier and no plan yet: its banner asks, like any new tier.
+            cloneList(activeList.id, { name: `${activeList.name} (${TIER_LABELS[pendingTier]})`, tier: pendingTier, layoutTier: null })
             setPendingTier(null)
           }}
         />
-      )}
-      {tierGuideOpen && (
-        <Dialog label="What are tiers?" onClose={() => setTierGuideOpen(false)} className="w-[34rem]">
-          <div className="flex flex-col gap-3">
-            <h3 className="text-base font-semibold">What are tiers?</h3>
-            <p className="text-sm text-muted">
-              A tier is the goal of your collection: which Pokémon count. Smaller tiers are a quicker goal; bigger ones
-              include more forms. Your list is on <strong>{TIER_LABELS[tierId]}</strong>
-              {layoutTier !== tierId && (
-                <>
-                  , with boxes planned for <strong>{TIER_LABELS[layoutTier]}</strong>
-                </>
-              )}
-              .
-            </p>
-            <TierCards sets={tierSets} value={tierId} label="Tiers" />
-            <div className="flex justify-end">
-              <button type="button" onClick={() => setTierGuideOpen(false)} className="btn btn-primary">
-                Got it
-              </button>
-            </div>
-          </div>
-        </Dialog>
       )}
       {picker && pickerEntry && (
         <GamePickerPopover

@@ -676,7 +676,14 @@ even if the `3.X` task order below does.
       `TierChangeDialog` (Copy to a new list / Switch anyway / Cancel); Edit list has a "Box layout" select.
       Logic in `business-logic/src/layout.ts` (data-derived containment; floette case tested). Debug panel gained
       "Quick start". Web 169 tests, business-logic 80, 18 e2e. Design: `obsidian/3.19-Tier-Migration-Plan.md`.
-- [ ] **3.19b Tier picker + plan banner (replaces the 3.19 wizard; designed 2026-11-12, not built; Opus high, plan mode).**
+- [x] **3.19b Tier picker + plan banner** ✅ **Done 2026-11-12** (replaces the 3.19 wizard, now deleted). Built:
+      `TierPicker` (welcome + "+"), `PlanBanner` (banner/chip, popover of strict supersets, "Why plan?" toggle),
+      `GuideLink`, `/tiers` page (`TiersPage`: containment diagram, size bars, examples), locked Box/Slot cells,
+      `showFutureSlots` preference, "N owned outside this tier", completion banner with "Advance to …" (keeps the
+      plan). Pure `planState`/`planOptions`/`ownedOutsideTier` in `layout.ts`. Owned-safety test walks 9 tier/plan
+      steps and checks ownedIds + ownedGames after each. Debug panel: "Undecide plan". Web 176 tests,
+      business-logic 83, 22 e2e (light + dark). Design history: `obsidian/3.19b-Tier-Picker-Plan.md`.
+      Original spec:
       - Welcome (no list yet): full-screen vertical list of 5 neutral tier tiles (icon lightly tinted, count, boxes,
         one-line summary). Badges: "Quickest goal" light blue (Final Form), "Classic" orange (Living Lite),
         "Everything" green (Living Form Full). Visible "What's the difference?" link. Tapping a tile creates the list

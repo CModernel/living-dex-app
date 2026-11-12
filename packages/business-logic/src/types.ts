@@ -36,6 +36,8 @@ export type UserPreferences = {
   darkMode?: 'system' | 'light' | 'dark';
   // Set once the user dismisses the Home welcome card (3.8 #13). Optional: absent means not yet.
   welcomeDismissed?: boolean;
+  // 3.19b: show the greyed rows of a bigger planned tier (with their real Box/Slot). Optional: absent = hidden.
+  showFutureSlots?: boolean;
   // Preferences schema version: lets reconcilePreferences run one-off migrations on stored state.
   // 1 = `types` became a hideable column (stored states from before it keep it visible).
   prefsVersion?: number;

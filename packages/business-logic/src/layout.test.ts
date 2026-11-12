@@ -6,6 +6,9 @@ import {
   effectiveLayoutTier,
   isTierId,
   layoutPositions,
+  ownedOutsideTier,
+  planOptions,
+  planState,
   resolveListTiers,
   tierSlugSets,
   validTargets,
@@ -76,4 +79,45 @@ test('layoutPositions follow sortIndex, roll over per box, and skip entries outs
   assert.deepEqual(lf.get('floette'), { box: 2, slot: 1 })
   // A final-form list laid out on living-form keeps living-form numbers: 'b' leaves slot 2 unused.
   assert.deepEqual([lf.get('a'), lf.get('floette')], [{ box: 1, slot: 1 }, { box: 2, slot: 1 }])
+})
+
+test('planState: legacy decided, picker lists undecided until planned or "not now"', () => {
+  assert.deepEqual(planState(undefined, sets), { tier: 'living-form', layoutTier: 'living-form', decided: true })
+  assert.deepEqual(planState({}, sets), { tier: 'living-form', layoutTier: 'living-form', decided: true })
+  assert.deepEqual(planState({ tier: 'final-form' }, sets), { tier: 'final-form', layoutTier: 'final-form', decided: false })
+  assert.equal(planState({ tier: 'final-form', layoutTier: 'final-form' }, sets).decided, true)
+  assert.deepEqual(planState({ tier: 'final-form', layoutTier: 'living-form-full' }, sets), {
+    tier: 'final-form',
+    layoutTier: 'living-form-full',
+    decided: true,
+  })
+  // A plan that does not contain the tier (smaller or the floette case) is never accepted.
+  assert.equal(planState({ tier: 'final-form', layoutTier: 'living-lite' }, sets).decided, false)
+  assert.equal(planState({ tier: 'living-form', layoutTier: 'final-form' }, sets).decided, false)
+  // Nothing bigger: always decided.
+  assert.equal(planState({ tier: 'living-form-full' }, sets).decided, true)
+  // Dataset still loading: trust the stored fields.
+  assert.equal(planState({ tier: 'final-form' }, null).decided, false)
+  assert.equal(planState({ tier: 'final-form', layoutTier: 'living-form' }, null).decided, true)
+})
+
+test('planOptions: only strict supersets, extra slots, previous plan first', () => {
+  assert.deepEqual(planOptions(sets, 'final-form'), [
+    { tier: 'living-form-full', extraSlots: 3, keep: false },
+    { tier: 'living-form', extraSlots: 2, keep: false },
+    { tier: 'final-form-full', extraSlots: 1, keep: false },
+  ])
+  assert.deepEqual(planOptions(sets, 'final-form', 'final-form-full').map((o) => [o.tier, o.keep]), [
+    ['final-form-full', true],
+    ['living-form-full', false],
+    ['living-form', false],
+  ])
+  // A previous plan that no longer fits is not offered as "keep".
+  assert.equal(planOptions(sets, 'living-form', 'final-form-full').some((o) => o.keep), false)
+  assert.deepEqual(planOptions(sets, 'living-form-full'), [])
+})
+
+test('ownedOutsideTier counts owned entries hidden by the tier', () => {
+  assert.equal(ownedOutsideTier(sets, 'final-form', ['a', 'b', 'gender', 'zzz']), 3)
+  assert.equal(ownedOutsideTier(sets, 'living-form-full', ['a', 'gender']), 0)
 })
