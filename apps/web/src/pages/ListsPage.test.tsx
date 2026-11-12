@@ -99,7 +99,8 @@ test('deleting a list removes it after confirming', async () => {
   renderListsPage()
   await waitFor(() => expect(screen.getByText('Shinies')).toBeInTheDocument())
 
-  fireEvent.click(screen.getByRole('button', { name: /delete shinies/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /actions for shinies/i }))
+  fireEvent.click(screen.getByRole('menuitem', { name: /delete shinies/i }))
 
   expect(confirmSpy).toHaveBeenCalled()
   await waitFor(() => expect(screen.queryByText('Shinies')).not.toBeInTheDocument())
@@ -114,7 +115,8 @@ test('declining the confirmation keeps the list', async () => {
   renderListsPage()
   await waitFor(() => expect(screen.getByText('Shinies')).toBeInTheDocument())
 
-  fireEvent.click(screen.getByRole('button', { name: /delete shinies/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /actions for shinies/i }))
+  fireEvent.click(screen.getByRole('menuitem', { name: /delete shinies/i }))
 
   expect(confirmSpy).toHaveBeenCalled()
   expect(screen.getByText('Shinies')).toBeInTheDocument()
@@ -129,7 +131,8 @@ test('clicking delete does not also switch the active list via the row handler',
   await waitFor(() => expect(screen.getByText('Second').closest('li')).toHaveClass('bg-brand/15'))
 
   // Clicking First's delete button (declined) must not switch active to First via bubbling.
-  fireEvent.click(screen.getByRole('button', { name: /delete first/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /actions for first/i }))
+  fireEvent.click(screen.getByRole('menuitem', { name: /delete first/i }))
   expect(screen.getByText('Second').closest('li')).toHaveClass('bg-brand/15')
   expect(screen.getByText('First').closest('li')).not.toHaveClass('bg-brand/15')
 
@@ -141,7 +144,8 @@ test('edit dialog renames the list and sets an icon', async () => {
   renderListsPage()
   await screen.findByText('Dex')
 
-  fireEvent.click(screen.getByRole('button', { name: /edit dex/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /actions for dex/i }))
+  fireEvent.click(screen.getByRole('menuitem', { name: /edit dex/i }))
   fireEvent.change(screen.getByLabelText(/^list name$/i), { target: { value: 'Base Dex' } })
   fireEvent.click(screen.getByRole('button', { name: 'Icon ⭐' }))
   fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
@@ -156,7 +160,8 @@ test('clone button adds a "(copy)" list', async () => {
   renderListsPage()
   await screen.findByText('Dex')
 
-  fireEvent.click(screen.getByRole('button', { name: /clone dex/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /actions for dex/i }))
+  fireEvent.click(screen.getByRole('menuitem', { name: /clone dex/i }))
   expect(await screen.findByText('Dex (copy)')).toBeInTheDocument()
 })
 
@@ -165,7 +170,8 @@ test('cancelling the edit dialog keeps the list unchanged', async () => {
   renderListsPage()
   await screen.findByText('Dex')
 
-  fireEvent.click(screen.getByRole('button', { name: /edit dex/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /actions for dex/i }))
+  fireEvent.click(screen.getByRole('menuitem', { name: /edit dex/i }))
   fireEvent.change(screen.getByLabelText(/^list name$/i), { target: { value: 'Changed' } })
   fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }))
 
@@ -177,7 +183,8 @@ test('cancelling the edit dialog keeps the list unchanged', async () => {
 test('the Box layout choices are the tier itself and bigger tiers that contain it, never smaller (3.19b)', async () => {
   seedState([testList('x', 'Dex', { tier: 'living-lite', layoutTier: 'living-lite' })])
   renderListsPage()
-  fireEvent.click(await screen.findByRole('button', { name: /edit dex/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /actions for dex/i }))
+  fireEvent.click(screen.getByRole('menuitem', { name: /edit dex/i }))
   const select = screen.getByLabelText(/box layout/i)
   await waitFor(() => expect(select.querySelectorAll('option')).toHaveLength(1))
   expect(Array.from(select.querySelectorAll('option')).map((o) => o.textContent)).toEqual(['Living Lite'])

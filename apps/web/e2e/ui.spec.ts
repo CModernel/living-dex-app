@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { mockNetwork, startList } from './fixture'
+import { mockNetwork, startList, openSidebar } from './fixture'
 
 test.beforeEach(async ({ page }) => {
   await mockNetwork(page)
@@ -29,6 +29,7 @@ test('only Dex is shown by default, right after the sprite; Types and Box/Slot a
 
 test('trophy case opens over a blurred backdrop, shows tier rows and closes with Escape', async ({ page }) => {
   for (let i = 1; i <= 12; i++) await page.getByRole('checkbox', { name: `Mark Mon ${i} as owned`, exact: true }).check()
+  await openSidebar(page)
   const panel = page.getByRole('region', { name: 'Trophies' })
   await expect(panel.getByRole('img').first()).toBeVisible()
   await panel.getByRole('button', { name: 'View all' }).click()
@@ -60,6 +61,7 @@ test('the obtained-from button opens a picker of colored game chips and tags a g
 })
 
 test('"+" opens the tier picker and the new list becomes active', async ({ page }) => {
+  await openSidebar(page)
   await page.getByRole('button', { name: 'Create new list' }).click()
   const dialog = page.getByRole('dialog', { name: 'Create new list' })
   await expect(dialog).toBeVisible()
@@ -93,4 +95,22 @@ test('search and the Owned bar stay visible while scrolling and the search filte
   await search.fill('Mon 12')
   await expect(page.getByText('Mon 12', { exact: true })).toBeVisible()
   await expect(page.getByText('Mon 13', { exact: true })).toHaveCount(0)
+})
+
+// 3.31: desktop folds the sidebar to a rail; phone shows an accordion header, closed by default.
+test('the sidebar folds to a rail on desktop and is an accordion on a phone', async ({ page }, testInfo) => {
+  const list = page.getByRole('button', { name: 'Actions for My Living Dex' })
+  if (testInfo.project.name === 'mobile') {
+    await expect(list).toBeHidden()
+    await page.getByRole('button', { name: /^Lists · My Living Dex/ }).click()
+    await expect(list).toBeVisible()
+    return
+  }
+  await expect(list).toBeVisible()
+  await page.getByRole('button', { name: 'Collapse sidebar' }).click()
+  await expect(list).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Switch to My Living Dex' })).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Expand sidebar' })).toBeVisible() // remembered
+  await page.screenshot({ path: 'e2e/results/sidebar-rail.png' })
 })

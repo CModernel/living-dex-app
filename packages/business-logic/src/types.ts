@@ -57,6 +57,8 @@ export type UserPreferences = {
   columnSizing: Record<string, number>;
   compactMode: boolean;
   darkMode?: 'system' | 'light' | 'dark';
+  // 3.31: the Home sidebar is folded to a narrow rail on desktop. Optional: absent = expanded.
+  sidebarCollapsed?: boolean;
   // Set once the user dismisses the Home welcome card (3.8 #13). Optional: absent means not yet.
   welcomeDismissed?: boolean;
   // Preferences schema version: lets reconcilePreferences run one-off migrations on stored state.

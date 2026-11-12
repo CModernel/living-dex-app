@@ -47,7 +47,7 @@ import BoxGrid from '../components/BoxGrid'
 import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
 import FilterMenu from '../components/FilterMenu'
 import GamePickerPopover, { type GamePickerOption } from '../components/GamePickerPopover'
-import ListSwitcher from '../components/ListSwitcher'
+import ListsSidebar from '../components/ListsSidebar'
 import GuideLink from '../components/GuideLink'
 import PlanSelect from '../components/PlanSelect'
 import SearchBar from '../components/SearchBar'
@@ -796,11 +796,7 @@ function HomePage() {
   // here instead of requiring a trip to another page.
   return (
     <div className="flex w-full flex-col gap-6 md:flex-row">
-      <aside className="w-full shrink-0 rounded-lg md:w-52 border border-border bg-surface p-3">
-        <h2 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">Lists</h2>
-        <ListSwitcher />
-        {dataset && <TrophiesPanel trophies={trophies} />}
-      </aside>
+      <ListsSidebar>{dataset && <TrophiesPanel trophies={trophies} />}</ListsSidebar>
       <div className="min-w-0 flex-1">
         {result.loading && <p className="text-muted">Loading Pokémon data…</p>}
         {result.error && <p className="text-muted">Failed to load dataset: {result.error.message}</p>}

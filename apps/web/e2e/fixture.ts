@@ -48,3 +48,9 @@ export async function startList(page: Page) {
   await page.getByRole('region', { name: 'Choose what to collect' }).getByRole('button', { name: 'Living Form', exact: true }).click()
   await expect(page.getByText('Mon 1', { exact: true })).toBeVisible()
 }
+
+// 3.31: on a phone the Lists sidebar is an accordion, closed by default; opens it (no-op on desktop).
+export async function openSidebar(page: Page) {
+  const toggle = page.getByRole('button', { name: /^Lists/ })
+  if ((await toggle.isVisible()) && (await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click()
+}

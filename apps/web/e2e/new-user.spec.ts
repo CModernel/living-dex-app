@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { expect, test, type Page } from '@playwright/test'
-import { mockNetwork, startList } from './fixture'
+import { mockNetwork, startList, openSidebar } from './fixture'
 
 // TODO 3.20 / 3.19: end-to-end "brand-new user" journeys, starting from an empty browser.
 
@@ -46,6 +46,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await expect(page.getByText('Mon 1', { exact: true })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Plan your boxes' })).toHaveCount(0)
     await expect(page.getByRole('checkbox', { name: 'Mark Mon 2 as owned', exact: true })).toBeChecked()
+    await openSidebar(page)
     await expect(page.getByRole('region', { name: 'Trophies' }).getByRole('img').first()).toBeVisible()
   })
 }
@@ -101,6 +102,7 @@ test('debug panel: hidden without ?debug; quick start, mark all, clear and reset
   await expect(page.getByText('Mon 1', { exact: true })).toBeVisible()
   await debug.getByRole('button', { name: 'Mark all' }).click()
   await expect(debug.getByText('40 owned')).toBeVisible()
+  await openSidebar(page)
   const trophies = page.getByRole('region', { name: 'Trophies' })
   await expect(trophies.locator('li[data-earned="true"]').first()).toBeVisible()
   await debug.getByRole('button', { name: 'Clear owned' }).click()

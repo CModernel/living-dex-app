@@ -1,5 +1,5 @@
 import { resolveListTiers, validTargets, type TierId } from '@living-dex/business-logic'
-import { useState, type FormEvent, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react'
 import { useDataset } from '../hooks/useDataset'
 import { useLists } from '../hooks/useLists'
 import { TIER_LABELS, useTierSets } from '../lib/tiers'
@@ -15,7 +15,73 @@ import TierPicker from './TierPicker'
 //
 const LIST_ICONS = ['⭐', '🏆', '✨', '🔥', '💧', '🌿', '⚡', '🎮', '📦', '❤️']
 
-function ListSwitcher() {
+// 3.29: the per-list actions live in one "⋯" menu so the list name gets the row's width.
+function RowMenu({
+  name,
+  onEdit,
+  onClone,
+  onDelete,
+}: {
+  name: string
+  onEdit: (e: MouseEvent) => void
+  onClone: (e: MouseEvent) => void
+  onDelete: (e: MouseEvent) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    const onDown = (e: MouseEvent | globalThis.MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false)
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onDown)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onDown)
+    }
+  }, [open])
+  const item = (label: string, handler: (e: MouseEvent) => void, icon: string) => (
+    <button
+      type="button"
+      role="menuitem"
+      aria-label={`${label} ${name}`}
+      onClick={(e) => {
+        setOpen(false)
+        handler(e)
+      }}
+      className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-border/30"
+    >
+      <span aria-hidden="true">{icon}</span>
+      {label}
+    </button>
+  )
+  return (
+    <span ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          setOpen((v) => !v)
+        }}
+        aria-label={`Actions for ${name}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="cursor-pointer rounded px-1.5 text-muted hover:text-foreground"
+      >
+        ⋯
+      </button>
+      {open && (
+        <div role="menu" className="absolute top-full right-0 z-40 mt-1 w-32 rounded-lg border border-border bg-background p-1 text-foreground shadow-xl">
+          {item('Edit', onEdit, '✎')}
+          {item('Clone', onClone, '⧉')}
+          {item('Delete', onDelete, '✕')}
+        </div>
+      )}
+    </span>
+  )
+}
+
+function ListSwitcher({ compact = false }: { compact?: boolean }) {
   const { lists, activeListId, switchTo, deleteList, updateList, cloneList } = useLists()
   const { dataset } = useDataset()
   const tierSets = useTierSets(dataset)
@@ -54,68 +120,8 @@ function ListSwitcher() {
     if (window.confirm(`Delete "${name}"? This can't be undone.`)) deleteList(id)
   }
 
-  return (
-    <div>
-      <div className="mb-2 flex justify-end">
-        <button
-          type="button"
-          onClick={() => setIsCreateOpen(true)}
-          aria-label="Create new list"
-          title="Create new list"
-          className="btn btn-sm btn-icon h-7 w-7 text-base leading-none"
-        >
-          +
-        </button>
-      </div>
-
-      {lists.length === 0 && <p className="mb-3 text-sm text-muted">You don't have any lists yet.</p>}
-
-      <ul className="divide-y divide-border">
-        {lists.map((list) => (
-          <li
-            key={list.id}
-            onClick={() => switchTo(list.id)}
-            className={`flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-border/20 ${
-              list.id === activeListId ? 'bg-brand/15' : ''
-            }`}
-          >
-            <span className="truncate">
-              {list.icon && <span className="mr-1.5">{list.icon}</span>}
-              {list.name}
-            </span>
-            <span className="flex shrink-0 items-center gap-2">
-              <span className="text-xs text-muted">{list.ownedIds.length} owned</span>
-              <button
-                type="button"
-                onClick={(e) => openEditDialog(e, list.id, list.name, list.icon)}
-                aria-label={`Edit ${list.name}`}
-                title="Edit"
-                className="cursor-pointer rounded px-1 text-muted hover:text-foreground"
-              >
-                ✎
-              </button>
-              <button
-                type="button"
-                onClick={(e) => handleClone(e, list.id)}
-                aria-label={`Clone ${list.name}`}
-                title="Clone"
-                className="cursor-pointer rounded px-1 text-muted hover:text-foreground"
-              >
-                ⧉
-              </button>
-              <button
-                type="button"
-                onClick={(e) => handleDelete(e, list.id, list.name)}
-                aria-label={`Delete ${list.name}`}
-                className="cursor-pointer rounded px-1 text-muted hover:text-foreground"
-              >
-                ✕
-              </button>
-            </span>
-          </li>
-        ))}
-      </ul>
-
+  const dialogs = (
+    <>
       {isCreateOpen && (
         <Dialog label="Create new list" onClose={() => setIsCreateOpen(false)} className="w-[36rem]">
           <TierPicker onCreated={() => setIsCreateOpen(false)} />
@@ -174,6 +180,85 @@ function ListSwitcher() {
           </form>
         </Dialog>
       )}
+    </>
+  )
+
+  // 3.31 collapsed sidebar: one button per list (icon or initial) and "+".
+  if (compact) {
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setIsCreateOpen(true)}
+          aria-label="Create new list"
+          title="Create new list"
+          className="btn btn-sm btn-icon h-8 w-8 text-base leading-none"
+        >
+          +
+        </button>
+        {lists.map((list) => (
+          <button
+            key={list.id}
+            type="button"
+            onClick={() => switchTo(list.id)}
+            aria-label={`Switch to ${list.name}`}
+            aria-pressed={list.id === activeListId}
+            title={`${list.name} · ${list.ownedIds.length} owned`}
+            className={`h-8 w-8 cursor-pointer rounded-md border text-sm ${
+              list.id === activeListId ? 'border-brand bg-brand/15' : 'border-border hover:bg-border/30'
+            }`}
+          >
+            {list.icon || list.name.trim().charAt(0).toUpperCase() || '·'}
+          </button>
+        ))}
+        {dialogs}
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="mb-2 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setIsCreateOpen(true)}
+          aria-label="Create new list"
+          title="Create new list"
+          className="btn btn-sm btn-icon h-7 w-7 text-base leading-none"
+        >
+          +
+        </button>
+      </div>
+
+      {lists.length === 0 && <p className="mb-3 text-sm text-muted">You don't have any lists yet.</p>}
+
+      <ul className="divide-y divide-border">
+        {lists.map((list) => (
+          <li
+            key={list.id}
+            onClick={() => switchTo(list.id)}
+            className={`flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-border/20 ${
+              list.id === activeListId ? 'bg-brand/15' : ''
+            }`}
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">
+                {list.icon && <span className="mr-1.5">{list.icon}</span>}
+                {list.name}
+              </span>
+              <span className="block text-xs text-muted">{list.ownedIds.length} owned</span>
+            </span>
+            <RowMenu
+              name={list.name}
+              onEdit={(e) => openEditDialog(e, list.id, list.name, list.icon)}
+              onClone={(e) => handleClone(e, list.id)}
+              onDelete={(e) => handleDelete(e, list.id, list.name)}
+            />
+          </li>
+        ))}
+      </ul>
+
+      {dialogs}
     </div>
   )
 }

@@ -773,8 +773,8 @@ even if the `3.X` task order below does.
       the (?) explains why. Tests: PlanSelect, HomePage (plan flows rewritten), e2e light/dark.
 - [ ] **3.28 Shorter welcome** (feedback 2026-11-12). "Welcome to Living Dex" text is too long: one or two
       sentences max. Tests: TBD (HomePage empty state).
-- [ ] **3.29 List sidebar: overflow menu** (feedback 2026-11-12). List names are hidden because the per-list
-      buttons take the space; move the actions into a "⋯" menu so the name gets the width. Tests: TBD.
+- [x] **3.29 List sidebar: overflow menu** ✅ **Done 2026-11-13.** Each list row shows the name (full width) and the
+      "N owned" count; Edit, Clone and Delete live in a "⋯" menu (`RowMenu`, closes on Escape/outside click).
 - [ ] **3.30 Trophies across all lists (decide)** (feedback 2026-11-12). Today trophies are computed from the
       ACTIVE list only (`HomePage` passes `activeList.ownedIds` to `evaluateTrophies`), so switching lists shows
       different trophies. The user's intended model is account-wide: all of Gen 1 in list 1 + all of Gen 2 in list 2
@@ -801,8 +801,7 @@ even if the `3.X` task order below does.
       `parseList` validates imports; `cloneList` deep-copies settings. New `useListSettings` hook; `useGameSelection`
       is per list. Tests: migration (idempotent, owned untouched), storage load, parseList, hooks, HomePage per-list
       view, e2e two lists. Web 186, business-logic 90, e2e 28. Plan: `obsidian/3.36-Per-List-Settings-Plan.md`.
-- [ ] **3.37 Clone list (check)** (2026-11-12). Already exists (ListSwitcher "Clone", `cloneList`, tier dialog
-      "Copy to a new list"); only keep it in the 3.29 "⋯" menu and make it copy 3.36 settings. Tests: ListsPage.
+- [x] **3.37 Clone list** ✅ **Done 2026-11-13.** Clone kept (now inside the "⋯" menu); it copies the 3.36 per-list settings.
 - [ ] **3.38 Game badges** (2026-11-12). Replace full game names ("Blue", "Yellow") with coloured letter circles
       (B blue, Y yellow…; two letters when initials clash), full name as tooltip/aria-label, in table and game
       picker. Tests: component + labels.
@@ -825,8 +824,10 @@ even if the `3.X` task order below does.
       export link; required once real accounts exist. Tests: component, e2e. Sonnet medium.
 - [ ] **3.45 Dataset packaging and offline versioning** (2026-11-12). Verify how the dataset loads today; version
       key so offline users get updates safely (feeds 3.39 and any future RN app). Tests: unit, e2e offline.
-- [ ] **3.31 Collapsible sidebar** (feedback 2026-11-12). Make the side bar collapsible (mainly for mobile); check
-      the usual app pattern first (drawer on mobile, collapse-to-icons on desktop?). Tests: TBD.
+- [x] **3.31 Collapsible sidebar** ✅ **Done 2026-11-13.** `ListsSidebar`: desktop « / » folds it to a rail (one button
+      per list: icon or initial, plus "+"), saved as `preferences.sidebarCollapsed`; phone: accordion header
+      "Lists · <active list> ▾", closed by default (trophies live inside it). Tests: ListsSidebar, ListsPage menu,
+      e2e (rail + accordion, `openSidebar` helper). Web 194, e2e 32.
 - [x] **3.16 Remaining UI tests** ✅ Done 2026-11-10 — UserStateProvider hydration (2 tests) + edit-cancel; ListSwitcher edit/clone covered via ListsPage tests. Web: 117 tests. (Root cause of the early-mutation race — setState(loaded) clobbers pre-hydration changes — is unchanged; tests keep the waitFor guard.)
 - [x] **3.17 Hydration race fixed** ✅ **Done 2026-11-10 (web).** `UserStateProvider` now queues updates made
       before storage loads and replays them over the loaded state (they still apply instantly);
