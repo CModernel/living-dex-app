@@ -76,3 +76,21 @@ test('the disclaimer is visible in the footer and in Settings, and the page does
   expect(overflow).toBeLessThanOrEqual(0)
   await page.screenshot({ path: 'e2e/results/settings.png' })
 })
+
+// 3.26 / 3.32: the search box and the Owned bar stay visible while scrolling, with the table header right below.
+test('search and the Owned bar stay visible while scrolling and the search filters rows', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 500 })
+  await page.evaluate(() => window.scrollTo(0, 0))
+  const search = page.getByRole('searchbox', { name: 'Search Pokémon' })
+  const bar = page.getByRole('progressbar', { name: 'Owned progress' })
+  await page.mouse.wheel(0, 1500)
+  await expect(search).toBeInViewport()
+  await expect(bar).toBeInViewport()
+  const searchBottom = (await search.boundingBox())!.y + (await search.boundingBox())!.height
+  const header = page.getByRole('columnheader').first()
+  expect((await header.boundingBox())!.y).toBeGreaterThanOrEqual(searchBottom - 1)
+  await page.screenshot({ path: 'e2e/results/sticky-stack.png' })
+  await search.fill('Mon 12')
+  await expect(page.getByText('Mon 12', { exact: true })).toBeVisible()
+  await expect(page.getByText('Mon 13', { exact: true })).toHaveCount(0)
+})

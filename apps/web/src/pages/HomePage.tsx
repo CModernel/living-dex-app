@@ -1,6 +1,7 @@
 import {
   GAMES,
   applyListFilter,
+  matchesSearch,
   evaluateTrophies,
   ownedProgress,
   availableGames,
@@ -48,7 +49,8 @@ import FilterMenu from '../components/FilterMenu'
 import GamePickerPopover, { type GamePickerOption } from '../components/GamePickerPopover'
 import ListSwitcher from '../components/ListSwitcher'
 import GuideLink from '../components/GuideLink'
-import PlanBanner from '../components/PlanBanner'
+import PlanSelect from '../components/PlanSelect'
+import SearchBar from '../components/SearchBar'
 import TierChangeDialog from '../components/TierChangeDialog'
 import TierPicker from '../components/TierPicker'
 import OwnedProgress from '../components/OwnedProgress'
@@ -393,6 +395,20 @@ function HomePage() {
   const previewPosRef = useRef({ x: 0, y: 0 })
   const headerRefs = useRef<Record<string, HTMLTableCellElement | null>>({})
   const tableRef = useRef<HTMLTableElement>(null)
+  // Publishes the sticky stack's height as --stack-h on its parent so the table header sticks right below it.
+  const observerRef = useRef<ResizeObserver | null>(null)
+  const stackRef = useCallback((node: HTMLDivElement | null) => {
+    observerRef.current?.disconnect()
+    observerRef.current = null
+    const parent = node?.parentElement
+    if (!node || !parent) return
+    const publish = () => parent.style.setProperty('--stack-h', `${node.offsetHeight}px`)
+    publish()
+    if (typeof ResizeObserver !== 'undefined') {
+      observerRef.current = new ResizeObserver(publish)
+      observerRef.current.observe(node)
+    }
+  }, [])
   // Not persisted: the spec is that the table always opens sorted by Dex ascending.
   const [sorting, setSorting] = useState<SortingState>([{ id: 'dex', desc: false }])
   const [resizingColumnId, setResizingColumnId] = useState<string | null>(null)
@@ -404,6 +420,7 @@ function HomePage() {
   const plan = planState(activeList, tierSets)
   const { tier: tierId, layoutTier, decided } = plan
   const [userState, setUserState] = useUserState()
+  const [search, setSearch] = useState('')
   const { settings: listSettings, updateSettings } = useListSettings()
   const showFutureSlots = listSettings.showFutureSlots // the table's; the grid has its own (3.35)
   const positions = useMemo(
@@ -501,6 +518,12 @@ function HomePage() {
     return TROPHY_TIER_ORDER.map((id) => ({ id, name: TIER_LABELS[id], entries: all.filter(TIERS[id].predicate) }))
   }, [dataset])
   const trophies = useMemo(() => evaluateTrophies(trophyTiers, ownedIds), [trophyTiers, ownedIds])
+  // 3.32: search only narrows what is displayed (progress, trophies and Box/Slot use `entries`).
+  const tableRows = useMemo(() => (search.trim() ? entries.filter((e) => matchesSearch(e, search)) : entries), [entries, search])
+  const searchMatches = useMemo(() => {
+    if (!dataset || !search.trim()) return null
+    return new Set(Object.values(dataset.pokemon).filter((e) => matchesSearch(e, search)).map((e) => e.slug))
+  }, [dataset, search])
   const entriesBySlug = useMemo(() => new Map(entries.map((entry) => [entry.slug, entry])), [entries])
 
   // 3.7b "obtained from" picker: which entry it's open for, and the element it's anchored to.
@@ -608,7 +631,7 @@ function HomePage() {
     {
       features,
       columns,
-      data: entries,
+      data: tableRows,
       state: { columnVisibility, columnOrder, sorting },
       onColumnVisibilityChange: setColumnVisibility,
       onColumnOrderChange: setColumnOrder,
@@ -829,27 +852,20 @@ function HomePage() {
               <GuideLink className="btn btn-sm btn-icon h-7 w-7" label="Explain the collection goals">
                 ?
               </GuideLink>
-              {tierSets && !decided && (
-                <PlanBanner
-                  mode="banner"
-                  sets={tierSets}
-                  tier={tierId}
-                  layoutTier={layoutTier}
-                  previousPlan={keepFor}
-                  onPlan={setPlan}
-                  onNotNow={() => setPlan(tierId)}
-                />
-              )}
-              {tierSets && decided && validTargets(tierSets, tierId).length > 0 && (
-                <PlanBanner
-                  mode="chip"
-                  sets={tierSets}
-                  tier={tierId}
-                  layoutTier={layoutTier}
-                  previousPlan={layoutTier !== tierId ? layoutTier : undefined}
-                  onPlan={setPlan}
-                  onNotNow={() => setPlan(tierId)}
-                />
+              {tierSets && (!decided || validTargets(tierSets, tierId).length > 0) && (
+                <>
+                  <span aria-hidden="true" className="text-muted">
+                    ›
+                  </span>
+                  <PlanSelect
+                    sets={tierSets}
+                    tier={tierId}
+                    layoutTier={layoutTier}
+                    decided={decided}
+                    previousPlan={decided ? (layoutTier !== tierId ? layoutTier : undefined) : keepFor}
+                    onPlan={setPlan}
+                  />
+                </>
               )}
               {decided && layoutTier !== tierId && (
                 <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted">
@@ -879,7 +895,11 @@ function HomePage() {
                 )}
               </div>
             )}
-            <OwnedProgress progress={progress} />
+            {/* 3.26 / 3.32: search + Owned bar stay visible while scrolling; the table header sticks right under them. */}
+            <div ref={stackRef} className="sticky top-0 z-30 -mx-1 mb-3 flex flex-col gap-2 bg-background px-1 pt-2 pb-1">
+              <SearchBar value={search} onChange={setSearch} />
+              <OwnedProgress progress={progress} />
+            </div>
             {ownedOutside > 0 && (
               <p className="-mt-2 mb-3 text-xs text-muted">
                 {ownedOutside} owned outside this tier (kept, shown again when you switch back)
@@ -894,6 +914,7 @@ function HomePage() {
                   visible={visibleInTier}
                   ownedIds={ownedIds}
                   showFuture={listSettings.grid.showFutureSlots}
+                  matches={searchMatches}
                   onToggle={toggleOwned}
                 />
               ) : (
@@ -946,7 +967,8 @@ function HomePage() {
                                   : undefined
                             }
                             title={header.column.getCanSort() ? 'Click to sort' : undefined}
-                            className={`sticky top-0 z-20 cursor-grab overflow-hidden bg-surface p-2.5 text-xs font-semibold tracking-wide text-muted uppercase select-none active:cursor-grabbing ${
+                            style={{ top: 'var(--stack-h, 0px)' }}
+                            className={`sticky z-20 cursor-grab overflow-hidden bg-surface p-2.5 text-xs font-semibold tracking-wide text-muted uppercase select-none active:cursor-grabbing ${
                               isDragging ? 'opacity-30' : ''
                             } ${isDropTarget ? 'bg-brand/10' : ''} ${COLUMN_CELL_CLASS[header.column.id] ?? ''}`}
                           >

@@ -1055,21 +1055,22 @@ test('a new user picks a tier from big tiles; Box/Slot stay locked until the pla
   expect(storedLists()[0]).toMatchObject({ name: 'My Living Dex', tier: 'final-form' })
   expect(storedLists()[0].layoutTier).toBeUndefined()
   const banner = screen.getByRole('region', { name: 'Plan your boxes' })
-  expect(banner).toHaveTextContent('Planning to grow beyond Final Form?')
+  expect(banner).toHaveTextContent('Box and Slot stay hidden')
   expect(screen.getAllByRole('img', { name: 'Locked until you plan your boxes' })).toHaveLength(2)
 
-  // The popover only offers bigger tiers that contain Final Form, with the extra slots.
-  fireEvent.click(within(banner).getByRole('button', { name: 'Plan for bigger goal' }))
-  const options = within(screen.getByRole('dialog', { name: 'Choose a bigger goal' })).getAllByRole('button')
-  expect(options.map((o) => o.textContent)).toEqual([
-    'Living Form Full+2 slots · Recommended',
-    'Living Form+1 slots',
-    'Living Lite+1 slots',
+  // The Plan dropdown only offers the tier itself and bigger tiers that contain Final Form, with the extra slots.
+  const plan = within(banner).getByRole('combobox', { name: 'Plan' })
+  expect(within(plan).getAllByRole('option').map((o) => o.textContent)).toEqual([
+    'Choose your plan…',
+    'Final Form (same as tier)',
+    'Living Form Full (+2 slots · Recommended)',
+    'Living Form (+1 slots)',
+    'Living Lite (+1 slots)',
   ])
-  fireEvent.click(options[0])
+  fireEvent.change(plan, { target: { value: 'living-form-full' } })
 
   await waitFor(() => expect(screen.queryByRole('region', { name: 'Plan your boxes' })).not.toBeInTheDocument())
-  expect(screen.getByRole('button', { name: /boxes planned for living form full/i })).toBeInTheDocument()
+  expect(screen.getByRole('combobox', { name: 'Plan' })).toHaveValue('living-form-full')
   expect(slotOf('Charizard')).toEqual(['1', '3'])
   expect(storedLists()[0]).toMatchObject({ tier: 'final-form', layoutTier: 'living-form-full' })
 
@@ -1083,15 +1084,15 @@ test('a new user picks a tier from big tiles; Box/Slot stay locked until the pla
   expect(storedLists()[0].ownedIds).toEqual([])
 })
 
-test('"Not now" keeps the plan on the same tier and unlocks Box/Slot; the plan can still grow later (3.19b)', async () => {
+test('"same as tier" keeps the plan on the same tier and unlocks Box/Slot; the plan can still grow later (3.19b)', async () => {
   seedTieredList({ tier: 'final-form' })
   renderWithData()
   const banner = await screen.findByRole('region', { name: 'Plan your boxes' })
-  fireEvent.click(within(banner).getByRole('button', { name: 'Not now' }))
+  fireEvent.change(within(banner).getByRole('combobox', { name: 'Plan' }), { target: { value: 'final-form' } })
   await waitFor(() => expect(slotOf('Charizard')).toEqual(['1', '1']))
   expect(storedLists()[0]).toMatchObject({ tier: 'final-form', layoutTier: 'final-form' })
-  fireEvent.click(screen.getByRole('button', { name: /boxes: same as tier/i }))
-  fireEvent.click(within(screen.getByRole('dialog', { name: 'Choose a bigger goal' })).getByRole('button', { name: /^Living Form\+/ }))
+  expect(screen.getByRole('combobox', { name: 'Plan' })).toHaveValue('final-form')
+  fireEvent.change(screen.getByRole('combobox', { name: 'Plan' }), { target: { value: 'living-form' } })
   await waitFor(() => expect(slotOf('Charizard')).toEqual(['1', '2']))
 })
 
@@ -1121,10 +1122,10 @@ test('changing the tier inside the plan asks again, offering to keep the old pla
   const banner = await screen.findByRole('region', { name: 'Plan your boxes' })
   expect(screen.queryByRole('dialog', { name: 'Change tier' })).not.toBeInTheDocument()
   expect(screen.getAllByRole('img', { name: 'Locked until you plan your boxes' }).length).toBeGreaterThan(0)
-  fireEvent.click(within(banner).getByRole('button', { name: 'Plan for bigger goal' }))
-  const first = within(screen.getByRole('dialog', { name: 'Choose a bigger goal' })).getAllByRole('button')[0]
+  const plan = within(banner).getByRole('combobox', { name: 'Plan' })
+  const first = within(plan).getAllByRole('option')[2] // after "Choose your plan…" and "same as tier"
   expect(first).toHaveTextContent('Keep Living Form Full')
-  fireEvent.click(first)
+  fireEvent.change(plan, { target: { value: (first as HTMLOptionElement).value } })
   await waitFor(() => expect(slotOf('Charizard')).toEqual(['1', '3']))
   expect(storedLists()[0]).toMatchObject({ tier: 'living-form', layoutTier: 'living-form-full' })
 })
@@ -1203,11 +1204,9 @@ test('no owned selection is ever lost, whatever order tiers and plans are change
   const answer = async (choice: 'not-now' | 'plan') => {
     const banner = screen.queryByRole('region', { name: 'Plan your boxes' })
     if (!banner) return
-    if (choice === 'not-now') fireEvent.click(within(banner).getByRole('button', { name: 'Not now' }))
-    else {
-      fireEvent.click(within(banner).getByRole('button', { name: 'Plan for bigger goal' }))
-      fireEvent.click(within(screen.getByRole('dialog', { name: 'Choose a bigger goal' })).getAllByRole('button')[0])
-    }
+    const plan = within(banner).getByRole('combobox', { name: 'Plan' })
+    if (choice === 'not-now') fireEvent.change(plan, { target: { value: (tierSelect() as HTMLSelectElement).value } })
+    else fireEvent.change(plan, { target: { value: (within(plan).getAllByRole('option')[2] as HTMLOptionElement).value } })
   }
   const sequence: Array<[string, 'not-now' | 'plan']> = [
     ['final-form', 'plan'],
@@ -1258,7 +1257,9 @@ test('with an undecided plan the grid asks to decide it first (3.18)', async () 
   renderWithData()
   expect(await screen.findByText(/Decide your box plan above to see your boxes/)).toBeInTheDocument()
   expect(screen.queryByRole('region', { name: 'Box 1' })).not.toBeInTheDocument()
-  fireEvent.click(within(screen.getByRole('region', { name: 'Plan your boxes' })).getByRole('button', { name: 'Not now' }))
+  fireEvent.change(within(screen.getByRole('region', { name: 'Plan your boxes' })).getByRole('combobox', { name: 'Plan' }), {
+    target: { value: 'final-form' },
+  })
   expect(await screen.findByRole('region', { name: 'Box 1' })).toBeInTheDocument()
 })
 
@@ -1313,4 +1314,43 @@ test('"Show future slots" is remembered separately for the table and the grid (3
   fireEvent.click(screen.getByRole('button', { name: 'Switch to table view' }))
   await waitFor(() => expect(checkbox().checked).toBe(false))
   expect(storedLists()[0].settings?.showFutureSlots).toBeUndefined()
+})
+
+test('search narrows the table by name or Dex number without touching progress or Box/Slot (3.32)', async () => {
+  renderWithData()
+  await waitFor(() => expect(screen.getByText('Charizard')).toBeInTheDocument())
+  const progressBefore = screen.getByRole('progressbar', { name: 'Owned progress' }).parentElement!.textContent
+  const slotBefore = slotOf('Charizard')
+
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Search Pokémon' }), { target: { value: 'char' } })
+  await waitFor(() => expect(screen.queryByText('Bulbasaur')).not.toBeInTheDocument())
+  expect(screen.getByText('Charizard')).toBeInTheDocument()
+  expect(slotOf('Charizard')).toEqual(slotBefore)
+  expect(screen.getByRole('progressbar', { name: 'Owned progress' }).parentElement!.textContent).toBe(progressBefore)
+
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Search Pokémon' }), { target: { value: '1' } })
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+})
+
+test('"/" focuses the search box and Escape clears it (3.32)', async () => {
+  renderWithData()
+  await waitFor(() => expect(screen.getByText('Charizard')).toBeInTheDocument())
+  fireEvent.keyDown(document.body, { key: '/' })
+  const box = screen.getByRole('searchbox', { name: 'Search Pokémon' })
+  expect(box).toHaveFocus()
+  fireEvent.change(box, { target: { value: 'zzz' } })
+  fireEvent.keyDown(box, { key: 'Escape' })
+  expect(box).toHaveValue('')
+})
+
+test('in the grid, search dims the tiles that do not match and keeps the box layout (3.32)', async () => {
+  seedTieredList({ tier: 'living-form', layoutTier: 'living-form' })
+  const state = stored()
+  Object.values(state.lists).forEach((l) => (l.settings = { viewMode: 'grid' }))
+  window.localStorage.setItem('living-dex:user-state', JSON.stringify(state))
+  renderWithData()
+  const box = await screen.findByRole('region', { name: 'Box 1' })
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Search Pokémon' }), { target: { value: 'charizard' } })
+  await waitFor(() => expect(within(box).getByRole('button', { name: 'Mark Bulbasaur as owned' })).toHaveClass('opacity-25'))
+  expect(within(box).getByRole('button', { name: 'Mark Charizard as owned' })).not.toHaveClass('opacity-25')
 })

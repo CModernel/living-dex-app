@@ -3,7 +3,7 @@ import type { OwnedProgress as Progress } from '@living-dex/business-logic'
 // Progress bar for the active collection (3.8 #21). Pure presentation.
 function OwnedProgress({ progress }: { progress: Progress }) {
   return (
-    <div className="mb-4">
+    <div className="mb-1">
       <div className="mb-1 flex justify-between text-xs text-muted">
         <span>
           {progress.owned} / {progress.total} owned

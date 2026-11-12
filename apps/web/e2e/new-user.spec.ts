@@ -29,14 +29,14 @@ for (const scheme of ['light', 'dark'] as const) {
     await expect(page.getByText('Mon 2', { exact: true })).toBeVisible()
     await expect(page.getByText('Mon 1', { exact: true })).toHaveCount(0)
     const banner = page.getByRole('region', { name: 'Plan your boxes' })
-    await expect(banner).toContainText('Planning to grow beyond Final Form?')
+    await expect(banner).toContainText('Box and Slot stay hidden')
+    await banner.scrollIntoViewIfNeeded()
     await page.screenshot({ path: `e2e/results/plan-banner-${scheme}.png` })
-    await banner.getByRole('button', { name: 'Plan for bigger goal' }).click()
-    const popover = page.getByRole('dialog', { name: 'Choose a bigger goal' })
-    await expect(popover.getByRole('button')).toHaveCount(3)
-    await popover.getByRole('button', { name: /Living Form Full/ }).click()
+    const plan = banner.getByRole('combobox', { name: 'Plan' })
+    await expect(plan.locator('option')).toHaveCount(5) // Choose…, same as tier, 3 bigger goals
+    await plan.selectOption('living-form-full')
     await expect(banner).toHaveCount(0)
-    await expect(page.getByRole('button', { name: /Boxes planned for Living Form Full/ })).toBeVisible()
+    await expect(page.getByRole('combobox', { name: 'Plan' })).toHaveValue('living-form-full')
 
     for (const i of [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35, 38]) {
       await page.getByRole('checkbox', { name: `Mark Mon ${i} as owned`, exact: true }).check()

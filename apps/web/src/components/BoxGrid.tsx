@@ -14,6 +14,7 @@ const Tile = memo(function Tile({
   state,
   owned,
   showFuture,
+  dim,
   onToggle,
 }: {
   dataset: PokemonDataset
@@ -21,6 +22,7 @@ const Tile = memo(function Tile({
   state: SlotState
   owned: boolean
   showFuture: boolean
+  dim: boolean
   onToggle: (slug: string) => void
 }) {
   const { src, onError } = useSpriteSource(dataset, entry)
@@ -60,6 +62,8 @@ const Tile = memo(function Tile({
       aria-pressed={owned}
       title={`${entry.name} · #${entry.dex}${owned ? ' · owned' : ''} (game tags: table view)`}
       className={`relative flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border p-0.5 pb-2.5 transition active:translate-y-px ${
+        dim ? 'opacity-25' : ''
+      } ${
         owned ? 'border-brand bg-brand/15' : 'border-border bg-background hover:border-foreground/30'
       }`}
     >
@@ -81,6 +85,7 @@ function BoxGrid({
   visible,
   ownedIds,
   showFuture,
+  matches,
   onToggle,
 }: {
   dataset: PokemonDataset
@@ -89,6 +94,8 @@ function BoxGrid({
   visible: ReadonlySet<string>
   ownedIds: ReadonlySet<string>
   showFuture: boolean
+  // 3.32 search: when set, tappable tiles that do not match are dimmed (the box keeps its real layout).
+  matches: ReadonlySet<string> | null
   onToggle: (slug: string) => void
 }) {
   // Dataset keys are not guaranteed to be slugs, so look entries up by slug.
@@ -120,6 +127,7 @@ function BoxGrid({
                     state={state}
                     owned={ownedIds.has(slug)}
                     showFuture={showFuture}
+                    dim={!!matches && !matches.has(slug)}
                     onToggle={onToggle}
                   />
                 )
