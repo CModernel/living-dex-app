@@ -50,3 +50,10 @@ export function toggleOwnedGame(list: PokemonList, slug: string, gameId: string)
     ownedGames: { ...list.ownedGames, [slug]: tagged },
   }
 }
+
+/** 3.30: every slug owned in any of the lists (a Pokémon owned in two lists counts once). Trophies use this. */
+export function unionOwned(lists: Iterable<PokemonList>): Set<string> {
+  const owned = new Set<string>()
+  for (const list of lists) for (const slug of list.ownedIds) owned.add(slug)
+  return owned
+}

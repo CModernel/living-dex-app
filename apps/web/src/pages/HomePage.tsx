@@ -2,6 +2,7 @@ import {
   GAMES,
   applyListFilter,
   matchesSearch,
+  unionOwned,
   evaluateTrophies,
   ownedProgress,
   availableGames,
@@ -517,7 +518,9 @@ function HomePage() {
     const all = Object.values(dataset.pokemon)
     return TROPHY_TIER_ORDER.map((id) => ({ id, name: TIER_LABELS[id], entries: all.filter(TIERS[id].predicate) }))
   }, [dataset])
-  const trophies = useMemo(() => evaluateTrophies(trophyTiers, ownedIds), [trophyTiers, ownedIds])
+  // 3.30: trophies are account-wide: the union of every list's owned slugs (e.g. Gen 1 in one list + Gen 2 in another).
+  const trophyOwned = useMemo(() => unionOwned(Object.values(userState.lists)), [userState.lists])
+  const trophies = useMemo(() => evaluateTrophies(trophyTiers, trophyOwned), [trophyTiers, trophyOwned])
   // 3.32: search only narrows what is displayed (progress, trophies and Box/Slot use `entries`).
   const tableRows = useMemo(() => (search.trim() ? entries.filter((e) => matchesSearch(e, search)) : entries), [entries, search])
   const searchMatches = useMemo(() => {
@@ -796,7 +799,7 @@ function HomePage() {
   // here instead of requiring a trip to another page.
   return (
     <div className="flex w-full flex-col gap-6 md:flex-row">
-      <ListsSidebar>{dataset && <TrophiesPanel trophies={trophies} />}</ListsSidebar>
+      <ListsSidebar>{dataset && <TrophiesPanel trophies={trophies} listCount={Object.keys(userState.lists).length} />}</ListsSidebar>
       <div className="min-w-0 flex-1">
         {result.loading && <p className="text-muted">Loading Pokémon data…</p>}
         {result.error && <p className="text-muted">Failed to load dataset: {result.error.message}</p>}

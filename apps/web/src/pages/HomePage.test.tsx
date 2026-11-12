@@ -1354,3 +1354,23 @@ test('in the grid, search dims the tiles that do not match and keeps the box lay
   await waitFor(() => expect(within(box).getByRole('button', { name: 'Mark Bulbasaur as owned' })).toHaveClass('opacity-25'))
   expect(within(box).getByRole('button', { name: 'Mark Charizard as owned' })).not.toHaveClass('opacity-25')
 })
+
+test('trophies count every list together, whichever list is active (3.30)', async () => {
+  seedState([
+    testList('1', 'One', { tier: 'living-form-full', layoutTier: 'living-form-full', ownedIds: ['bulbasaur'] }),
+    testList('2', 'Two', { tier: 'living-form-full', layoutTier: 'living-form-full', ownedIds: ['charizard'] }),
+  ])
+  renderWithData()
+  const panel = await screen.findByRole('region', { name: 'Trophies' })
+  // 50% of the 3-entry Living Form Full needs 2: neither list has it alone, together they do.
+  await waitFor(() => expect(within(panel).getByRole('img', { name: 'Living Form Full 50% (earned)' })).toBeInTheDocument())
+  expect(within(panel).getByText('Counts every list (2).')).toBeInTheDocument()
+
+  const state = stored()
+  state.activeListId = '2'
+  window.localStorage.setItem('living-dex:user-state', JSON.stringify(state))
+  cleanup()
+  renderWithData()
+  const again = await screen.findByRole('region', { name: 'Trophies' })
+  await waitFor(() => expect(within(again).getByRole('img', { name: 'Living Form Full 50% (earned)' })).toBeInTheDocument())
+})

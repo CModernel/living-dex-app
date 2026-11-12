@@ -62,3 +62,10 @@ test('trophy case rows show each tier with its progress percentage', () => {
   expect(within(row).getByText('30%')).toBeInTheDocument()
   expect(screen.getByRole('dialog').parentElement).toHaveClass('backdrop-blur-sm')
 })
+
+test('explains that every list counts, only when there are several (3.30)', () => {
+  const { rerender } = render(<TrophiesPanel trophies={trophies} listCount={1} />)
+  expect(screen.queryByText(/Counts every list/)).not.toBeInTheDocument()
+  rerender(<TrophiesPanel trophies={trophies} listCount={3} />)
+  expect(screen.getByText('Counts every list (3).')).toBeInTheDocument()
+})

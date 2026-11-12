@@ -771,16 +771,14 @@ even if the `3.X` task order below does.
       plain dropdowns; Plan lists the tier ("same as tier") and strict supersets with "+N slots" (previous plan
       first as "Keep …"); undecided shows "Choose your plan…" in an amber-tinted region and keeps Box/Slot locked;
       the (?) explains why. Tests: PlanSelect, HomePage (plan flows rewritten), e2e light/dark.
-- [ ] **3.28 Shorter welcome** (feedback 2026-11-12). "Welcome to Living Dex" text is too long: one or two
-      sentences max. Tests: TBD (HomePage empty state).
+- [x] **3.28 Shorter welcome** ✅ **Done 2026-11-13.** One sentence ("Tap a Pokémon to mark it as owned. Your data stays on
+      this device; back it up in Settings.") plus "Got it". Test: WelcomeCard (no bullet list).
 - [x] **3.29 List sidebar: overflow menu** ✅ **Done 2026-11-13.** Each list row shows the name (full width) and the
       "N owned" count; Edit, Clone and Delete live in a "⋯" menu (`RowMenu`, closes on Escape/outside click).
-- [ ] **3.30 Trophies across all lists (decide)** (feedback 2026-11-12). Today trophies are computed from the
-      ACTIVE list only (`HomePage` passes `activeList.ownedIds` to `evaluateTrophies`), so switching lists shows
-      different trophies. The user's intended model is account-wide: all of Gen 1 in list 1 + all of Gen 2 in list 2
-      = both Gen trophies. Open question: combine as the union of every list's owned slugs? Note: milestones are
-      already evaluated for every tier regardless of the list's tier (owning Living Form Full entries can earn
-      Final Form %). Tests: TBD.
+- [x] **3.30 Trophies across all lists** ✅ **Done 2026-11-13.** Trophies use `unionOwned` (every list's owned slugs, a
+      Pokémon in two lists counts once), so they no longer change when you switch lists; the sidebar panel says
+      "Counts every list (N)" when there are several. The progress bar still uses the active list. Tests:
+      business-logic `unionOwned`, HomePage (union earns a medal neither list earns alone, from either list), panel note.
 - [x] **3.32 Big sticky search bar** ✅ **Done 2026-11-12.** `SearchBar` + `matchesSearch` (name/species substring or
       exact Dex number, "#6" ok); `/` focuses, Esc clears; table filters rows, grid dims non-matching tiles; display
       only (progress, trophies, Box/Slot unchanged). Tests: business-logic search, HomePage, e2e. Web 192,
@@ -802,9 +800,9 @@ even if the `3.X` task order below does.
       is per list. Tests: migration (idempotent, owned untouched), storage load, parseList, hooks, HomePage per-list
       view, e2e two lists. Web 186, business-logic 90, e2e 28. Plan: `obsidian/3.36-Per-List-Settings-Plan.md`.
 - [x] **3.37 Clone list** ✅ **Done 2026-11-13.** Clone kept (now inside the "⋯" menu); it copies the 3.36 per-list settings.
-- [ ] **3.38 Game badges** (2026-11-12). Replace full game names ("Blue", "Yellow") with coloured letter circles
-      (B blue, Y yellow…; two letters when initials clash), full name as tooltip/aria-label, in table and game
-      picker. Tests: component + labels.
+- [x] **3.38 Game badges** ✅ **Done 2026-11-13.** Game chips (picker + Filters) are coloured circles with a short code
+      (`GAME_CODE`: R, Gr, B, Ye, …; unique, text black/white by luminance); full name in tooltip and accessible name,
+      a dot marks notes like "conditional". Tests: unique codes for every game, GameChips, e2e picker (mobile screenshot checked).
 - [ ] **3.39 Installable offline PWA** (2026-11-12). Manifest (box-logo icons, no "pokemon"), service worker caching
       app shell + dataset, runtime cache for sprites (first view of each needs internet), install hint, "update
       available" toast. Resolves 3.22 for now. Tests: cache config unit, e2e offline reload

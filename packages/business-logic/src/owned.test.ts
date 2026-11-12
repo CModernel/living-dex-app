@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { getOwnedGames, toggleOwnedEntry, toggleOwnedGame } from './owned.js'
+import { getOwnedGames, toggleOwnedEntry, toggleOwnedGame, unionOwned } from './owned.js'
 import { DEFAULT_LIST_FILTER, type PokemonList } from './types.js'
 
 function makeList(overrides: Partial<PokemonList> = {}): PokemonList {
@@ -80,4 +80,11 @@ test('works with lists saved before ownedGames existed', () => {
   assert.deepEqual(getOwnedGames(legacy, 'bulbasaur'), [])
   assert.deepEqual(getOwnedGames(undefined, 'bulbasaur'), [])
   assert.deepEqual(toggleOwnedEntry(legacy, 'bulbasaur').ownedIds, [])
+})
+
+test('unionOwned merges the owned slugs of every list, counting duplicates once (3.30)', () => {
+  const a = makeList({ id: 'a', ownedIds: ['x', 'y'] })
+  const b = makeList({ id: 'b', ownedIds: ['y', 'z'] })
+  assert.deepEqual([...unionOwned([a, b])].sort(), ['x', 'y', 'z'])
+  assert.equal(unionOwned([]).size, 0)
 })
