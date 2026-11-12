@@ -765,12 +765,12 @@ even if the `3.X` task order below does.
       `grid.spec.ts` light + dark. Web 181 tests, business-logic 84, 26 e2e. Plan: `obsidian/3.18-Grid-View-Plan.md`.
 - [x] **3.15 Sheet-update guide** ✅ — `living-dex-organizer/docs/UPDATING-SHEETS.md`, committed in the organizer
       repo 2026-11-12 ("Add guide for updating the vendor sheets").
-- [ ] **3.26 Sticky Owned bar** (feedback 2026-11-12). The "owned" progress bar must stay visible together with the
-      table's sticky headers when scrolling down. Tests: TBD (component + e2e scroll screenshot).
-- [ ] **3.27 Tier / Plan row** (feedback 2026-11-12). Replace the "📦 Boxes: same as tier · change" chip with one row
-      `Tier: Living Form ▾ > Plan: Living Form ▾ (?)`: both are plain dropdowns styled alike (no green chip, no
-      "change" text); the Plan dropdown only lists the tier and strict supersets; `(?)` explains why to plan.
-      Tests: TBD (HomePage, PlanBanner, e2e light/dark).
+- [x] **3.26 Sticky Owned bar** ✅ **Done 2026-11-12.** Search and the Owned bar live in one sticky stack; its height
+      is published as `--stack-h` (ResizeObserver) so the table header sticks right under it. Test: e2e scroll.
+- [x] **3.27 Tier / Plan row** ✅ **Done 2026-11-12.** `PlanSelect` replaces `PlanBanner`: `Tier ▾ › Plan ▾ (?)`, both
+      plain dropdowns; Plan lists the tier ("same as tier") and strict supersets with "+N slots" (previous plan
+      first as "Keep …"); undecided shows "Choose your plan…" in an amber-tinted region and keeps Box/Slot locked;
+      the (?) explains why. Tests: PlanSelect, HomePage (plan flows rewritten), e2e light/dark.
 - [ ] **3.28 Shorter welcome** (feedback 2026-11-12). "Welcome to Living Dex" text is too long: one or two
       sentences max. Tests: TBD (HomePage empty state).
 - [ ] **3.29 List sidebar: overflow menu** (feedback 2026-11-12). List names are hidden because the per-list
@@ -781,9 +781,10 @@ even if the `3.X` task order below does.
       = both Gen trophies. Open question: combine as the union of every list's owned slugs? Note: milestones are
       already evaluated for every tier regardless of the list's tier (owning Living Form Full entries can earn
       Final Form %). Tests: TBD.
-- [ ] **3.32 Big sticky search bar** (feedback 2026-11-12). Wide, easy-to-reach search box that stays visible
-      while scrolling (also in grid); matches name or Dex number; `/` focuses it; clear button; shares one sticky
-      stack with 3.26. Tests: unit match fn, HomePage, e2e scroll + search.
+- [x] **3.32 Big sticky search bar** ✅ **Done 2026-11-12.** `SearchBar` + `matchesSearch` (name/species substring or
+      exact Dex number, "#6" ok); `/` focuses, Esc clears; table filters rows, grid dims non-matching tiles; display
+      only (progress, trophies, Box/Slot unchanged). Tests: business-logic search, HomePage, e2e. Web 192,
+      business-logic 95, e2e 30.
 - [x] **3.33 Grid shows everything by default** ✅ **Done 2026-11-12.** `settings.grid.showFutureSlots` defaults to
       true (grey sprites of the planned tier); with it off, reserved slots show a dashed silhouette instead of an
       empty box. The grid ignores the table's hide settings. Tests: HomePage, BoxGrid, e2e.
