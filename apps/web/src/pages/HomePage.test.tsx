@@ -839,7 +839,7 @@ test('the games button opens a picker with only the accessible games, without to
   await renderAvailabilityDataset()
 
   const picker = await openGamePicker('Alpha')
-  expect(picker.getAllByRole('checkbox').map((cb) => cb.closest('label')!.textContent)).toEqual(['Red', 'Gold (conditional)'])
+  expect(picker.getAllByRole('checkbox').map((cb) => cb.getAttribute('aria-label'))).toEqual(['Red', 'Gold (conditional)'])
   expect(gamesButton('Alpha')).toHaveAttribute('aria-expanded', 'true')
   expect(ownedCheckbox('Alpha')).not.toBeChecked()
 })

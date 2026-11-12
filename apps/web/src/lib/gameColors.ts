@@ -50,3 +50,28 @@ const FALLBACK = { color: '#888890', generation: 0 }
 export function gameStyle(gameId: string) {
   return GAME_STYLE[gameId] ?? FALLBACK
 }
+
+// 3.38: short badge text per game (unique, 1–2 letters) shown inside the colored circle; the full name stays in the
+// tooltip/accessible name. A test fails when a game is added without a code here.
+export const GAME_CODE: Record<string, string> = {
+  red: 'R', green: 'Gr', blue: 'B', yellow: 'Ye', gold: 'Go', silver: 'Si', crystal: 'C',
+  ruby: 'Ru', sapphire: 'Sa', firered: 'FR', leafgreen: 'LG', emerald: 'E', colosseum: 'Co', xd: 'XD',
+  diamond: 'D', pearl: 'P', platinum: 'Pt', heartgold: 'HG', soulsilver: 'SS',
+  black: 'Bk', white: 'W', 'black-2': 'B2', 'white-2': 'W2',
+  x: 'X', y: 'Y', 'omega-ruby': 'OR', 'alpha-sapphire': 'AS',
+  sun: 'Su', moon: 'M', 'ultra-sun': 'US', 'ultra-moon': 'UM',
+  'lets-go-pikachu': 'LP', 'lets-go-eevee': 'LE', sword: 'Sw', shield: 'Sh',
+  'brilliant-diamond': 'BD', 'shining-pearl': 'SP', 'legends-arceus': 'LA',
+  scarlet: 'Sc', violet: 'V', 'legends-za': 'LZ',
+}
+
+export function gameCode(gameId: string): string {
+  return GAME_CODE[gameId] ?? gameId.replace(/[^a-z0-9]/gi, '').slice(0, 2).toUpperCase()
+}
+
+/** Readable text color (black or white) on a badge background, by perceived luminance. */
+export function badgeTextColor(hex: string): '#111111' | '#FFFFFF' {
+  const n = parseInt(hex.slice(1), 16)
+  const luminance = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255
+  return luminance > 0.6 ? '#111111' : '#FFFFFF'
+}

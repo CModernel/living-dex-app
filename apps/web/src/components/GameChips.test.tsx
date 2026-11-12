@@ -27,3 +27,12 @@ test('each chip shows its game color', () => {
   const dots = [...container.querySelectorAll<HTMLElement>('span[aria-hidden="true"][style]')]
   expect(dots.map((d) => d.style.backgroundColor)).toEqual(['rgb(227, 53, 13)', 'rgb(212, 160, 23)', 'rgb(232, 71, 43)'])
 })
+
+test('a chip shows the short code; the full name is the tooltip and accessible name (3.38)', () => {
+  render(<GameChips options={options} onToggle={() => {}} />)
+  expect(screen.getByText('R')).toBeInTheDocument()
+  expect(screen.getByText('Go')).toBeInTheDocument()
+  expect(screen.getByText('Sc')).toBeInTheDocument()
+  expect(screen.queryByText('Scarlet')).not.toBeInTheDocument()
+  expect(screen.getByTitle('Red (conditional)')).toBeInTheDocument()
+})

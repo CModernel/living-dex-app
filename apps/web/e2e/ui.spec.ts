@@ -52,7 +52,7 @@ test('the obtained-from button opens a picker of colored game chips and tags a g
   await button.click()
   const picker = page.getByRole('dialog', { name: /Obtained from/ })
   await expect(picker.getByText('Gen 1')).toBeVisible()
-  await picker.locator('label', { hasText: 'Red' }).click()
+  await picker.getByTitle('Red', { exact: true }).click()
   await page.waitForTimeout(150)
   await page.screenshot({ path: 'e2e/results/game-picker.png' })
   await page.keyboard.press('Escape')

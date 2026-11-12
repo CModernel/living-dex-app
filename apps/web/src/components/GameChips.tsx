@@ -1,8 +1,9 @@
-import { gameStyle } from '../lib/gameColors'
+import { badgeTextColor, gameCode, gameStyle } from '../lib/gameColors'
 
 export type GameChipOption = { id: string; name: string; note?: string; checked: boolean }
 
-// Games as colored chips grouped by generation. Each chip keeps a real (visually hidden) checkbox so
+// Games as colored letter badges (3.38: "B" on blue, "Ye" on yellow; the full name is the tooltip and the accessible
+// name) grouped by generation. Each badge keeps a real (visually hidden) checkbox so
 // keyboard and screen-reader behavior is a normal checklist; the chip itself shows the state.
 function GameChips({ options, onToggle }: { options: GameChipOption[]; onToggle: (id: string) => void }) {
   const groups = new Map<number, GameChipOption[]>()
@@ -21,26 +22,27 @@ function GameChips({ options, onToggle }: { options: GameChipOption[]; onToggle:
               {items.map((option) => (
                 <label
                   key={option.id}
-                  className="cursor-pointer rounded-full pointer-coarse:py-0.5"
+                  title={`${option.name}${option.note ? ` (${option.note})` : ''}`}
+                  className="cursor-pointer rounded-full pointer-coarse:p-0.5"
                 >
                   <input
                     type="checkbox"
                     checked={option.checked}
                     onChange={() => onToggle(option.id)}
+                    aria-label={`${option.name}${option.note ? ` (${option.note})` : ''}`}
                     className="peer sr-only"
                   />
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background py-1 pr-2.5 pl-1.5 text-xs font-medium whitespace-nowrap text-muted transition peer-checked:border-brand peer-checked:bg-brand/10 peer-checked:text-foreground peer-focus-visible:outline-2 peer-focus-visible:outline-brand hover:border-foreground/30">
-                    <span
-                      aria-hidden="true"
-                      className="h-3.5 w-3.5 shrink-0 rounded-full shadow-[inset_0_-2px_0_rgba(0,0,0,0.2)]"
-                      style={{ backgroundColor: gameStyle(option.id).color, opacity: option.checked ? 1 : 0.45 }}
-                    />
-                    <span>
-                      {option.name}
-                      {/* Separate text node: a space inside the span is dropped from the accessible name. */}
-                      {option.note && ' '}
-                      {option.note && <span className="font-normal text-muted">({option.note})</span>}
-                    </span>
+                  <span
+                    aria-hidden="true"
+                    className="relative inline-flex h-8 min-w-8 items-center justify-center rounded-full px-1 text-xs font-bold shadow-[inset_0_-2px_0_rgba(0,0,0,0.2)] transition peer-checked:ring-2 peer-checked:ring-brand peer-checked:ring-offset-1 peer-checked:ring-offset-background peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand hover:brightness-95"
+                    style={{
+                      backgroundColor: gameStyle(option.id).color,
+                      color: badgeTextColor(gameStyle(option.id).color),
+                      opacity: option.checked ? 1 : 0.4,
+                    }}
+                  >
+                    {gameCode(option.id)}
+                    {option.note && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full border border-background bg-foreground" />}
                   </span>
                 </label>
               ))}
