@@ -38,6 +38,8 @@ export type UserPreferences = {
   welcomeDismissed?: boolean;
   // 3.19b: show the greyed rows of a bigger planned tier (with their real Box/Slot). Optional: absent = hidden.
   showFutureSlots?: boolean;
+  // 3.18: Home shows the table or HOME-style boxes. Optional: absent = table.
+  viewMode?: 'table' | 'grid';
   // Preferences schema version: lets reconcilePreferences run one-off migrations on stored state.
   // 1 = `types` became a hideable column (stored states from before it keep it visible).
   prefsVersion?: number;

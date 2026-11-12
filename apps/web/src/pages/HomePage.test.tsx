@@ -1229,3 +1229,34 @@ test('no owned selection is ever lost, whatever order tiers and plans are change
   }
   expect(storedLists()).toHaveLength(1)
 })
+
+// --- 3.18: grid view ---------------------------------------------------------------------------------------------
+
+test('the grid shows HOME-style boxes by the plan, marks owned, and the choice persists (3.18)', async () => {
+  seedTieredList({ tier: 'final-form', layoutTier: 'living-form-full' })
+  renderWithData()
+  await waitFor(() => expect(screen.getByText('Charizard')).toBeInTheDocument())
+  fireEvent.click(within(screen.getByRole('group', { name: 'View' })).getByRole('button', { name: /grid/i }))
+
+  const box = await screen.findByRole('region', { name: 'Box 1' })
+  expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  expect(screen.queryByText('Columns')).not.toBeInTheDocument()
+  // Living Form Full order: bulbasaur, pikachu-female (reserved), charizard (slot 3).
+  expect(within(box).getAllByRole('img', { name: 'Reserved slot' })).toHaveLength(2)
+  fireEvent.click(within(box).getByRole('button', { name: 'Mark Charizard as owned' }))
+  await waitFor(() => expect(storedLists()[0].ownedIds).toEqual(['charizard']))
+  expect(within(box).getByRole('heading')).toHaveTextContent('1/1')
+  expect(stored().preferences.viewMode).toBe('grid')
+})
+
+test('with an undecided plan the grid asks to decide it first (3.18)', async () => {
+  seedTieredList({ tier: 'final-form' })
+  const state = stored()
+  state.preferences.viewMode = 'grid'
+  window.localStorage.setItem('living-dex:user-state', JSON.stringify(state))
+  renderWithData()
+  expect(await screen.findByText(/Decide your box plan above to see your boxes/)).toBeInTheDocument()
+  expect(screen.queryByRole('region', { name: 'Box 1' })).not.toBeInTheDocument()
+  fireEvent.click(within(screen.getByRole('region', { name: 'Plan your boxes' })).getByRole('button', { name: 'Not now' }))
+  expect(await screen.findByRole('region', { name: 'Box 1' })).toBeInTheDocument()
+})

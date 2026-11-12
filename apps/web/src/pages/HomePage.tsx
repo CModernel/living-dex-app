@@ -6,9 +6,8 @@ import {
   availableGames,
   getAvailabilityCategory,
   getOwnedGames,
-  getPokeJungleSpriteUrl,
-  getSpriteUrl,
   coversTier,
+  layoutBoxes,
   layoutPositions,
   ownedOutsideTier,
   planState,
@@ -43,6 +42,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { createPortal } from 'react-dom'
+import BoxGrid from '../components/BoxGrid'
 import ColumnVisibilityMenu from '../components/ColumnVisibilityMenu'
 import FilterMenu from '../components/FilterMenu'
 import GamePickerPopover, { type GamePickerOption } from '../components/GamePickerPopover'
@@ -63,6 +63,7 @@ import { useColumnOrder } from '../hooks/useColumnOrder'
 import { useColumnSizing } from '../hooks/useColumnSizing'
 import { useColumnVisibility } from '../hooks/useColumnVisibility'
 import { useDataset } from '../hooks/useDataset'
+import { useSpriteSource } from '../hooks/useSpriteSource'
 import { useGameSelection } from '../hooks/useGameSelection'
 import { useListFilter } from '../hooks/useListFilter'
 import { getColumnMinPx, getColumnWeight, resizeAdjacentPair } from '../lib/columnWeights'
@@ -145,17 +146,9 @@ const COLUMN_CELL_CLASS: Record<string, string> = {
   evolutionStage: 'capitalize',
 }
 
-// Prefers PokeJungle (the sprites Austin John's own sheet uses) and falls back to
-// PokeAPI. The fallback isn't just belt-and-braces: PokeJungle has no shiny art for the
-// per-combination Alcremie/Minior forms, and a dataset published before `pokejungleId`
-// existed returns null here — both cases land on PokeAPI without any special handling.
+// Sprite source (PokeJungle → PokeAPI fallback) lives in useSpriteSource, shared with the grid view (3.18).
 function Sprite({ dataset, entry }: { dataset: PokemonDataset; entry: PokemonEntry }) {
-  const pokeApiUrl = getSpriteUrl(dataset, entry)
-  const pokeJungleUrl = getPokeJungleSpriteUrl(dataset, entry)
-  // Records WHICH url failed rather than a bare "it failed" flag: switching tiers
-  // re-renders rows in place, so one Sprite instance can end up showing a different
-  // entry, and a boolean would strand that new entry on the fallback.
-  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  const { src: spriteUrl, onError: handleError } = useSpriteSource(dataset, entry)
   // The tooltip renders through a portal (below) rather than as an absolutely-positioned
   // sibling, because the table's rounded-corner wrapper clips overflow — a plain
   // group-hover sibling gets cut off at the table's own top/bottom edge instead of
@@ -164,11 +157,6 @@ function Sprite({ dataset, entry }: { dataset: PokemonDataset; entry: PokemonEnt
   const imgRef = useRef<HTMLImageElement>(null)
   const [hoverRect, setHoverRect] = useState<DOMRect | null>(null)
 
-  const usePokeJungle = pokeJungleUrl !== null && failedUrl !== pokeJungleUrl
-  const spriteUrl = (usePokeJungle ? pokeJungleUrl : pokeApiUrl) ?? undefined
-  // Re-setting the same value is a no-op in React, so a fallback that also 404s just
-  // stops here instead of looping.
-  const handleError = usePokeJungle ? () => setFailedUrl(pokeJungleUrl) : undefined
   const hoverSize = SPRITE_SIZE * SPRITE_HOVER_ZOOM
 
   return (
@@ -465,6 +453,15 @@ function HomePage() {
   // Advancing inside the plan keeps it: the only tier change that doesn't reset the plan (nothing moves).
   const advanceTargets =
     tierSets && decided ? validTargets(tierSets, tierId).filter((t) => coversTier(tierSets, layoutTier, t)) : []
+  // 3.18 grid view: boxes of the planned tier, which slugs are tappable (in tier + filters/games), which are in tier.
+  const viewMode = userState.preferences.viewMode ?? 'table'
+  const setViewMode = (mode: 'table' | 'grid') =>
+    setUserState((prev) => ({ ...prev, preferences: { ...prev.preferences, viewMode: mode } }))
+  const boxes = useMemo(
+    () => (dataset && viewMode === 'grid' ? layoutBoxes(Object.values(dataset.pokemon), TIERS[layoutTier].predicate) : []),
+    [dataset, layoutTier, viewMode],
+  )
+  const visibleInTier = useMemo(() => new Set(entries.filter((e) => !e.future).map((e) => e.slug)), [entries])
   const toggleFutureSlots = () =>
     setUserState((prev) => ({ ...prev, preferences: { ...prev.preferences, showFutureSlots: !prev.preferences.showFutureSlots } }))
   const ownedIds = useMemo(() => new Set(activeList?.ownedIds ?? []), [activeList])
@@ -768,7 +765,20 @@ function HomePage() {
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h1 className="text-2xl font-semibold tracking-tight">Living Dex</h1>
               <div className="flex flex-wrap items-center gap-3">
-                <ColumnVisibilityMenu columns={hideableColumns} onReset={resetColumns} />
+                <div role="group" aria-label="View" className="flex overflow-hidden rounded-lg border border-border text-sm">
+                  {(['table', 'grid'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setViewMode(mode)}
+                      aria-pressed={viewMode === mode}
+                      className={`cursor-pointer px-3 py-1.5 capitalize ${viewMode === mode ? 'bg-brand/15 font-medium text-brand' : 'hover:bg-border/20'}`}
+                    >
+                      {mode === 'table' ? '☰ Table' : '▦ Grid'}
+                    </button>
+                  ))}
+                </div>
+                {viewMode === 'table' && <ColumnVisibilityMenu columns={hideableColumns} onReset={resetColumns} />}
                 <FilterMenu
                   toggles={[
                     { id: 'finalStageOnly', label: 'Final stage only', checked: filter.finalStageOnly, toggle: toggleFinalStageOnly },
@@ -856,6 +866,25 @@ function HomePage() {
                 {ownedOutside} owned outside this tier (kept, shown again when you switch back)
               </p>
             )}
+            {viewMode === 'grid' && dataset && tierSets && (
+              decided ? (
+                <BoxGrid
+                  dataset={dataset}
+                  boxes={boxes}
+                  inTier={tierSets[tierId]}
+                  visible={visibleInTier}
+                  ownedIds={ownedIds}
+                  showFuture={showFutureSlots}
+                  onToggle={toggleOwned}
+                />
+              ) : (
+                <p role="status" className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted">
+                  🔒 Decide your box plan above to see your boxes.
+                </p>
+              )
+            )}
+            {viewMode === 'table' && (
+            <>
             {/* Column widths are percentages that always sum to 100% (see lib/columnWeights.ts), so
                 the table can never be wider or narrower than its container — nothing to scroll. */}
             <div className="overflow-clip rounded-lg border border-border">
@@ -966,6 +995,8 @@ function HomePage() {
                 </tbody>
               </table>
             </div>
+            </>
+            )}
           </>
         )}
       </div>

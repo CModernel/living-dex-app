@@ -109,3 +109,20 @@ export function ownedOutsideTier(sets: TierSlugSets, tier: TierId, ownedIds: rea
   for (const slug of ownedIds) if (!sets[tier].has(slug)) n += 1
   return n
 }
+
+/** 3.18 grid view: slugs per box in the layout tier's order (same numbering as `layoutPositions`). */
+export function layoutBoxes(
+  entries: readonly PokemonEntry[],
+  inLayout: (entry: PokemonEntry) => boolean,
+  boxSize: number = BOX_SIZE,
+): string[][] {
+  const boxes: string[][] = []
+  entries
+    .filter(inLayout)
+    .sort((a, b) => a.sortIndex - b.sortIndex)
+    .forEach((entry, index) => {
+      const box = Math.floor(index / boxSize)
+      ;(boxes[box] ??= []).push(entry.slug)
+    })
+  return boxes
+}

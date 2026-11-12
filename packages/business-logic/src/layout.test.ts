@@ -5,6 +5,7 @@ import {
   coversTier,
   effectiveLayoutTier,
   isTierId,
+  layoutBoxes,
   layoutPositions,
   ownedOutsideTier,
   planOptions,
@@ -120,4 +121,15 @@ test('planOptions: only strict supersets, extra slots, previous plan first', () 
 test('ownedOutsideTier counts owned entries hidden by the tier', () => {
   assert.equal(ownedOutsideTier(sets, 'final-form', ['a', 'b', 'gender', 'zzz']), 3)
   assert.equal(ownedOutsideTier(sets, 'living-form-full', ['a', 'gender']), 0)
+})
+
+test('layoutBoxes groups the layout order per box and agrees with layoutPositions', () => {
+  const many = Array.from({ length: 65 }, (_, i) => e(`m${i}`, 64 - i))
+  const boxes = layoutBoxes(many, () => true)
+  assert.deepEqual(boxes.map((b) => b.length), [30, 30, 5])
+  assert.equal(boxes[0][0], 'm64')
+  const pos = layoutPositions(many, () => true)
+  boxes.forEach((box, b) => box.forEach((slug, s) => assert.deepEqual(pos.get(slug), { box: b + 1, slot: s + 1 })))
+  assert.deepEqual(layoutBoxes(entries, predicates['living-form'], 2), [['a', 'b'], ['floette', 'form']])
+  assert.deepEqual(layoutBoxes([], () => true), [])
 })

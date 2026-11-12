@@ -751,9 +751,12 @@ even if the `3.X` task order below does.
       (not an IP issue, but replace with the box mark before any store publish); mobile has no bundle ID yet,
       so set one without "pokemon"; sprites stay runtime-fetched from PokeJungle/PokeAPI (residual risk).
       Tests: none (read-only audit).
-- [ ] **3.18 Grid view (idea)** — alternative to the table: tiles per Pokémon, simplified and easier to
-      scan. `preferences.viewMode: 'table'|'grid'`; tile content and items-per-row still to decide.
-
+- [x] **3.18 Grid view** ✅ **Done 2026-11-12.** Table/Grid toggle (`preferences.viewMode`). HOME-style boxes 6×5
+      numbered by the list's box plan (`layoutBoxes` in `layout.ts`), one card per box with owned/total; tile = sprite
+      + dex number, tap toggles owned (game tags stay in the table); reserved future slots dashed (grey sprite with
+      "Show future slots"), filtered-out slots dimmed, both inert; undecided plan shows "Decide your box plan". Sprite
+      source shared via `useSpriteSource`. Tests: unit `layoutBoxes`, `BoxGrid` component, HomePage grid tests, e2e
+      `grid.spec.ts` light + dark. Web 181 tests, business-logic 84, 26 e2e. Plan: `obsidian/3.18-Grid-View-Plan.md`.
 - [ ] **3.15 Sheet-update guide** — `living-dex-organizer/docs/UPDATING-SHEETS.md` (docs only; ask
       before committing in the organizer repo).
 - [x] **3.16 Remaining UI tests** ✅ Done 2026-11-10 — UserStateProvider hydration (2 tests) + edit-cancel; ListSwitcher edit/clone covered via ListsPage tests. Web: 117 tests. (Root cause of the early-mutation race — setState(loaded) clobbers pre-hydration changes — is unchanged; tests keep the waitFor guard.)
