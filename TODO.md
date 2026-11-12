@@ -769,8 +769,12 @@ even if the `3.X` task order below does.
       sentences max. Tests: TBD (HomePage empty state).
 - [ ] **3.29 List sidebar: overflow menu** (feedback 2026-11-12). List names are hidden because the per-list
       buttons take the space; move the actions into a "⋯" menu so the name gets the width. Tests: TBD.
-- [ ] **3.30 Trophies shared between lists (bug)** (feedback 2026-11-12). Trophies show the same state on every
-      list; they must belong to each list. Tests: TBD (regression test switching lists).
+- [ ] **3.30 Trophies across all lists (decide)** (feedback 2026-11-12). Today trophies are computed from the
+      ACTIVE list only (`HomePage` passes `activeList.ownedIds` to `evaluateTrophies`), so switching lists shows
+      different trophies. The user's intended model is account-wide: all of Gen 1 in list 1 + all of Gen 2 in list 2
+      = both Gen trophies. Open question: combine as the union of every list's owned slugs? Note: milestones are
+      already evaluated for every tier regardless of the list's tier (owning Living Form Full entries can earn
+      Final Form %). Tests: TBD.
 - [ ] **3.31 Collapsible sidebar** (feedback 2026-11-12). Make the side bar collapsible (mainly for mobile); check
       the usual app pattern first (drawer on mobile, collapse-to-icons on desktop?). Tests: TBD.
 - [x] **3.16 Remaining UI tests** ✅ Done 2026-11-10 — UserStateProvider hydration (2 tests) + edit-cancel; ListSwitcher edit/clone covered via ListsPage tests. Web: 117 tests. (Root cause of the early-mutation race — setState(loaded) clobbers pre-hydration changes — is unchanged; tests keep the waitFor guard.)
