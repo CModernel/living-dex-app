@@ -775,6 +775,25 @@ even if the `3.X` task order below does.
       = both Gen trophies. Open question: combine as the union of every list's owned slugs? Note: milestones are
       already evaluated for every tier regardless of the list's tier (owning Living Form Full entries can earn
       Final Form %). Tests: TBD.
+- [ ] **3.32 Big sticky search bar** (feedback 2026-11-12). Wide, easy-to-reach search box that stays visible
+      while scrolling (also in grid); matches name or Dex number; `/` focuses it; clear button; shares one sticky
+      stack with 3.26. Tests: unit match fn, HomePage, e2e scroll + search.
+- [ ] **3.33 Grid shows everything by default** (2026-11-12). Grid defaults to showing future slots and
+      out-of-tier entries; empty slots drawn as a silhouette; independent from the table's hide settings.
+      Tests: BoxGrid, HomePage, e2e light/dark.
+- [ ] **3.34 Single Table/Grid toggle** (2026-11-12). One toggle button instead of the two-option group.
+      Tests: HomePage, e2e.
+- [ ] **3.35 Filters in grid** (2026-11-12). Filters button in grid too; table and grid keep separate filter
+      sets, both default to "show all". Tests: HomePage, useListFilter.
+- [ ] **3.36 Per-list settings** (2026-11-12, do before 3.33/3.35). Move `viewMode`, `showFutureSlots`, per-view
+      filters and selected games from user `preferences` to the list (`list.settings`), migrate old values, copy on
+      clone; columns stay per user. Plan mode, Sonnet high. Tests: business-logic migration + clone, hooks,
+      HomePage, e2e.
+- [ ] **3.37 Clone list (check)** (2026-11-12). Already exists (ListSwitcher "Clone", `cloneList`, tier dialog
+      "Copy to a new list"); only keep it in the 3.29 "⋯" menu and make it copy 3.36 settings. Tests: ListsPage.
+- [ ] **3.38 Game badges** (2026-11-12). Replace full game names ("Blue", "Yellow") with coloured letter circles
+      (B blue, Y yellow…; two letters when initials clash), full name as tooltip/aria-label, in table and game
+      picker. Tests: component + labels.
 - [ ] **3.31 Collapsible sidebar** (feedback 2026-11-12). Make the side bar collapsible (mainly for mobile); check
       the usual app pattern first (drawer on mobile, collapse-to-icons on desktop?). Tests: TBD.
 - [x] **3.16 Remaining UI tests** ✅ Done 2026-11-10 — UserStateProvider hydration (2 tests) + edit-cancel; ListSwitcher edit/clone covered via ListsPage tests. Web: 117 tests. (Root cause of the early-mutation race — setState(loaded) clobbers pre-hydration changes — is unchanged; tests keep the waitFor guard.)
