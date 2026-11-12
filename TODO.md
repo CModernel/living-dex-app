@@ -683,6 +683,8 @@ even if the `3.X` task order below does.
       plan). Pure `planState`/`planOptions`/`ownedOutsideTier` in `layout.ts`. Owned-safety test walks 9 tier/plan
       steps and checks ownedIds + ownedGames after each. Debug panel: "Undecide plan". Web 176 tests,
       business-logic 83, 22 e2e (light + dark). Design history: `obsidian/3.19b-Tier-Picker-Plan.md`.
+      Follow-ups 2026-11-12: tiles say "N Pokémon to collect"; `/tiers` redesigned with a drawn Euler/Venn diagram
+      beside the size bars and one selected-tier panel (examples kept there, reason in the Obsidian plan).
       Original spec:
       - Welcome (no list yet): full-screen vertical list of 5 neutral tier tiles (icon lightly tinted, count, boxes,
         one-line summary). Badges: "Quickest goal" light blue (Final Form), "Classic" orange (Living Lite),

@@ -54,7 +54,12 @@ test('the tiers guide explains the differences', async ({ page }) => {
   await freshStart(page)
   await page.getByRole('link', { name: "What's the difference?" }).click()
   await expect(page.getByRole('heading', { name: "What's the difference between tiers?" })).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Which tier contains which' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Which tier contains which' })).toBeVisible()
+  const outer = page.getByRole('button', { name: 'Living Form Full circle' })
+  const box = (await outer.boundingBox())!
+  // Inner circles cover the centre: tap the outer ring, where only Living Form Full is.
+  await outer.click({ position: { x: 8, y: box.height / 2 } })
+  await expect(page.getByRole('region', { name: 'Selected tier' })).toContainText('Absolutely everything.')
   await page.screenshot({ path: 'e2e/results/tiers-page.png', fullPage: true })
 })
 

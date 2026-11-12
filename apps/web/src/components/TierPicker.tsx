@@ -53,9 +53,10 @@ function TierPicker({ onCreated }: { onCreated?: () => void }) {
               </span>
               <span className="block text-sm text-muted">{TIER_INFO[id].summary}</span>
             </span>
-            <span className="shrink-0 text-right text-sm text-muted">
+            <span className="shrink-0 text-right text-xs text-muted">
               <span className="block text-lg font-semibold text-foreground">{size ?? '…'}</span>
-              {boxes !== null && `${boxes} ${boxes === 1 ? 'box' : 'boxes'}`}
+              <span className="block">Pokémon to collect</span>
+              {boxes !== null && <span className="block">{`${boxes} ${boxes === 1 ? 'box' : 'boxes'}`}</span>}
             </span>
           </button>
         )

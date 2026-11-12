@@ -1,5 +1,5 @@
 import { clearDatasetCache, type PokemonDataset } from '@living-dex/business-logic'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import TiersPage from './TiersPage'
 
@@ -18,14 +18,21 @@ const dataset = {
 
 afterEach(() => clearDatasetCache())
 
-test('explains which tier contains which, sizes and example names per tier', async () => {
+test('a drawn diagram beside the sizes, and one panel for the selected tier with example names', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => dataset }) as Response)
   render(<TiersPage />)
-  const sizes = screen.getByRole('region', { name: 'Tier sizes' })
-  expect(await within(sizes).findByText('3 · 1 boxes')).toBeInTheDocument()
-  expect(screen.getByRole('region', { name: 'Which tier contains which' })).toHaveTextContent('not completely inside Living Lite')
-  const full = screen.getByRole('article', { name: 'Living Form Full' })
-  expect(within(full).getByText(/Adds over Living Form:/).closest('p')).toHaveTextContent('Adds over Living Form: G…')
-  const lite = screen.getByRole('article', { name: 'Living Lite' })
-  expect(within(lite).getByText(/Adds over Final Form Full:/).closest('p')).toHaveTextContent('Adds over Final Form Full: A…')
+  const overview = screen.getByRole('region', { name: 'Overview' })
+  expect(await within(overview).findByText('3 · 1 boxes')).toBeInTheDocument()
+  const venn = within(overview).getByRole('group', { name: 'Which tier contains which' })
+  expect(venn.querySelectorAll('circle')).toHaveLength(5)
+
+  const panel = screen.getByRole('region', { name: 'Selected tier' })
+  expect(within(panel).getByRole('heading')).toHaveTextContent('Final Form')
+
+  fireEvent.click(within(venn).getByRole('button', { name: 'Living Form Full circle' }))
+  expect(within(panel).getByRole('heading')).toHaveTextContent('Living Form Full')
+  expect(within(panel).getByText(/Adds over Living Form:/).closest('p')).toHaveTextContent('Adds over Living Form: G…')
+
+  fireEvent.click(within(overview).getByRole('button', { name: /^Living Lite\d/ }))
+  expect(within(panel).getByText(/Adds over Final Form Full:/).closest('p')).toHaveTextContent('A…')
 })
