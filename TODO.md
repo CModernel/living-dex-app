@@ -732,6 +732,12 @@ even if the `3.X` task order below does.
       `e2e/new-user.spec.ts`: new-user journey, export/reset/import round trip, panel gating. Also fixed:
       `useActiveList`'s bootstrap could create duplicate default lists when several components mounted at once.
       Web 163 tests, business-logic 74, 18 e2e (desktop + mobile).
+- [ ] **Work groups (2026-11-12).** Batch tickets that touch the same files to save quota (one context read, one
+      test/build cycle); one commit per ticket inside a group; parallel subagents cost more, not less.
+      A 3.36 (Sonnet high, plan) · B 3.33+3.34+3.35 (Sonnet medium) · C 3.26+3.32+3.27 (Sonnet medium, plan) ·
+      D 3.29+3.37+3.31 (Sonnet medium, plan) · E 3.28+3.38+3.30 (Sonnet medium, plan only for 3.30) ·
+      F 3.39+3.45 (Sonnet medium) · G 3.40+3.41 (Opus high, plan) · H 3.42+3.44 (Opus high, plan) ·
+      I 3.21+3.25+Docker verify (Sonnet low). Order A→E, then F→H, I anytime. Details: `obsidian/Work-Groups.md`.
 - [ ] **3.21 Testing standard (rule recorded in `docs/RULES.md` §6, 2026-11-12).** Backfill: every
       pending ticket (3.18, 3.19, 3.20, 3.22, Champions card, 3.10/3.11) lists its unit, component and
       e2e tests in its acceptance criteria before it starts.
