@@ -784,13 +784,15 @@ even if the `3.X` task order below does.
 - [ ] **3.32 Big sticky search bar** (feedback 2026-11-12). Wide, easy-to-reach search box that stays visible
       while scrolling (also in grid); matches name or Dex number; `/` focuses it; clear button; shares one sticky
       stack with 3.26. Tests: unit match fn, HomePage, e2e scroll + search.
-- [ ] **3.33 Grid shows everything by default** (2026-11-12). Grid defaults to showing future slots and
-      out-of-tier entries; empty slots drawn as a silhouette; independent from the table's hide settings.
-      Tests: BoxGrid, HomePage, e2e light/dark.
-- [ ] **3.34 Single Table/Grid toggle** (2026-11-12). One toggle button instead of the two-option group.
-      Tests: HomePage, e2e.
-- [ ] **3.35 Filters in grid** (2026-11-12). Filters button in grid too; table and grid keep separate filter
-      sets, both default to "show all". Tests: HomePage, useListFilter.
+- [x] **3.33 Grid shows everything by default** ✅ **Done 2026-11-12.** `settings.grid.showFutureSlots` defaults to
+      true (grey sprites of the planned tier); with it off, reserved slots show a dashed silhouette instead of an
+      empty box. The grid ignores the table's hide settings. Tests: HomePage, BoxGrid, e2e.
+- [x] **3.34 Single Table/Grid toggle** ✅ **Done 2026-11-12.** One button ("▦ Grid" / "☰ Table", aria-label
+      "Switch to grid/table view") replaces the two-option group. Tests: HomePage, e2e.
+- [x] **3.35 Filters in grid** ✅ **Done 2026-11-12.** The Filters menu works in both views; the table's filter is
+      `list.filter`, the grid's is `list.settings.grid.filter` (default: nothing hidden), so they never affect each
+      other; progress follows the active view's filter. `useListFilter(view)`. Tests: business-logic resolve/parse,
+      HomePage, e2e. Web 188, business-logic 92, e2e 28. Plan notes: `obsidian/3.36-Per-List-Settings-Plan.md`.
 - [x] **3.36 Per-list settings** ✅ **Done 2026-11-12.** `PokemonList.settings` = `{viewMode, showFutureSlots,
       excludedGameIds}` (defaults in `DEFAULT_LIST_SETTINGS`); `list.filter` was already per list (grid filter keys
       arrive with 3.35). Columns, density and theme stay per user. One-time migration on load

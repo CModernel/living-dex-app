@@ -102,3 +102,13 @@ test('keeps valid list settings and drops invalid ones (3.36)', () => {
   assert.ok(bad.ok)
   assert.equal(bad.lists[0].settings, undefined)
 })
+
+test('keeps valid grid settings and drops invalid ones (3.35)', () => {
+  const good = list('1', 'Dex', { settings: { grid: { showFutureSlots: false, filter: { finalStageOnly: true } } } })
+  const result = parseImport(serializeExport(stateWith(good)))
+  assert.ok(result.ok)
+  assert.deepEqual(result.lists[0].settings, { grid: { showFutureSlots: false, filter: { finalStageOnly: true } } })
+  const bad = parseImport(envelope({ state: { lists: { a: { ...list('a', 'X'), settings: { grid: { showFutureSlots: 1, filter: { finalStageOnly: 'x' } } } } } } }))
+  assert.ok(bad.ok)
+  assert.equal(bad.lists[0].settings, undefined)
+})

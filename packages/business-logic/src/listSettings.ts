@@ -1,8 +1,17 @@
-import { DEFAULT_LIST_SETTINGS, type ListSettings, type PokemonList } from './types.js'
+import { DEFAULT_LIST_SETTINGS, type ListSettings, type PokemonList, type ResolvedListSettings } from './types.js'
 
 /** A list's settings merged over the defaults (every key present). */
-export function resolveListSettings(settings: ListSettings | undefined): Required<ListSettings> {
-  return { ...DEFAULT_LIST_SETTINGS, ...settings }
+export function resolveListSettings(settings: ListSettings | undefined): ResolvedListSettings {
+  const { grid, ...rest } = settings ?? {}
+  const defaults = DEFAULT_LIST_SETTINGS
+  return {
+    ...defaults,
+    ...rest,
+    grid: {
+      showFutureSlots: grid?.showFutureSlots ?? defaults.grid.showFutureSlots,
+      filter: { ...defaults.grid.filter, ...grid?.filter },
+    },
+  }
 }
 
 // Preference keys that moved to the list in 3.36.
@@ -10,7 +19,11 @@ const LEGACY_KEYS = ['viewMode', 'showFutureSlots', 'excludedGameIds'] as const
 
 /** Deep copy (the excluded-games array must not be shared between lists). */
 export function copySettings(settings: ListSettings): ListSettings {
-  return { ...settings, ...(settings.excludedGameIds ? { excludedGameIds: [...settings.excludedGameIds] } : {}) }
+  return {
+    ...settings,
+    ...(settings.excludedGameIds ? { excludedGameIds: [...settings.excludedGameIds] } : {}),
+    ...(settings.grid ? { grid: { ...settings.grid, ...(settings.grid.filter ? { filter: { ...settings.grid.filter } } : {}) } } : {}),
+  }
 }
 
 type Loose = { lists?: Record<string, PokemonList>; preferences?: Record<string, unknown> } & Record<string, unknown>

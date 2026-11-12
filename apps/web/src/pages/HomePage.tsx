@@ -373,8 +373,9 @@ function HomePage() {
   const { columnVisibility, setColumnVisibility, resetColumns } = useColumnVisibility()
   const { columnOrder, setColumnOrder } = useColumnOrder()
   const { columnSizing, setColumnSizing } = useColumnSizing()
-  const { filter, toggleFinalStageOnly, toggleRegionalFormsOnly, toggleHideGenderVariants, toggleHideInaccessible } =
-    useListFilter()
+  const tableFilter = useListFilter('table')
+  const gridFilter = useListFilter('grid')
+  const { filter } = tableFilter
   const { selectedGameIds, toggleGame, selectAllGames, selectNoGames } = useGameSelection()
   const hydrated = useIsHydrated()
   const { updateList, cloneList } = useLists()
@@ -404,7 +405,7 @@ function HomePage() {
   const { tier: tierId, layoutTier, decided } = plan
   const [userState, setUserState] = useUserState()
   const { settings: listSettings, updateSettings } = useListSettings()
-  const showFutureSlots = listSettings.showFutureSlots
+  const showFutureSlots = listSettings.showFutureSlots // the table's; the grid has its own (3.35)
   const positions = useMemo(
     () => (dataset ? layoutPositions(Object.values(dataset.pokemon), TIERS[layoutTier].predicate) : new Map()),
     [dataset, layoutTier],
@@ -462,14 +463,36 @@ function HomePage() {
     () => (dataset && viewMode === 'grid' ? layoutBoxes(Object.values(dataset.pokemon), TIERS[layoutTier].predicate) : []),
     [dataset, layoutTier, viewMode],
   )
-  const visibleInTier = useMemo(() => new Set(entries.filter((e) => !e.future).map((e) => e.slug)), [entries])
-  const toggleFutureSlots = () => updateSettings((current) => ({ showFutureSlots: !current.showFutureSlots }))
+  // The grid applies its own filter (3.35), independent of the table's.
+  const gridFilterValue = gridFilter.filter
+  const visibleInTier = useMemo(() => {
+    if (!dataset || viewMode !== 'grid') return new Set<string>()
+    const pass = applyListFilter(TIERS[tierId].predicate, gridFilterValue, selectedGameIds)
+    return new Set(Object.values(dataset.pokemon).filter(pass).map((e) => e.slug))
+  }, [dataset, viewMode, tierId, gridFilterValue, selectedGameIds])
+  const viewShowsFuture = viewMode === 'grid' ? listSettings.grid.showFutureSlots : showFutureSlots
+  const toggleFutureSlots = () =>
+    updateSettings((current) =>
+      viewMode === 'grid'
+        ? { grid: { showFutureSlots: !current.grid.showFutureSlots } }
+        : { showFutureSlots: !current.showFutureSlots },
+    )
+  const activeFilter = viewMode === 'grid' ? gridFilter : tableFilter
   const ownedIds = useMemo(() => new Set(activeList?.ownedIds ?? []), [activeList])
   const dismissWelcome = useCallback(
     () => setUserState((prev) => ({ ...prev, preferences: { ...prev.preferences, welcomeDismissed: true } })),
     [setUserState],
   )
-  const progress = useMemo(() => ownedProgress(entries.filter((e) => !e.future), ownedIds), [entries, ownedIds])
+  const progress = useMemo(
+    () =>
+      ownedProgress(
+        viewMode === 'grid' && dataset
+          ? Object.values(dataset.pokemon).filter((e) => visibleInTier.has(e.slug))
+          : entries.filter((e) => !e.future),
+        ownedIds,
+      ),
+    [viewMode, dataset, visibleInTier, entries, ownedIds],
+  )
   // Trophies use the FULL entry set of every tier (smallest first = lowest rank), never the
   // filtered `entries`, so display filters and the tier dropdown can't move a medal.
   const trophyTiers = useMemo(() => {
@@ -765,26 +788,22 @@ function HomePage() {
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h1 className="text-2xl font-semibold tracking-tight">Living Dex</h1>
               <div className="flex flex-wrap items-center gap-3">
-                <div role="group" aria-label="View" className="flex overflow-hidden rounded-lg border border-border text-sm">
-                  {(['table', 'grid'] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setViewMode(mode)}
-                      aria-pressed={viewMode === mode}
-                      className={`cursor-pointer px-3 py-1.5 capitalize ${viewMode === mode ? 'bg-brand/15 font-medium text-brand' : 'hover:bg-border/20'}`}
-                    >
-                      {mode === 'table' ? '☰ Table' : '▦ Grid'}
-                    </button>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')}
+                  aria-label={viewMode === 'grid' ? 'Switch to table view' : 'Switch to grid view'}
+                  title={viewMode === 'grid' ? 'Switch to table view' : 'Switch to grid view'}
+                  className="btn"
+                >
+                  {viewMode === 'grid' ? '☰ Table' : '▦ Grid'}
+                </button>
                 {viewMode === 'table' && <ColumnVisibilityMenu columns={hideableColumns} onReset={resetColumns} />}
                 <FilterMenu
                   toggles={[
-                    { id: 'finalStageOnly', label: 'Final stage only', checked: filter.finalStageOnly, toggle: toggleFinalStageOnly },
-                    { id: 'regionalFormsOnly', label: 'Regional forms only', checked: filter.regionalFormsOnly, toggle: toggleRegionalFormsOnly },
-                    { id: 'hideGenderVariants', label: 'Hide gender variants', checked: filter.hideGenderVariants, toggle: toggleHideGenderVariants },
-                    { id: 'hideInaccessible', label: 'Hide inaccessible', checked: filter.hideInaccessible, toggle: toggleHideInaccessible },
+                    { id: 'finalStageOnly', label: 'Final stage only', checked: activeFilter.filter.finalStageOnly, toggle: activeFilter.toggleFinalStageOnly },
+                    { id: 'regionalFormsOnly', label: 'Regional forms only', checked: activeFilter.filter.regionalFormsOnly, toggle: activeFilter.toggleRegionalFormsOnly },
+                    { id: 'hideGenderVariants', label: 'Hide gender variants', checked: activeFilter.filter.hideGenderVariants, toggle: activeFilter.toggleHideGenderVariants },
+                    { id: 'hideInaccessible', label: 'Hide inaccessible', checked: activeFilter.filter.hideInaccessible, toggle: activeFilter.toggleHideInaccessible },
                   ]}
                   games={{
                     options: GAMES.map((game) => ({ ...game, selected: selectedGameIds.includes(game.id) })),
@@ -834,7 +853,7 @@ function HomePage() {
               )}
               {decided && layoutTier !== tierId && (
                 <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted">
-                  <input type="checkbox" checked={showFutureSlots} onChange={toggleFutureSlots} />
+                  <input type="checkbox" checked={viewShowsFuture} onChange={toggleFutureSlots} />
                   Show future slots
                 </label>
               )}
@@ -874,7 +893,7 @@ function HomePage() {
                   inTier={tierSets[tierId]}
                   visible={visibleInTier}
                   ownedIds={ownedIds}
-                  showFuture={showFutureSlots}
+                  showFuture={listSettings.grid.showFutureSlots}
                   onToggle={toggleOwned}
                 />
               ) : (

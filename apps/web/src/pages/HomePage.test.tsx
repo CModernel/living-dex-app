@@ -1236,13 +1236,14 @@ test('the grid shows HOME-style boxes by the plan, marks owned, and the choice p
   seedTieredList({ tier: 'final-form', layoutTier: 'living-form-full' })
   renderWithData()
   await waitFor(() => expect(screen.getByText('Charizard')).toBeInTheDocument())
-  fireEvent.click(within(screen.getByRole('group', { name: 'View' })).getByRole('button', { name: /grid/i }))
+  fireEvent.click(screen.getByRole('button', { name: 'Switch to grid view' }))
 
   const box = await screen.findByRole('region', { name: 'Box 1' })
   expect(screen.queryByRole('table')).not.toBeInTheDocument()
   expect(screen.queryByText('Columns')).not.toBeInTheDocument()
-  // Living Form Full order: bulbasaur, pikachu-female (reserved), charizard (slot 3).
-  expect(within(box).getAllByRole('img', { name: 'Reserved slot' })).toHaveLength(2)
+  // Living Form Full order: bulbasaur, pikachu-female (reserved), charizard (slot 3). The grid shows reserved slots
+  // by default (3.33): grey sprites with the name.
+  expect(within(box).getAllByRole('img', { name: /reserved for your planned goal/ })).toHaveLength(2)
   fireEvent.click(within(box).getByRole('button', { name: 'Mark Charizard as owned' }))
   await waitFor(() => expect(storedLists()[0].ownedIds).toEqual(['charizard']))
   expect(within(box).getByRole('heading')).toHaveTextContent('1/1')
@@ -1275,4 +1276,41 @@ test('view settings belong to each list: grid on one list does not change the ot
   renderWithData()
   expect(await screen.findByRole('table')).toBeInTheDocument()
   expect(screen.queryByRole('region', { name: 'Box 1' })).not.toBeInTheDocument()
+})
+
+test('the grid has its own filters, independent of the table (3.35), and one toggle switches views (3.34)', async () => {
+  seedTieredList({ tier: 'living-form', layoutTier: 'living-form' })
+  const state = stored()
+  Object.values(state.lists).forEach((l) => (l.filter = { ...l.filter, finalStageOnly: true }))
+  window.localStorage.setItem('living-dex:user-state', JSON.stringify(state))
+  renderWithData()
+  await waitFor(() => expect(screen.getByText('Charizard')).toBeInTheDocument())
+
+  fireEvent.click(screen.getByRole('button', { name: 'Switch to grid view' }))
+  const box = await screen.findByRole('region', { name: 'Box 1' })
+  // The table's "final stage only" does not apply in the grid: every tier slot is tappable.
+  expect(within(box).queryByRole('img', { name: /hidden by filters/ })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Switch to table view' })).toBeInTheDocument()
+
+  fireEvent.click(screen.getByText('Filters'))
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Final stage only' }))
+  await waitFor(() => expect(storedLists()[0].settings?.grid?.filter?.finalStageOnly).toBe(true))
+  expect(storedLists()[0].filter.finalStageOnly).toBe(true) // the table's stays as it was
+})
+
+test('"Show future slots" is remembered separately for the table and the grid (3.33/3.35)', async () => {
+  seedTieredList({ tier: 'final-form', layoutTier: 'living-form-full' })
+  renderWithData()
+  await waitFor(() => expect(screen.getByText('Charizard')).toBeInTheDocument())
+  const checkbox = () => screen.getByRole('checkbox', { name: 'Show future slots' }) as HTMLInputElement
+  expect(checkbox().checked).toBe(false) // table default
+  fireEvent.click(screen.getByRole('button', { name: 'Switch to grid view' }))
+  await screen.findByRole('region', { name: 'Box 1' })
+  expect(checkbox().checked).toBe(true) // grid default
+  fireEvent.click(checkbox())
+  await waitFor(() => expect(storedLists()[0].settings?.grid?.showFutureSlots).toBe(false))
+  expect(within(screen.getByRole('region', { name: 'Box 1' })).getAllByRole('img', { name: 'Reserved slot' })).toHaveLength(2)
+  fireEvent.click(screen.getByRole('button', { name: 'Switch to table view' }))
+  await waitFor(() => expect(checkbox().checked).toBe(false))
+  expect(storedLists()[0].settings?.showFutureSlots).toBeUndefined()
 })

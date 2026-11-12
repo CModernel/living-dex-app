@@ -1,5 +1,5 @@
 import { isTierId } from './layout.js'
-import { DEFAULT_LIST_FILTER, type ListSettings, type PokemonList, type UserState } from './types.js'
+import { DEFAULT_LIST_FILTER, type GridSettings, type ListFilter, type ListSettings, type PokemonList, type UserState } from './types.js'
 
 // Export/import (TODO 3.9). Export is the whole state; import only ever ADDS collections (fresh
 // ids, never overwrites), so preferences in a file are kept for backup but not applied.
@@ -58,6 +58,18 @@ function parseSettings(raw: unknown): ListSettings | undefined {
   if (raw.viewMode === 'table' || raw.viewMode === 'grid') settings.viewMode = raw.viewMode
   if (typeof raw.showFutureSlots === 'boolean') settings.showFutureSlots = raw.showFutureSlots
   if (isStringArray(raw.excludedGameIds)) settings.excludedGameIds = [...raw.excludedGameIds]
+  if (isRecord(raw.grid)) {
+    const grid: GridSettings = {}
+    if (typeof raw.grid.showFutureSlots === 'boolean') grid.showFutureSlots = raw.grid.showFutureSlots
+    if (isRecord(raw.grid.filter)) {
+      const filter: Partial<ListFilter> = {}
+      for (const key of Object.keys(DEFAULT_LIST_FILTER) as (keyof ListFilter)[]) {
+        if (typeof raw.grid.filter[key] === 'boolean') filter[key] = raw.grid.filter[key] as boolean
+      }
+      if (Object.keys(filter).length) grid.filter = filter
+    }
+    if (Object.keys(grid).length) settings.grid = grid
+  }
   return Object.keys(settings).length ? settings : undefined
 }
 

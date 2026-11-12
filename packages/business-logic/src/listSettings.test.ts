@@ -49,3 +49,11 @@ test('migration with no lists only strips the legacy keys', () => {
   assert.deepEqual(out.lists, {})
   assert.ok(!('viewMode' in out.preferences))
 })
+
+test('grid settings default to showing everything and merge over a partial stored filter (3.33/3.35)', () => {
+  assert.equal(resolveListSettings(undefined).grid.showFutureSlots, true)
+  assert.deepEqual(resolveListSettings(undefined).grid.filter, DEFAULT_LIST_FILTER)
+  const grid = resolveListSettings({ grid: { filter: { finalStageOnly: true } } }).grid
+  assert.deepEqual(grid.filter, { ...DEFAULT_LIST_FILTER, finalStageOnly: true })
+  assert.equal(grid.showFutureSlots, true)
+})

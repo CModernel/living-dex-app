@@ -4,7 +4,7 @@ import { useSpriteSource } from '../hooks/useSpriteSource'
 
 // 3.18 grid view: HOME-style boxes, 6 columns × 5 rows, numbered by the list's box plan so each card matches a real
 // box 1:1. Every box keeps its 30 positions: reserved slots for a bigger planned tier are dashed (grey sprite when
-// "Show future slots" is on), slots hidden by filters are dimmed, both inert. Tap = owned (game tags: table view).
+// "Show future slots" is on, otherwise a silhouette — 3.33), slots hidden by filters are dimmed, both inert. Tap = owned (game tags: table view).
 
 type SlotState = 'active' | 'filtered' | 'future'
 
@@ -32,9 +32,11 @@ const Tile = memo(function Tile({
         role="img"
         aria-label={showFuture ? `${entry.name} (reserved for your planned goal)` : 'Reserved slot'}
         title={showFuture ? `${entry.name}: part of your planned goal` : 'Reserved for your planned goal'}
-        className="aspect-square rounded-lg border border-dashed border-border p-0.5 opacity-60 [&_img]:grayscale"
+        className={`flex aspect-square rounded-lg border border-dashed border-border p-0.5 ${
+          showFuture ? 'opacity-60 [&_img]:grayscale' : 'opacity-40 [&_img]:brightness-0 [&_img]:opacity-30 dark:[&_img]:invert'
+        }`}
       >
-        {showFuture && sprite}
+        {sprite}
       </div>
     )
   }

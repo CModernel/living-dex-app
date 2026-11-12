@@ -11,7 +11,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.reload()
     await startList(page)
 
-    await page.getByRole('group', { name: 'View' }).getByRole('button', { name: /Grid/ }).click()
+    await page.getByRole('button', { name: 'Switch to grid view' }).click()
     const box1 = page.getByRole('region', { name: 'Box 1' })
     await expect(box1).toBeVisible()
     await expect(page.getByRole('region', { name: 'Box 2' })).toContainText('0/10')
@@ -21,7 +21,7 @@ for (const scheme of ['light', 'dark'] as const) {
     expect(overflow).toBeLessThanOrEqual(0)
     await page.screenshot({ path: `e2e/results/grid-${scheme}.png` })
 
-    await page.getByRole('group', { name: 'View' }).getByRole('button', { name: /Table/ }).click()
+    await page.getByRole('button', { name: 'Switch to table view' }).click()
     await expect(page.getByRole('checkbox', { name: 'Mark Mon 3 as owned', exact: true })).toBeChecked()
   })
 }
@@ -33,7 +33,7 @@ test('each list keeps its own view (grid on one, table on the other) across a re
   await page.evaluate(() => localStorage.clear())
   await page.reload()
   await startList(page)
-  await page.getByRole('group', { name: 'View' }).getByRole('button', { name: /Grid/ }).click()
+  await page.getByRole('button', { name: 'Switch to grid view' }).click()
   await expect(page.getByRole('region', { name: 'Box 1' })).toBeVisible()
 
   // A second list starts in the table.

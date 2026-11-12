@@ -8,6 +8,14 @@ export type ListFilter = {
   hideInaccessible: boolean;
 };
 
+// 3.35: the grid keeps its own visibility, independent of the table's (`list.filter`, `showFutureSlots`).
+export type GridSettings = {
+  // Defaults to true: the grid shows every reserved slot of the planned tier.
+  showFutureSlots?: boolean;
+  // Defaults to DEFAULT_LIST_FILTER (nothing hidden); keys missing in a stored filter fall back to it.
+  filter?: Partial<ListFilter>;
+};
+
 // 3.36: view and visibility settings that belong to one list (each list keeps its own). Every key is optional:
 // absent means the default in DEFAULT_LIST_SETTINGS. Columns, density and theme stay per user (UserPreferences).
 export type ListSettings = {
@@ -18,6 +26,7 @@ export type ListSettings = {
   // Games deselected in the Filters menu (ids from availability.ts GAMES), stored as the deselected set so every
   // game, including ones added later, is selected by default.
   excludedGameIds?: string[];
+  grid?: GridSettings;
 };
 
 export type PokemonList = {
@@ -92,8 +101,14 @@ export const DEFAULT_LIST_FILTER: ListFilter = {
   hideInaccessible: false,
 };
 
-export const DEFAULT_LIST_SETTINGS: Required<ListSettings> = {
+// Settings with every key resolved (see resolveListSettings).
+export type ResolvedListSettings = Required<Omit<ListSettings, 'grid'>> & {
+  grid: { showFutureSlots: boolean; filter: ListFilter };
+};
+
+export const DEFAULT_LIST_SETTINGS: ResolvedListSettings = {
   viewMode: 'table',
   showFutureSlots: false,
   excludedGameIds: [],
+  grid: { showFutureSlots: true, filter: DEFAULT_LIST_FILTER },
 };
