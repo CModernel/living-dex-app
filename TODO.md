@@ -738,7 +738,7 @@ even if the `3.X` task order below does.
 - [ ] **3.22 Mobile check and design (deferred, undecided).** Verify the web app at phone widths with
       Playwright's mobile project (known: the Owned column is tight at 375 px when many columns are
       visible), then decide responsive web vs native. Notes: Hermes lacks `crypto.randomUUID`; the
-      mobile provider has the hydration race fixed on web only. No decision yet.
+      mobile provider has the hydration race fixed on web only. **Decision 2026-11-12: installable PWA first (3.39); React Native only if the app takes off.**
 - [x] **3.24 IP compliance fixes** ✅ **Done 2026-11-12** (guide: `obsidian/IP-Guide.md`, skill
       `pokemon-fan-ip-compliance`). Logo and favicon redesigned as an abstract storage box (3x3 slot grid,
       one filled), no ball; `lib/disclaimer.ts` disclaimer shown in the footer, in Settings → About and in the
@@ -794,6 +794,25 @@ even if the `3.X` task order below does.
 - [ ] **3.38 Game badges** (2026-11-12). Replace full game names ("Blue", "Yellow") with coloured letter circles
       (B blue, Y yellow…; two letters when initials clash), full name as tooltip/aria-label, in table and game
       picker. Tests: component + labels.
+- [ ] **3.39 Installable offline PWA** (2026-11-12). Manifest (box-logo icons, no "pokemon"), service worker caching
+      app shell + dataset, runtime cache for sprites (first view of each needs internet), install hint, "update
+      available" toast. Resolves 3.22 for now. Tests: cache config unit, e2e offline reload
+      (`context.setOffline`), Lighthouse PWA check. Sonnet medium, no plan mode.
+- [ ] **3.40 Supabase foundation** (2026-11-12). Own schema `living_dex` in the project shared with
+      leetcode-tracker-board, RLS per user, auth (magic link/Google), optional sign-in in Settings; signed-out use
+      unchanged (local-first). Champions Trainer uses Firebase separately. Tests: mocked client unit, Settings
+      component, e2e signed-out unchanged. Opus high, plan mode.
+- [ ] **3.41 Sync v1: manual upload/download** (2026-11-12). Reuse the export envelope, one JSON row per user;
+      download only adds, never deletes owned. Tests: envelope round trip, e2e mocked Supabase. Sonnet medium.
+- [ ] **3.42 Automatic sync** (2026-11-12, needs 3.36). Per-list rows, debounced upload, pull on open/focus,
+      offline queue, owned = union merge (nothing ever lost), last-writer-wins for names/settings, status
+      indicator. Tests: conflict matrix unit, two-tab e2e. Opus high, plan mode.
+- [ ] **3.43 Realtime / op-based sync (future)** (2026-11-12). Owned as add/remove ops + Realtime, only if
+      conflicts or latency hurt.
+- [ ] **3.44 Account data: privacy, delete, export** (2026-11-12). Delete account + cloud data, privacy note,
+      export link; required once real accounts exist. Tests: component, e2e. Sonnet medium.
+- [ ] **3.45 Dataset packaging and offline versioning** (2026-11-12). Verify how the dataset loads today; version
+      key so offline users get updates safely (feeds 3.39 and any future RN app). Tests: unit, e2e offline.
 - [ ] **3.31 Collapsible sidebar** (feedback 2026-11-12). Make the side bar collapsible (mainly for mobile); check
       the usual app pattern first (drawer on mobile, collapse-to-icons on desktop?). Tests: TBD.
 - [x] **3.16 Remaining UI tests** ✅ Done 2026-11-10 — UserStateProvider hydration (2 tests) + edit-cancel; ListSwitcher edit/clone covered via ListsPage tests. Web: 117 tests. (Root cause of the early-mutation race — setState(loaded) clobbers pre-hydration changes — is unchanged; tests keep the waitFor guard.)
@@ -1356,7 +1375,7 @@ even if the `3.X` task order below does.
       ADDS collections with fresh ids (name clash → "X (imported)"), never overwrites, and does not
       apply the file's preferences. Tests: business-logic 64, web 122. Not done: replace-all restore
       mode, mobile file picker (3.10).
-- [ ] **3.10 #12 — Mobile layout.** Port the web table + filters to React Native, reusing the same
+- [ ] **3.10 #12 — Mobile layout.** *(Paused: only if the app takes off; PWA first, see 3.39.)* Port the web table + filters to React Native, reusing the same
       `useDataset`-equivalent + tier-predicate + `useUserState()` plumbing proven on web.
       Mobile equivalents of 3.3b's polish to carry over (web-only bits like `cursor-pointer` and
       the hover tooltip obviously don't apply):
