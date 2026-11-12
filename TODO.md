@@ -759,6 +759,20 @@ even if the `3.X` task order below does.
       `grid.spec.ts` light + dark. Web 181 tests, business-logic 84, 26 e2e. Plan: `obsidian/3.18-Grid-View-Plan.md`.
 - [x] **3.15 Sheet-update guide** ✅ — `living-dex-organizer/docs/UPDATING-SHEETS.md`, committed in the organizer
       repo 2026-11-12 ("Add guide for updating the vendor sheets").
+- [ ] **3.26 Sticky Owned bar** (feedback 2026-11-12). The "owned" progress bar must stay visible together with the
+      table's sticky headers when scrolling down. Tests: TBD (component + e2e scroll screenshot).
+- [ ] **3.27 Tier / Plan row** (feedback 2026-11-12). Replace the "📦 Boxes: same as tier · change" chip with one row
+      `Tier: Living Form ▾ > Plan: Living Form ▾ (?)`: both are plain dropdowns styled alike (no green chip, no
+      "change" text); the Plan dropdown only lists the tier and strict supersets; `(?)` explains why to plan.
+      Tests: TBD (HomePage, PlanBanner, e2e light/dark).
+- [ ] **3.28 Shorter welcome** (feedback 2026-11-12). "Welcome to Living Dex" text is too long: one or two
+      sentences max. Tests: TBD (HomePage empty state).
+- [ ] **3.29 List sidebar: overflow menu** (feedback 2026-11-12). List names are hidden because the per-list
+      buttons take the space; move the actions into a "⋯" menu so the name gets the width. Tests: TBD.
+- [ ] **3.30 Trophies shared between lists (bug)** (feedback 2026-11-12). Trophies show the same state on every
+      list; they must belong to each list. Tests: TBD (regression test switching lists).
+- [ ] **3.31 Collapsible sidebar** (feedback 2026-11-12). Make the side bar collapsible (mainly for mobile); check
+      the usual app pattern first (drawer on mobile, collapse-to-icons on desktop?). Tests: TBD.
 - [x] **3.16 Remaining UI tests** ✅ Done 2026-11-10 — UserStateProvider hydration (2 tests) + edit-cancel; ListSwitcher edit/clone covered via ListsPage tests. Web: 117 tests. (Root cause of the early-mutation race — setState(loaded) clobbers pre-hydration changes — is unchanged; tests keep the waitFor guard.)
 - [x] **3.17 Hydration race fixed** ✅ **Done 2026-11-10 (web).** `UserStateProvider` now queues updates made
       before storage loads and replays them over the loaded state (they still apply instantly);
