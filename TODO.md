@@ -803,10 +803,13 @@ even if the `3.X` task order below does.
 - [x] **3.38 Game badges** ✅ **Done 2026-11-13.** Game chips (picker + Filters) are coloured circles with a short code
       (`GAME_CODE`: R, Gr, B, Ye, …; unique, text black/white by luminance); full name in tooltip and accessible name,
       a dot marks notes like "conditional". Tests: unique codes for every game, GameChips, e2e picker (mobile screenshot checked).
-- [ ] **3.39 Installable offline PWA** (2026-11-12). Manifest (box-logo icons, no "pokemon"), service worker caching
-      app shell + dataset, runtime cache for sprites (first view of each needs internet), install hint, "update
-      available" toast. Resolves 3.22 for now. Tests: cache config unit, e2e offline reload
-      (`context.setOffline`), Lighthouse PWA check. Sonnet medium, no plan mode.
+- [x] **3.39 Installable offline PWA** ✅ **Done 2026-11-13.** `public/manifest.webmanifest` + icons (192/512, maskable, apple-touch, from
+      the box logo, no "pokemon"), hand-written `public/sw.js` (build id stamped by a Vite plugin): network-first shell
+      with cached fallback, cache-first hashed assets, cross-origin sprites cached with CORS (cap 3000; first view of
+      each needs internet), "New version available" toast (`UpdateToast`, waiting worker + SKIP_WAITING), Settings →
+      "Install and offline" (`beforeinstallprompt`, iPhone hint). Registered in production only. Tests: pwa lib,
+      usePwa, UpdateToast, Settings, e2e project `pwa` (production build in `dist-e2e`, offline reload with saved list;
+      negative-checked). Web 206, business-logic 97, e2e 34.
 - [ ] **3.40 Supabase foundation** (2026-11-12). Own schema `living_dex` in the project shared with
       leetcode-tracker-board, RLS per user, auth (magic link/Google), optional sign-in in Settings; signed-out use
       unchanged (local-first). Champions Trainer uses Firebase separately. Tests: mocked client unit, Settings
@@ -820,8 +823,13 @@ even if the `3.X` task order below does.
       conflicts or latency hurt.
 - [ ] **3.44 Account data: privacy, delete, export** (2026-11-12). Delete account + cloud data, privacy note,
       export link; required once real accounts exist. Tests: component, e2e. Sonnet medium.
-- [ ] **3.45 Dataset packaging and offline versioning** (2026-11-12). Verify how the dataset loads today; version
-      key so offline users get updates safely (feeds 3.39 and any future RN app). Tests: unit, e2e offline.
+- [x] **3.45 Dataset packaging and offline versioning** ✅ **Done 2026-11-13.** Finding: the dataset is NOT bundled; it is
+      fetched at runtime from jsDelivr (`DATASET_URL`, `…/data/v1/…json`, main branch). Decision: keep it external (keeps
+      the app small and data updates need no redeploy) and make it offline-safe: the service worker caches
+      `/data/vN/*.json` stale-while-revalidate (fresh copy next visit); the data version is in the URL, so a `v2`
+      path is a new cache entry and `activate` drops caches not in the current set. `fetchDataset(url?)` accepts another
+      URL (`VITE_DATASET_URL`, used by the offline e2e). Not done: bundling a copy for a very first offline visit
+      (needs one online visit first; revisit if a store/Capacitor build is ever made).
 - [x] **3.31 Collapsible sidebar** ✅ **Done 2026-11-13.** `ListsSidebar`: desktop « / » folds it to a rail (one button
       per list: icon or initial, plus "+"), saved as `preferences.sidebarCollapsed`; phone: accordion header
       "Lists · <active list> ▾", closed by default (trophies live inside it). Tests: ListsSidebar, ListsPage menu,

@@ -66,9 +66,10 @@ export const DATASET_URL =
 
 let cached: PokemonDataset | null = null
 
-export async function fetchDataset(): Promise<PokemonDataset> {
+// `url` lets a build point at another copy of the dataset (e.g. the offline e2e test); the CDN is the default.
+export async function fetchDataset(url: string = DATASET_URL): Promise<PokemonDataset> {
   if (cached) return cached
-  const res = await fetch(DATASET_URL)
+  const res = await fetch(url)
   if (!res.ok) throw new Error(`Failed to fetch dataset: ${res.status}`)
   cached = (await res.json()) as PokemonDataset
   return cached

@@ -1,7 +1,9 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter } from 'react-router'
 import AppRoutes from './AppRoutes'
+import UpdateToast from './components/UpdateToast'
 import { useDebugEnabled } from './hooks/useDebugEnabled'
+import { useServiceWorkerUpdate } from './hooks/usePwa'
 import { UserStateProvider } from './state/UserStateContext'
 
 // Dev-only debug panel (TODO 3.20): the dynamic import sits behind `import.meta.env.DEV`, which Vite
@@ -10,10 +12,12 @@ const DebugPanel = import.meta.env.DEV ? lazy(() => import('./components/DebugPa
 
 function App() {
   const debug = useDebugEnabled()
+  const { updateReady, applyUpdate } = useServiceWorkerUpdate()
   return (
     <UserStateProvider>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <AppRoutes />
+        {updateReady && <UpdateToast onReload={applyUpdate} />}
         {DebugPanel && debug && (
           <Suspense fallback={null}>
             <DebugPanel />

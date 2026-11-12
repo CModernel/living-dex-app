@@ -94,6 +94,23 @@ test('fetchDataset fetches and caches data', async () => {
   }
 })
 
+test('fetchDataset can read another copy of the dataset (3.45)', async () => {
+  clearDatasetCache()
+  const originalFetch = global.fetch
+  let requested = ''
+  global.fetch = async (input) => {
+    requested = String(input)
+    return { ok: true, json: async () => mockDataset } as Response
+  }
+  try {
+    await fetchDataset('https://example.invalid/data.json')
+    assert.equal(requested, 'https://example.invalid/data.json')
+  } finally {
+    global.fetch = originalFetch
+    clearDatasetCache()
+  }
+})
+
 test('fetchDataset handles network errors', async () => {
   clearDatasetCache()
 

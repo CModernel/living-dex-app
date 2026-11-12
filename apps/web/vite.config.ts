@@ -1,11 +1,28 @@
+import { readFileSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { configDefaults, defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig, type Plugin } from 'vitest/config'
+
+// 3.39: stamps a build id into dist/sw.js so every deploy changes the worker's bytes (that is what makes the browser
+// install the new worker and the app show "New version available").
+function swBuildId(): Plugin {
+  let outDir = 'dist'
+  return {
+    name: 'sw-build-id',
+    apply: 'build',
+    configResolved: (config) => void (outDir = resolve(config.root, config.build.outDir)),
+    closeBundle() {
+      const file = resolve(outDir, 'sw.js')
+      writeFileSync(file, readFileSync(file, 'utf8').replace('__BUILD_ID__', String(Date.now())))
+    },
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
   base: '/living-dex-app/',
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), swBuildId()],
   resolve: {
     dedupe: ['react', 'react-dom'],
   },

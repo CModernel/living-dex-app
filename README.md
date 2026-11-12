@@ -57,6 +57,7 @@ npm run start -w apps/mobile      # mobile dev server (scan QR with Expo Go)
 npm run test                      # all workspaces' tests
 npm run test:e2e -w apps/web      # Playwright UI tests (desktop + 375 px)
 # Dev only: open http://localhost:5173/living-dex-app/?debug for the debug panel (TODO 3.20)
+# The production build is an installable, offline-capable PWA (TODO 3.39): service worker in apps/web/public/sw.js
 npm run build:web                 # typecheck + production build
 ```
 

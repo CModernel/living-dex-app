@@ -12,7 +12,7 @@ export function useDataset(): UseDatasetResult {
   useEffect(() => {
     let cancelled = false
 
-    fetchDataset()
+    fetchDataset(import.meta.env.VITE_DATASET_URL || undefined)
       .then((dataset) => {
         if (!cancelled) setState({ dataset, loading: false, error: null })
       })

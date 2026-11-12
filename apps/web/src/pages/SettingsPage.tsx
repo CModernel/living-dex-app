@@ -1,11 +1,13 @@
 import { mergeImportedLists, parseImport, serializeExport } from '@living-dex/business-logic'
 import { useRef, useState, type ChangeEvent } from 'react'
+import { useInstallPrompt } from '../hooks/usePwa'
 import { DISCLAIMER } from '../lib/disclaimer'
 import { useUserState } from '../state/UserStateContext'
 
 function SettingsPage() {
   const [state, setState] = useUserState()
   const fileInput = useRef<HTMLInputElement>(null)
+  const { canInstall, installed, install } = useInstallPrompt()
   const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null)
 
   function handleExport() {
@@ -70,6 +72,26 @@ function SettingsPage() {
         {status && (
           <p role="status" className={`mt-3 text-sm ${status.ok ? '' : 'text-red-500'}`}>
             {status.message}
+          </p>
+        )}
+      </section>
+
+      <section aria-label="Install" className="mt-4 rounded-lg border border-border bg-surface p-4">
+        <h2 className="mb-1 text-sm font-semibold">Install and offline</h2>
+        <p className="mb-3 text-xs text-muted">
+          Living Dex works offline after your first visit: your collections live on this device, and the Pokémon data and
+          the sprites you have already seen are cached (a sprite needs internet the first time it is shown).
+        </p>
+        {installed ? (
+          <p className="text-sm">Installed ✓</p>
+        ) : canInstall ? (
+          <button type="button" onClick={install} className="btn btn-primary">
+            Install app
+          </button>
+        ) : (
+          <p className="text-xs text-muted">
+            To install: use your browser's install option (Chrome/Edge: the icon in the address bar), or on iPhone Share →
+            Add to Home Screen.
           </p>
         )}
       </section>

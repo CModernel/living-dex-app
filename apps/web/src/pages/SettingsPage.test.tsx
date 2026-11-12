@@ -100,3 +100,10 @@ test('the About section shows the unofficial-fan-tool disclaimer', () => {
   expect(about).toHaveTextContent('independent, unofficial fan-made tool')
   expect(about).toHaveTextContent('Nintendo, Game Freak, Creatures Inc. or The Pokémon Company')
 })
+
+test('the Install section explains offline use and how to install (3.39)', () => {
+  renderPage()
+  const section = screen.getByRole('region', { name: 'Install' })
+  expect(section).toHaveTextContent('Living Dex works offline')
+  expect(section).toHaveTextContent('Add to Home Screen')
+})
