@@ -757,8 +757,8 @@ even if the `3.X` task order below does.
       "Show future slots"), filtered-out slots dimmed, both inert; undecided plan shows "Decide your box plan". Sprite
       source shared via `useSpriteSource`. Tests: unit `layoutBoxes`, `BoxGrid` component, HomePage grid tests, e2e
       `grid.spec.ts` light + dark. Web 181 tests, business-logic 84, 26 e2e. Plan: `obsidian/3.18-Grid-View-Plan.md`.
-- [ ] **3.15 Sheet-update guide** — `living-dex-organizer/docs/UPDATING-SHEETS.md` (docs only; ask
-      before committing in the organizer repo).
+- [x] **3.15 Sheet-update guide** ✅ — `living-dex-organizer/docs/UPDATING-SHEETS.md`, committed in the organizer
+      repo 2026-11-12 ("Add guide for updating the vendor sheets").
 - [x] **3.16 Remaining UI tests** ✅ Done 2026-11-10 — UserStateProvider hydration (2 tests) + edit-cancel; ListSwitcher edit/clone covered via ListsPage tests. Web: 117 tests. (Root cause of the early-mutation race — setState(loaded) clobbers pre-hydration changes — is unchanged; tests keep the waitFor guard.)
 - [x] **3.17 Hydration race fixed** ✅ **Done 2026-11-10 (web).** `UserStateProvider` now queues updates made
       before storage loads and replays them over the loaded state (they still apply instantly);
