@@ -737,7 +737,8 @@ even if the `3.X` task order below does.
       A 3.36 (Sonnet high, plan) · B 3.33+3.34+3.35 (Sonnet medium) · C 3.26+3.32+3.27 (Sonnet medium, plan) ·
       D 3.29+3.37+3.31 (Sonnet medium, plan) · E 3.28+3.38+3.30 (Sonnet medium, plan only for 3.30) ·
       F 3.39+3.45 (Sonnet medium) · G 3.40+3.41 (Opus high, plan) · H 3.42+3.44 (Opus high, plan) ·
-      I 3.21+3.25+Docker verify (Sonnet low). Order A→E, then F→H, I anytime. Details: `obsidian/Work-Groups.md`.
+      I 3.21+3.25+Docker verify (Sonnet low) · J 3.47–3.55 UI feedback (Sonnet medium, light plan) · 3.46 GO
+      (Opus medium, plan, research first). Order A→E, then F→H, I/J anytime. Details: `obsidian/Work-Groups.md`.
 - [ ] **3.21 Testing standard (rule recorded in `docs/RULES.md` §6, 2026-11-12).** Backfill: every
       pending ticket (3.18, 3.19, 3.20, 3.22, Champions card, 3.10/3.11) lists its unit, component and
       e2e tests in its acceptance criteria before it starts.
@@ -836,6 +837,23 @@ even if the `3.X` task order below does.
       path is a new cache entry and `activate` drops caches not in the current set. `fetchDataset(url?)` accepts another
       URL (`VITE_DATASET_URL`, used by the offline e2e). Not done: bundling a copy for a very first offline visit
       (needs one online visit first; revisit if a store/Capacitor build is ever made).
+- [ ] **3.46 Pokémon GO as a game option** (2026-11-14). Research first: can we tell, per Pokémon/form, whether it is
+      or was obtainable in GO (data source, how to keep it updated)? Then add GO to the game picker and filters.
+      Opus medium, plan mode.
+- [ ] **3.47 Remove "(/)" from the search placeholder** (2026-11-14). Keep the `/` shortcut itself. Sonnet low.
+- [ ] **3.48 One "?" button only** (2026-11-14). Drop the small icon "?" (`btn btn-sm btn-icon h-7 w-7`) by the plan
+      row; keep "Why plan your boxes?". Check first why there are two. Sonnet low.
+- [ ] **3.49 Plan dropdown in a soft green tone** (2026-11-14). Sonnet low.
+- [ ] **3.50 Grid toggle looks like a toggle button** (2026-11-14), not a checkbox. Sonnet low.
+- [ ] **3.51 Grid/Table toggle in a stable spot** (2026-11-14). Switching to Grid hides Columns and the toggle jumps;
+      move it where it never shifts. Sonnet medium.
+- [ ] **3.52 Columns/Filters popovers open under the sticky stack** (2026-11-14). They render below the search bar and
+      Owned bar; fix stacking (z-index or portal). Sonnet medium.
+- [ ] **3.53 Columns and Filters are mutually exclusive** (2026-11-14). Opening one closes the other. Sonnet low.
+- [ ] **3.54 Future slots look** (2026-11-14). Show the Pokémon in black and white and slightly darkened. Sonnet low.
+- [ ] **3.55 "Show future slots" does nothing visible in the grid** (2026-11-14). On and off look the same in Grid.
+      The user's proposal for what the option should become was cut off: pending from the user. Sonnet medium.
+- Suggested grouping: **J** = 3.47–3.55 (one UI pass, Sonnet medium, light plan mode); 3.46 alone (research first).
 - [x] **3.31 Collapsible sidebar** ✅ **Done 2026-11-13.** `ListsSidebar`: desktop « / » folds it to a rail (one button
       per list: icon or initial, plus "+"), saved as `preferences.sidebarCollapsed`; phone: accordion header
       "Lists · <active list> ▾", closed by default (trophies live inside it). Tests: ListsSidebar, ListsPage menu,
