@@ -5,13 +5,24 @@ type HideableColumn = {
   toggle: () => void
 }
 
-function ColumnVisibilityMenu({ columns, onReset }: { columns: HideableColumn[]; onReset?: () => void }) {
+// 3.53: `open` / `onOpenChange` are optional so the parent can keep Columns and Filters mutually exclusive.
+function ColumnVisibilityMenu({
+  columns,
+  onReset,
+  open,
+  onOpenChange,
+}: {
+  columns: HideableColumn[]
+  onReset?: () => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}) {
   return (
-    <details className="relative">
+    <details className="relative" open={open} onToggle={onOpenChange && ((e) => onOpenChange(e.currentTarget.open))}>
       <summary className="btn list-none [&::-webkit-details-marker]:hidden">
         Columns
       </summary>
-      <div className="absolute right-0 z-10 mt-1 flex flex-col gap-1 rounded-lg border border-border bg-surface p-2 shadow-lg">
+      <div className="absolute right-0 z-40 mt-1 flex flex-col gap-1 rounded-lg border border-border bg-surface p-2 shadow-lg">
         {columns.map((column) => (
           <label
             key={column.id}

@@ -20,7 +20,6 @@ function renderGrid(props: Partial<Parameters<typeof BoxGrid>[0]> = {}) {
       inTier={new Set(slugs.filter((s) => s !== 'm1'))} // m1 is a reserved future slot
       visible={new Set(slugs.filter((s) => s !== 'm1' && s !== 'm2'))} // m2 hidden by a filter
       ownedIds={new Set(['m0', 'm31'])}
-      showFuture={false}
       onToggle={onToggle}
       {...props}
     />,
@@ -43,12 +42,13 @@ test('tapping an active slot toggles owned; reserved and filtered slots are iner
   fireEvent.click(screen.getByRole('button', { name: 'Mark Mon m3 as owned' }))
   expect(onToggle).toHaveBeenCalledWith('m3')
   expect(screen.queryByRole('button', { name: 'Mark Mon m1 as owned' })).not.toBeInTheDocument()
-  expect(screen.getByRole('img', { name: 'Reserved slot' })).toBeInTheDocument()
+  expect(screen.getByRole('img', { name: 'Mon m1 (reserved for your planned goal)' })).toBeInTheDocument()
   expect(screen.getByRole('img', { name: 'Mon m2 (hidden by filters)' })).toBeInTheDocument()
 })
 
-test('"Show future slots" reveals the reserved Pokémon in grey', () => {
-  renderGrid({ showFuture: true })
+test('reserved slots always show the Pokémon, in darkened black and white (3.54/3.55)', () => {
+  renderGrid()
   const reserved = screen.getByRole('img', { name: 'Mon m1 (reserved for your planned goal)' })
   expect(reserved.querySelector('img')).not.toBeNull()
+  expect(reserved.className).toContain('grayscale')
 })

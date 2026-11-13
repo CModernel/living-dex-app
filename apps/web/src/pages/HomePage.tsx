@@ -50,6 +50,7 @@ import FilterMenu from '../components/FilterMenu'
 import GamePickerPopover, { type GamePickerOption } from '../components/GamePickerPopover'
 import ListsSidebar from '../components/ListsSidebar'
 import GuideLink from '../components/GuideLink'
+import ViewToggle from '../components/ViewToggle'
 import PlanSelect from '../components/PlanSelect'
 import SearchBar from '../components/SearchBar'
 import TierChangeDialog from '../components/TierChangeDialog'
@@ -304,7 +305,7 @@ const TableRow = memo(function TableRow({
       // sprites desaturated, so they stay in the list but read as "not for you" at a glance.
       className={
         future
-          ? 'border-b border-border bg-border/10 text-muted opacity-60 last:border-b-0 [&_img]:grayscale'
+          ? 'border-b border-border bg-border/10 text-muted opacity-60 last:border-b-0 [&_img]:brightness-75 [&_img]:grayscale'
           : `cursor-pointer border-b border-border last:border-b-0 ${owned ? 'bg-brand/15' : 'hover:bg-border/20'} ${isInaccessible(row.original) ? 'text-muted [&_img]:grayscale' : ''}`
       }
     >
@@ -422,8 +423,13 @@ function HomePage() {
   const { tier: tierId, layoutTier, decided } = plan
   const [userState, setUserState] = useUserState()
   const [search, setSearch] = useState('')
+  // 3.53: Columns and Filters are mutually exclusive.
+  const [openMenu, setOpenMenu] = useState<'columns' | 'filters' | null>(null)
+  // A menu closed by the other one opening must not clear the newly opened one, so closing only applies to itself.
+  const toggleMenu = (menu: 'columns' | 'filters', open: boolean) =>
+    setOpenMenu((current) => (open ? menu : current === menu ? null : current))
   const { settings: listSettings, updateSettings } = useListSettings()
-  const showFutureSlots = listSettings.showFutureSlots // the table's; the grid has its own (3.35)
+  const showFutureSlots = listSettings.showFutureSlots
   const positions = useMemo(
     () => (dataset ? layoutPositions(Object.values(dataset.pokemon), TIERS[layoutTier].predicate) : new Map()),
     [dataset, layoutTier],
@@ -488,13 +494,8 @@ function HomePage() {
     const pass = applyListFilter(TIERS[tierId].predicate, gridFilterValue, selectedGameIds)
     return new Set(Object.values(dataset.pokemon).filter(pass).map((e) => e.slug))
   }, [dataset, viewMode, tierId, gridFilterValue, selectedGameIds])
-  const viewShowsFuture = viewMode === 'grid' ? listSettings.grid.showFutureSlots : showFutureSlots
-  const toggleFutureSlots = () =>
-    updateSettings((current) =>
-      viewMode === 'grid'
-        ? { grid: { showFutureSlots: !current.grid.showFutureSlots } }
-        : { showFutureSlots: !current.showFutureSlots },
-    )
+  // 3.55: only the table has this option (it adds/removes rows); the grid always shows reserved slots.
+  const toggleFutureSlots = () => updateSettings((current) => ({ showFutureSlots: !current.showFutureSlots }))
   const activeFilter = viewMode === 'grid' ? gridFilter : tableFilter
   const ownedIds = useMemo(() => new Set(activeList?.ownedIds ?? []), [activeList])
   const dismissWelcome = useCallback(
@@ -808,19 +809,20 @@ function HomePage() {
           <>
             {!userState.preferences.welcomeDismissed && <WelcomeCard onDismiss={dismissWelcome} />}
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight">Living Dex</h1>
               <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')}
-                  aria-label={viewMode === 'grid' ? 'Switch to table view' : 'Switch to grid view'}
-                  title={viewMode === 'grid' ? 'Switch to table view' : 'Switch to grid view'}
-                  className="btn"
-                >
-                  {viewMode === 'grid' ? '☰ Table' : '▦ Grid'}
-                </button>
-                {viewMode === 'table' && <ColumnVisibilityMenu columns={hideableColumns} onReset={resetColumns} />}
+                <h1 className="text-2xl font-semibold tracking-tight">Living Dex</h1>
+                <ViewToggle value={viewMode} onChange={setViewMode} />
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                {viewMode === 'table' && <ColumnVisibilityMenu
+                    columns={hideableColumns}
+                    onReset={resetColumns}
+                    open={openMenu === 'columns'}
+                    onOpenChange={(o) => toggleMenu('columns', o)}
+                  />}
                 <FilterMenu
+                  open={openMenu === 'filters'}
+                  onOpenChange={(o) => toggleMenu('filters', o)}
                   toggles={[
                     { id: 'finalStageOnly', label: 'Final stage only', checked: activeFilter.filter.finalStageOnly, toggle: activeFilter.toggleFinalStageOnly },
                     { id: 'regionalFormsOnly', label: 'Regional forms only', checked: activeFilter.filter.regionalFormsOnly, toggle: activeFilter.toggleRegionalFormsOnly },
@@ -848,9 +850,6 @@ function HomePage() {
                   ))}
                 </select>
               </label>
-              <GuideLink className="btn btn-sm btn-icon h-7 w-7" label="Explain the collection goals">
-                ?
-              </GuideLink>
               {tierSets && (!decided || validTargets(tierSets, tierId).length > 0) && (
                 <>
                   <span aria-hidden="true" className="text-muted">
@@ -866,9 +865,9 @@ function HomePage() {
                   />
                 </>
               )}
-              {decided && layoutTier !== tierId && (
+              {viewMode === 'table' && decided && layoutTier !== tierId && (
                 <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted">
-                  <input type="checkbox" checked={viewShowsFuture} onChange={toggleFutureSlots} />
+                  <input type="checkbox" checked={showFutureSlots} onChange={toggleFutureSlots} />
                   Show future slots
                 </label>
               )}
@@ -912,7 +911,6 @@ function HomePage() {
                   inTier={tierSets[tierId]}
                   visible={visibleInTier}
                   ownedIds={ownedIds}
-                  showFuture={listSettings.grid.showFutureSlots}
                   matches={searchMatches}
                   onToggle={toggleOwned}
                 />

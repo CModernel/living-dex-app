@@ -1299,21 +1299,38 @@ test('the grid has its own filters, independent of the table (3.35), and one tog
   expect(storedLists()[0].filter.finalStageOnly).toBe(true) // the table's stays as it was
 })
 
-test('"Show future slots" is remembered separately for the table and the grid (3.33/3.35)', async () => {
+test('"Show future slots" is a table-only option; the grid always shows reserved slots (3.55)', async () => {
   seedTieredList({ tier: 'final-form', layoutTier: 'living-form-full' })
   renderWithData()
   await waitFor(() => expect(screen.getByText('Charizard')).toBeInTheDocument())
-  const checkbox = () => screen.getByRole('checkbox', { name: 'Show future slots' }) as HTMLInputElement
-  expect(checkbox().checked).toBe(false) // table default
+  expect((screen.getByRole('checkbox', { name: 'Show future slots' }) as HTMLInputElement).checked).toBe(false)
+  fireEvent.click(screen.getByRole('button', { name: 'Switch to grid view' }))
+  const box = await screen.findByRole('region', { name: 'Box 1' })
+  expect(screen.queryByRole('checkbox', { name: 'Show future slots' })).not.toBeInTheDocument()
+  expect(within(box).getAllByRole('img', { name: /reserved for your planned goal/ })).toHaveLength(2)
+})
+
+test('Columns and Filters menus are mutually exclusive (3.53)', async () => {
+  renderWithData()
+  await waitFor(() => expect(screen.getByText('Charizard')).toBeInTheDocument())
+  const details = (label: string) => screen.getByText(label, { selector: 'summary' }).closest('details')!
+  fireEvent.click(screen.getByText('Columns', { selector: 'summary' }))
+  await waitFor(() => expect(details('Columns').open).toBe(true))
+  fireEvent.click(screen.getByText('Filters', { selector: 'summary' }))
+  await waitFor(() => expect(details('Filters').open).toBe(true))
+  await waitFor(() => expect(details('Columns').open).toBe(false))
+})
+
+test('the Table/Grid toggle stays put and the plan row has a single "?" (3.48/3.51)', async () => {
+  renderWithData()
+  await waitFor(() => expect(screen.getByText('Charizard')).toBeInTheDocument())
+  expect(screen.getByText('Columns', { selector: 'summary' })).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Explain the collection goals' })).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Switch to grid view' }))
   await screen.findByRole('region', { name: 'Box 1' })
-  expect(checkbox().checked).toBe(true) // grid default
-  fireEvent.click(checkbox())
-  await waitFor(() => expect(storedLists()[0].settings?.grid?.showFutureSlots).toBe(false))
-  expect(within(screen.getByRole('region', { name: 'Box 1' })).getAllByRole('img', { name: 'Reserved slot' })).toHaveLength(2)
-  fireEvent.click(screen.getByRole('button', { name: 'Switch to table view' }))
-  await waitFor(() => expect(checkbox().checked).toBe(false))
-  expect(storedLists()[0].settings?.showFutureSlots).toBeUndefined()
+  expect(screen.queryByText('Columns')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Switch to table view' })).toHaveAttribute('aria-pressed', 'false')
+  expect(screen.getByRole('button', { name: 'Switch to grid view' })).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('search narrows the table by name or Dex number without touching progress or Box/Slot (3.32)', async () => {

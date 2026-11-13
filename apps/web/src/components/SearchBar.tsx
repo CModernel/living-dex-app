@@ -23,7 +23,7 @@ function SearchBar({ value, onChange }: { value: string; onChange: (value: strin
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => e.key === 'Escape' && (onChange(''), ref.current?.blur())}
         aria-label="Search Pokémon"
-        placeholder="Search by name or Dex number…   ( / )"
+        placeholder="Search by name or Dex number…"
         autoComplete="off"
         className="h-11 w-full rounded-xl border border-border bg-background px-4 text-base text-foreground shadow-sm outline-none placeholder:text-muted focus:border-brand"
       />

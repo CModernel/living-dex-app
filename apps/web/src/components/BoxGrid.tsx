@@ -3,8 +3,8 @@ import { memo, useMemo } from 'react'
 import { useSpriteSource } from '../hooks/useSpriteSource'
 
 // 3.18 grid view: HOME-style boxes, 6 columns × 5 rows, numbered by the list's box plan so each card matches a real
-// box 1:1. Every box keeps its 30 positions: reserved slots for a bigger planned tier are dashed (grey sprite when
-// "Show future slots" is on, otherwise a silhouette — 3.33), slots hidden by filters are dimmed, both inert. Tap = owned (game tags: table view).
+// box 1:1. Every box keeps its 30 positions: reserved slots for a bigger planned tier are dashed with a darkened
+// black-and-white sprite (3.54; the grid has no "Show future slots" option, 3.55), slots hidden by filters are dimmed, both inert. Tap = owned (game tags: table view).
 
 type SlotState = 'active' | 'filtered' | 'future'
 
@@ -13,7 +13,6 @@ const Tile = memo(function Tile({
   entry,
   state,
   owned,
-  showFuture,
   dim,
   onToggle,
 }: {
@@ -21,7 +20,6 @@ const Tile = memo(function Tile({
   entry: PokemonEntry
   state: SlotState
   owned: boolean
-  showFuture: boolean
   dim: boolean
   onToggle: (slug: string) => void
 }) {
@@ -32,11 +30,9 @@ const Tile = memo(function Tile({
     return (
       <div
         role="img"
-        aria-label={showFuture ? `${entry.name} (reserved for your planned goal)` : 'Reserved slot'}
-        title={showFuture ? `${entry.name}: part of your planned goal` : 'Reserved for your planned goal'}
-        className={`flex aspect-square rounded-lg border border-dashed border-border p-0.5 ${
-          showFuture ? 'opacity-60 [&_img]:grayscale' : 'opacity-40 [&_img]:brightness-0 [&_img]:opacity-30 dark:[&_img]:invert'
-        }`}
+        aria-label={`${entry.name} (reserved for your planned goal)`}
+        title={`${entry.name}: part of your planned goal`}
+        className="flex aspect-square rounded-lg border border-dashed border-border p-0.5 opacity-70 [&_img]:brightness-50 [&_img]:grayscale"
       >
         {sprite}
       </div>
@@ -84,7 +80,6 @@ function BoxGrid({
   inTier,
   visible,
   ownedIds,
-  showFuture,
   matches,
   onToggle,
 }: {
@@ -93,7 +88,6 @@ function BoxGrid({
   inTier: ReadonlySet<string>
   visible: ReadonlySet<string>
   ownedIds: ReadonlySet<string>
-  showFuture: boolean
   // 3.32 search: when set, tappable tiles that do not match are dimmed (the box keeps its real layout).
   matches: ReadonlySet<string> | null
   onToggle: (slug: string) => void
@@ -126,7 +120,6 @@ function BoxGrid({
                     entry={entry}
                     state={state}
                     owned={ownedIds.has(slug)}
-                    showFuture={showFuture}
                     dim={!!matches && !matches.has(slug)}
                     onToggle={onToggle}
                   />

@@ -57,3 +57,33 @@ test('each list keeps its own view (grid on one, table on the other) across a re
   await page.reload()
   await expect(page.getByRole('region', { name: 'Box 1' })).toBeVisible()
 })
+
+// 3.51 / 3.52 / 3.53: toolbar layout.
+test('the view toggle does not move; Columns and Filters open above the sticky bar, one at a time', async ({ page }) => {
+  await mockNetwork(page)
+  await page.goto('./')
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await startList(page)
+
+  const toggle = page.getByRole('group', { name: 'View' })
+  const before = await toggle.boundingBox()
+  await page.getByRole('button', { name: 'Switch to grid view' }).click()
+  await expect(page.getByRole('region', { name: 'Box 1' })).toBeVisible()
+  expect(await toggle.boundingBox()).toEqual(before)
+  await page.getByRole('button', { name: 'Switch to table view' }).click()
+
+  await page.getByText('Columns', { exact: true }).click()
+  const panel = page.locator('details', { hasText: 'Columns' }).locator('div').first()
+  await expect(panel).toBeVisible()
+  // The panel's own centre is the topmost element there (nothing from the sticky stack paints over it).
+  const onTop = await panel.evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + 8)
+    return !!hit && el.contains(hit)
+  })
+  expect(onTop).toBe(true)
+
+  await page.getByText('Filters', { exact: true }).click()
+  await expect(page.locator('details[open]')).toHaveCount(1)
+})

@@ -1,6 +1,7 @@
 import { planOptions, type TierId, type TierSlugSets } from '@living-dex/business-logic'
 import { useState } from 'react'
 import { TIER_LABELS, WHY_PLAN } from '../lib/tiers'
+import GuideLink from './GuideLink'
 
 // 3.27: the box plan as a plain dropdown next to Tier ("Tier: X › Plan: Y (?)"). It only ever lists the tier itself
 // and strict supersets of it. While the plan is undecided (3.19b) it shows "Choose your plan…", Box/Slot stay
@@ -31,7 +32,11 @@ function PlanSelect({
           aria-label="Plan"
           value={decided ? layoutTier : ''}
           onChange={(e) => onPlan(e.target.value as TierId)}
-          className={`btn ${decided ? '' : 'border-amber-500 dark:border-amber-400'}`}
+          className={`btn ${
+            decided
+              ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100'
+              : 'border-amber-500 dark:border-amber-400'
+          }`}
         >
           {!decided && (
             <option value="" disabled>
@@ -59,7 +64,8 @@ function PlanSelect({
       </button>
       {why && (
         <p className="w-full text-xs text-muted">
-          {WHY_PLAN} Changing the plan renumbers Box and Slot.
+          {WHY_PLAN} Changing the plan renumbers Box and Slot.{' '}
+          <GuideLink className="underline">Learn more</GuideLink>
         </p>
       )}
     </>

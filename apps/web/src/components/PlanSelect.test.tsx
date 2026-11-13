@@ -40,4 +40,12 @@ test('the (?) explains why to plan', () => {
   render(<PlanSelect sets={sets} tier="final-form" layoutTier="final-form" decided={false} onPlan={() => {}} />)
   fireEvent.click(screen.getByRole('button', { name: 'Why plan your boxes?' }))
   expect(screen.getByText(/re-sort your boxes/)).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Learn more' })).toBeInTheDocument()
+})
+
+test('a decided plan is tinted soft green; undecided stays amber (3.49)', () => {
+  const { rerender } = render(<PlanSelect sets={sets} tier="final-form" layoutTier="final-form" decided onPlan={() => {}} />)
+  expect(screen.getByRole('combobox', { name: 'Plan' }).className).toContain('emerald')
+  rerender(<PlanSelect sets={sets} tier="final-form" layoutTier="final-form" decided={false} onPlan={() => {}} />)
+  expect(screen.getByRole('combobox', { name: 'Plan' }).className).toContain('amber')
 })

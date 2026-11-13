@@ -840,20 +840,16 @@ even if the `3.X` task order below does.
 - [ ] **3.46 Pokémon GO as a game option** (2026-11-14). Research first: can we tell, per Pokémon/form, whether it is
       or was obtainable in GO (data source, how to keep it updated)? Then add GO to the game picker and filters.
       Opus medium, plan mode.
-- [ ] **3.47 Remove "(/)" from the search placeholder** (2026-11-14). Keep the `/` shortcut itself. Sonnet low.
-- [ ] **3.48 One "?" button only** (2026-11-14). Drop the small icon "?" (`btn btn-sm btn-icon h-7 w-7`) by the plan
-      row; keep "Why plan your boxes?". Check first why there are two. Sonnet low.
-- [ ] **3.49 Plan dropdown in a soft green tone** (2026-11-14). Sonnet low.
-- [ ] **3.50 Grid toggle looks like a toggle button** (2026-11-14), not a checkbox. Sonnet low.
-- [ ] **3.51 Grid/Table toggle in a stable spot** (2026-11-14). Switching to Grid hides Columns and the toggle jumps;
-      move it where it never shifts. Sonnet medium.
-- [ ] **3.52 Columns/Filters popovers open under the sticky stack** (2026-11-14). They render below the search bar and
-      Owned bar; fix stacking (z-index or portal). Sonnet medium.
-- [ ] **3.53 Columns and Filters are mutually exclusive** (2026-11-14). Opening one closes the other. Sonnet low.
-- [ ] **3.54 Future slots look** (2026-11-14). Show the Pokémon in black and white and slightly darkened. Sonnet low.
-- [ ] **3.55 "Show future slots" does nothing visible in the grid** (2026-11-14). On and off look the same in Grid.
-      The user's proposal for what the option should become was cut off: pending from the user. Sonnet medium.
-- Suggested grouping: **J** = 3.47–3.55 (one UI pass, Sonnet medium, light plan mode); 3.46 alone (research first).
+- [x] **3.47 Remove "(/)" from the search placeholder** ✅ **Done 2026-11-14.** Placeholder is now "Search by name or Dex number…"; the `/` shortcut is unchanged.
+- [x] **3.48 One "?" button only** ✅ **Done 2026-11-14.** Removed the guide "?" next to Tier; the only "?" is "Why plan your boxes?", whose text now has a "Learn more" link to the tiers guide.
+- [x] **3.49 Plan dropdown in a soft green tone** ✅ **Done 2026-11-14.** A decided plan select is soft green (emerald); undecided stays amber.
+- [x] **3.50 Grid toggle looks like a toggle button** ✅ **Done 2026-11-14.** New `ViewToggle`: segmented `☰ Table | ▦ Grid` (aria-pressed, fixed width), same accessible names.
+- [x] **3.51 Grid/Table toggle in a stable spot** ✅ **Done 2026-11-14.** The toggle sits next to the title, so Columns appearing/disappearing never moves it (e2e checks the bounding box).
+- [x] **3.52 Columns/Filters popovers open under the sticky stack** ✅ **Done 2026-11-14.** Columns/Filters panels are `z-40`, above the sticky stack (`z-30`) and table headers (`z-20`); e2e checks the panel is topmost.
+- [x] **3.53 Columns and Filters are mutually exclusive** ✅ **Done 2026-11-14.** `openMenu` state in HomePage; menus take optional `open`/`onOpenChange`. A menu closing only clears itself (found by e2e: the closing menu's toggle event used to close the new one).
+- [x] **3.54 Future slots look** ✅ **Done 2026-11-14.** Future rows/tiles: black-and-white and darkened sprite (`grayscale brightness-50/75`).
+- [x] **3.55 "Show future slots" does nothing visible in the grid** ✅ **Done 2026-11-14.** Decision: "Show future slots" is table-only; the grid always shows reserved slots (3.54 look). `settings.grid.showFutureSlots` stays in the data (deprecated, ignored) so old lists/exports still import.
+- Group **J** (3.47–3.55) done 2026-11-14: web 219 tests, e2e 36 (Brave via `PLAYWRIGHT_CHROMIUM_PATH`). 3.46 alone (research first).
 - [x] **3.31 Collapsible sidebar** ✅ **Done 2026-11-13.** `ListsSidebar`: desktop « / » folds it to a rail (one button
       per list: icon or initial, plus "+"), saved as `preferences.sidebarCollapsed`; phone: accordion header
       "Lists · <active list> ▾", closed by default (trophies live inside it). Tests: ListsSidebar, ListsPage menu,
