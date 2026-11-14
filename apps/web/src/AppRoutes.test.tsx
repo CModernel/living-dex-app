@@ -44,3 +44,8 @@ test('renders SettingsPage at /settings', () => {
   renderAt('/settings')
   expect(screen.getByRole('heading', { name: /settings/i })).toBeInTheDocument()
 })
+
+test('renders the dashboard at /dashboard and sends a user with no lists there from / (3.64)', async () => {
+  renderAt('/dashboard')
+  expect(await screen.findByRole('button', { name: 'Create your first list' })).toBeInTheDocument()
+})

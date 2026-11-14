@@ -19,6 +19,9 @@ function Layout() {
             <NavLink to="/" end className={navLinkClassName}>
               Home
             </NavLink>
+            <NavLink to="/dashboard" className={navLinkClassName}>
+              Dashboard
+            </NavLink>
             <NavLink to="/lists" className={navLinkClassName}>
               Lists
             </NavLink>
@@ -37,7 +40,7 @@ function Layout() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-4 py-6">
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-start px-4 py-6">
         <Outlet />
       </main>
 

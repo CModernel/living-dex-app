@@ -18,6 +18,7 @@ import {
   type PokemonDataset,
 } from '@living-dex/business-logic'
 import { TIERS } from '@cmodernel/living-dex-tiers'
+import { Navigate, useLocation } from 'react-router'
 import type { TierId } from '@living-dex/business-logic'
 import { flexRender, useTable } from '@tanstack/react-table'
 import {
@@ -51,15 +52,16 @@ import GamePickerPopover, { type GamePickerOption } from '../components/GamePick
 import ListsSidebar from '../components/ListsSidebar'
 import GuideLink from '../components/GuideLink'
 import ViewToggle from '../components/ViewToggle'
+import PlanBanner from '../components/PlanBanner'
 import PlanSelect from '../components/PlanSelect'
 import SearchBar from '../components/SearchBar'
 import TierChangeDialog from '../components/TierChangeDialog'
 import TierPicker from '../components/TierPicker'
 import OwnedProgress from '../components/OwnedProgress'
 import TrophiesPanel from '../components/TrophiesPanel'
-import WelcomeCard from '../components/WelcomeCard'
 import TypeBadge from '../components/TypeBadge'
 import { useActiveList } from '../hooks/useActiveList'
+import { ShinyContext } from '../hooks/useSpriteSource'
 import { useIsHydrated, useUserState } from '../state/UserStateContext'
 import { useLists } from '../hooks/useLists'
 import { TIER_LABELS, TROPHY_TIER_ORDER, useTierSets } from '../lib/tiers'
@@ -305,7 +307,7 @@ const TableRow = memo(function TableRow({
       // sprites desaturated, so they stay in the list but read as "not for you" at a glance.
       className={
         future
-          ? 'row-fade border-b border-border bg-border/10 text-muted opacity-60 last:border-b-0 [&_img]:brightness-50 [&_img]:grayscale'
+          ? 'row-fade border-b border-border bg-border/10 text-muted opacity-40 last:border-b-0 [&_img]:brightness-[.35] [&_img]:grayscale'
           : `cursor-pointer border-b border-border last:border-b-0 ${owned ? 'bg-brand/15' : 'hover:bg-border/20'} ${isInaccessible(row.original) ? 'text-muted [&_img]:grayscale' : ''}`
       }
     >
@@ -421,7 +423,8 @@ function HomePage() {
   // games, so neither (nor re-sorting) can move it. Hidden (0) while the plan is undecided.
   const plan = planState(activeList, tierSets)
   const { tier: tierId, layoutTier, decided } = plan
-  const [userState, setUserState] = useUserState()
+  const location = useLocation()
+  const [userState] = useUserState()
   const [search, setSearch] = useState('')
   // 3.53: Columns and Filters are mutually exclusive.
   const [openMenu, setOpenMenu] = useState<'columns' | 'filters' | null>(null)
@@ -500,10 +503,6 @@ function HomePage() {
   const toggleFutureSlots = () => updateSettings((current) => ({ showFutureSlots: !current.showFutureSlots }))
   const activeFilter = viewMode === 'grid' ? gridFilter : tableFilter
   const ownedIds = useMemo(() => new Set(activeList?.ownedIds ?? []), [activeList])
-  const dismissWelcome = useCallback(
-    () => setUserState((prev) => ({ ...prev, preferences: { ...prev.preferences, welcomeDismissed: true } })),
-    [setUserState],
-  )
   const progress = useMemo(
     () =>
       ownedProgress(
@@ -803,19 +802,28 @@ function HomePage() {
   return (
     <div className="flex w-full flex-col gap-6 md:flex-row">
       <ListsSidebar>{dataset && <TrophiesPanel trophies={trophies} listCount={Object.keys(userState.lists).length} />}</ListsSidebar>
+      <ShinyContext.Provider value={listSettings.showShiny}>
       <div className="min-w-0 flex-1">
         {result.loading && <p className="text-muted">Loading Pokémon data…</p>}
         {result.error && <p className="text-muted">Failed to load dataset: {result.error.message}</p>}
+        {hydrated && Object.keys(userState.lists).length === 0 && <Navigate to={{ pathname: '/dashboard', search: location.search }} replace />}
         {!result.loading && !result.error && hydrated && !activeList && <TierPicker />}
         {!result.loading && !result.error && activeList && (
           <>
-            {!userState.preferences.welcomeDismissed && <WelcomeCard onDismiss={dismissWelcome} />}
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-2xl font-semibold tracking-tight">Living Dex</h1>
                 <ViewToggle value={viewMode} onChange={setViewMode} />
               </div>
               <div className="flex flex-wrap items-center gap-3">
+                <label className="flex cursor-pointer items-center gap-1.5 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={listSettings.showShiny}
+                    onChange={() => updateSettings((current) => ({ showShiny: !current.showShiny }))}
+                  />
+                  Show shiny
+                </label>
                 {viewMode === 'table' && <ColumnVisibilityMenu
                     columns={hideableColumns}
                     onReset={resetColumns}
@@ -852,19 +860,17 @@ function HomePage() {
                   ))}
                 </select>
               </label>
-              {tierSets && (!decided || validTargets(tierSets, tierId).length > 0) && (
+              {tierSets && !decided && <PlanBanner sets={tierSets} tier={tierId} previousPlan={keepFor} onPlan={setPlan} />}
+              {tierSets && decided && validTargets(tierSets, tierId).length > 0 && (
                 <>
-                  {decided && (
-                    <span aria-hidden="true" className="text-muted">
-                      ›
-                    </span>
-                  )}
+                  <span aria-hidden="true" className="text-muted">
+                    ›
+                  </span>
                   <PlanSelect
                     sets={tierSets}
                     tier={tierId}
                     layoutTier={layoutTier}
-                    decided={decided}
-                    previousPlan={decided ? (layoutTier !== tierId ? layoutTier : undefined) : keepFor}
+                    previousPlan={layoutTier !== tierId ? layoutTier : undefined}
                     onPlan={setPlan}
                   />
                 </>
@@ -1046,6 +1052,7 @@ function HomePage() {
           </>
         )}
       </div>
+      </ShinyContext.Provider>
       {pendingTier && activeList && tierSets && (
         <TierChangeDialog
           sets={tierSets}

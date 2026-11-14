@@ -2,6 +2,8 @@ import { DEFAULT_USER_STATE, clearDatasetCache, type PokemonDataset } from '@liv
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { UserStateProvider } from '../state/UserStateContext'
+import { MemoryRouter, Route, Routes } from 'react-router'
+import DashboardPage from './DashboardPage'
 import HomePage from './HomePage'
 import { seedDefaultList, seedState, testList } from '../test/seed'
 
@@ -121,7 +123,9 @@ afterEach(() => {
 function renderHomePage() {
   return render(
     <UserStateProvider>
-      <HomePage />
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>
     </UserStateProvider>,
   )
 }
@@ -928,7 +932,19 @@ test('a tag on a game later deselected in Filters is kept and shown as "not in s
   expect(storedActiveList().ownedGames).toEqual({ alpha: ['red'] })
 })
 
-test('shows owned progress and the dismissible welcome card (3.8)', async () => {
+test('"Show shiny" swaps every sprite to its shiny art and is remembered per list (3.70)', async () => {
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  const { container } = renderHomePage()
+  await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
+  const sprites = () => Array.from(container.querySelectorAll('tbody img')).map((img) => img.getAttribute('src') ?? '')
+  expect(sprites().some((src) => src.includes('/shiny/'))).toBe(false)
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Show shiny' }))
+  await waitFor(() => expect(sprites().length).toBeGreaterThan(0))
+  expect(sprites().every((src) => src.includes('/shiny/'))).toBe(true)
+  await waitFor(() => expect(storedActiveList().settings?.showShiny).toBe(true))
+})
+
+test('shows owned progress and no welcome card (3.8, 3.68)', async () => {
   global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
   renderHomePage()
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
@@ -936,14 +952,7 @@ test('shows owned progress and the dismissible welcome card (3.8)', async () => 
   // Living-form tier keeps Bulbasaur + Charizard (the gender variant is filtered out).
   expect(screen.getByText('0 / 2 owned')).toBeInTheDocument()
   expect(screen.getByRole('progressbar', { name: /owned progress/i })).toHaveAttribute('aria-valuenow', '0')
-
-  expect(screen.getByRole('region', { name: /welcome/i })).toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: /got it/i }))
-  expect(screen.queryByRole('region', { name: /welcome/i })).not.toBeInTheDocument()
-  await waitFor(() => {
-    const stored = JSON.parse(window.localStorage.getItem('living-dex:user-state') ?? '{}')
-    expect(stored.preferences?.welcomeDismissed).toBe(true)
-  })
+  expect(screen.queryByRole('region', { name: /welcome/i })).not.toBeInTheDocument() // 3.68: no welcome card
 })
 
 test('the "#" column is the place in the displayed list and follows sorting, while Slot does not (3.8b)', async () => {
@@ -1038,7 +1047,19 @@ test('a new user picks a tier from big tiles; Box/Slot stay locked until the pla
   const { preferences } = stored()
   window.localStorage.clear()
   window.localStorage.setItem('living-dex:user-state', JSON.stringify({ ...DEFAULT_USER_STATE, preferences }))
-  renderWithData()
+  // 3.64: with no list, Home sends the user to the dashboard, whose "Create your first list" opens the picker.
+  global.fetch = vi.fn(async () => ({ ok: true, json: async () => mockDataset }) as Response)
+  render(
+    <UserStateProvider>
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+        </Routes>
+      </MemoryRouter>
+    </UserStateProvider>,
+  )
+  fireEvent.click(await screen.findByRole('button', { name: 'Create your first list' }))
 
   const picker = await screen.findByRole('region', { name: 'Choose what to collect' })
   expect(within(picker).getByText('Quickest goal')).toBeInTheDocument()
@@ -1058,16 +1079,15 @@ test('a new user picks a tier from big tiles; Box/Slot stay locked until the pla
   expect(banner).toHaveTextContent('Box and Slot stay hidden')
   expect(screen.getAllByRole('img', { name: 'Locked until you plan your boxes' })).toHaveLength(2)
 
-  // The Plan dropdown only offers the tier itself and bigger tiers that contain Final Form, with the extra slots.
-  const plan = within(banner).getByRole('combobox', { name: 'Plan' })
-  expect(within(plan).getAllByRole('option').map((o) => o.textContent)).toEqual([
-    'Plan for a bigger goal…',
-    'Final Form (same as tier)',
-    'Living Form Full (+2 slots · Recommended)',
-    'Living Form (+1 slots)',
-    'Living Lite (+1 slots)',
+  // The "Plan for bigger goal" button only offers bigger tiers that contain Final Form, with the extra slots.
+  fireEvent.click(within(banner).getByRole('button', { name: /Plan for bigger goal/ }))
+  const popover = screen.getByRole('dialog', { name: 'Choose a bigger goal' })
+  expect(within(popover).getAllByRole('button').map((b) => b.textContent)).toEqual([
+    'Living Form Full+2 slots · Recommended',
+    'Living Form+1 slots',
+    'Living Lite+1 slots',
   ])
-  fireEvent.change(plan, { target: { value: 'living-form-full' } })
+  fireEvent.click(within(popover).getByRole('button', { name: /Living Form Full/ }))
 
   await waitFor(() => expect(screen.queryByRole('region', { name: 'Plan your boxes' })).not.toBeInTheDocument())
   expect(screen.getByRole('combobox', { name: 'Plan' })).toHaveValue('living-form-full')
@@ -1088,7 +1108,7 @@ test('"same as tier" keeps the plan on the same tier and unlocks Box/Slot; the p
   seedTieredList({ tier: 'final-form' })
   renderWithData()
   const banner = await screen.findByRole('region', { name: 'Plan your boxes' })
-  fireEvent.change(within(banner).getByRole('combobox', { name: 'Plan' }), { target: { value: 'final-form' } })
+  fireEvent.click(within(banner).getByRole('button', { name: 'Not now' }))
   await waitFor(() => expect(slotOf('Charizard')).toEqual(['1', '1']))
   expect(storedLists()[0]).toMatchObject({ tier: 'final-form', layoutTier: 'final-form' })
   expect(screen.getByRole('combobox', { name: 'Plan' })).toHaveValue('final-form')
@@ -1122,10 +1142,10 @@ test('changing the tier inside the plan asks again, offering to keep the old pla
   const banner = await screen.findByRole('region', { name: 'Plan your boxes' })
   expect(screen.queryByRole('dialog', { name: 'Change tier' })).not.toBeInTheDocument()
   expect(screen.getAllByRole('img', { name: 'Locked until you plan your boxes' }).length).toBeGreaterThan(0)
-  const plan = within(banner).getByRole('combobox', { name: 'Plan' })
-  const first = within(plan).getAllByRole('option')[2] // after "Plan for a bigger goal…" and "same as tier"
+  fireEvent.click(within(banner).getByRole('button', { name: /Plan for bigger goal/ }))
+  const first = within(screen.getByRole('dialog', { name: 'Choose a bigger goal' })).getAllByRole('button')[0]
   expect(first).toHaveTextContent('Keep Living Form Full')
-  fireEvent.change(plan, { target: { value: (first as HTMLOptionElement).value } })
+  fireEvent.click(first)
   await waitFor(() => expect(slotOf('Charizard')).toEqual(['1', '3']))
   expect(storedLists()[0]).toMatchObject({ tier: 'living-form', layoutTier: 'living-form-full' })
 })
@@ -1204,9 +1224,11 @@ test('no owned selection is ever lost, whatever order tiers and plans are change
   const answer = async (choice: 'not-now' | 'plan') => {
     const banner = screen.queryByRole('region', { name: 'Plan your boxes' })
     if (!banner) return
-    const plan = within(banner).getByRole('combobox', { name: 'Plan' })
-    if (choice === 'not-now') fireEvent.change(plan, { target: { value: (tierSelect() as HTMLSelectElement).value } })
-    else fireEvent.change(plan, { target: { value: (within(plan).getAllByRole('option')[2] as HTMLOptionElement).value } })
+    if (choice === 'not-now') fireEvent.click(within(banner).getByRole('button', { name: 'Not now' }))
+    else {
+      fireEvent.click(within(banner).getByRole('button', { name: /Plan for bigger goal/ }))
+      fireEvent.click(within(screen.getByRole('dialog', { name: 'Choose a bigger goal' })).getAllByRole('button')[0])
+    }
   }
   const sequence: Array<[string, 'not-now' | 'plan']> = [
     ['final-form', 'plan'],
@@ -1270,9 +1292,7 @@ test('with an undecided plan the grid asks to decide it first (3.18)', async () 
   renderWithData()
   expect(await screen.findByText(/Decide your box plan above to see your boxes/)).toBeInTheDocument()
   expect(screen.queryByRole('region', { name: 'Box 1' })).not.toBeInTheDocument()
-  fireEvent.change(within(screen.getByRole('region', { name: 'Plan your boxes' })).getByRole('combobox', { name: 'Plan' }), {
-    target: { value: 'final-form' },
-  })
+  fireEvent.click(within(screen.getByRole('region', { name: 'Plan your boxes' })).getByRole('button', { name: 'Not now' }))
   expect(await screen.findByRole('region', { name: 'Box 1' })).toBeInTheDocument()
 })
 

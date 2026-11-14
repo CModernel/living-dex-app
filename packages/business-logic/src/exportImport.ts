@@ -57,6 +57,7 @@ function parseSettings(raw: unknown): ListSettings | undefined {
   const settings: ListSettings = {}
   if (raw.viewMode === 'table' || raw.viewMode === 'grid') settings.viewMode = raw.viewMode
   if (typeof raw.showFutureSlots === 'boolean') settings.showFutureSlots = raw.showFutureSlots
+  if (typeof raw.showShiny === 'boolean') settings.showShiny = raw.showShiny
   if (isStringArray(raw.excludedGameIds)) settings.excludedGameIds = [...raw.excludedGameIds]
   if (isRecord(raw.grid)) {
     const grid: GridSettings = {}

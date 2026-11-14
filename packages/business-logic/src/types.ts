@@ -23,6 +23,8 @@ export type ListSettings = {
   viewMode?: 'table' | 'grid';
   // 3.19b: show the greyed rows of a bigger planned tier with their real Box/Slot.
   showFutureSlots?: boolean;
+  // 3.70: show every sprite as its shiny version.
+  showShiny?: boolean;
   // Games deselected in the Filters menu (ids from availability.ts GAMES), stored as the deselected set so every
   // game, including ones added later, is selected by default.
   excludedGameIds?: string[];
@@ -111,6 +113,7 @@ export type ResolvedListSettings = Required<Omit<ListSettings, 'grid'>> & {
 export const DEFAULT_LIST_SETTINGS: ResolvedListSettings = {
   viewMode: 'table',
   showFutureSlots: false,
+  showShiny: false,
   excludedGameIds: [],
   grid: { showFutureSlots: true, filter: DEFAULT_LIST_FILTER },
 };

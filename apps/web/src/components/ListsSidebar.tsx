@@ -38,7 +38,7 @@ function ListsSidebar({ children }: { children?: ReactNode }) {
       onClick={() => setIsCreateOpen(true)}
       aria-label="Create new list"
       title="Create new list"
-      className={`btn btn-sm btn-icon ${size} text-base leading-none`}
+      className={`btn btn-sm btn-icon ${size} border-brand/40 bg-brand/10 text-base leading-none text-brand hover:bg-brand/20`}
     >
       +
     </button>

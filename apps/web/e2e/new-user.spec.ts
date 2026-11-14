@@ -12,6 +12,8 @@ async function freshStart(page: Page, query = '') {
   await page.goto(`./${query}`)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
+  // 3.64: with no list the app lands on the dashboard; its button opens the tier picker.
+  await page.getByRole('button', { name: 'Create your first list' }).click()
   await expect(page.getByRole('region', { name: 'Choose what to collect' })).toBeVisible()
 }
 
@@ -32,9 +34,10 @@ for (const scheme of ['light', 'dark'] as const) {
     await expect(banner).toContainText('Box and Slot stay hidden')
     await banner.scrollIntoViewIfNeeded()
     await page.screenshot({ path: `e2e/results/plan-banner-${scheme}.png` })
-    const plan = banner.getByRole('combobox', { name: 'Plan' })
-    await expect(plan.locator('option')).toHaveCount(5) // Choose…, same as tier, 3 bigger goals
-    await plan.selectOption('living-form-full')
+    await banner.getByRole('button', { name: /Plan for bigger goal/ }).click()
+    const goals = page.getByRole('dialog', { name: 'Choose a bigger goal' })
+    await expect(goals.getByRole('button')).toHaveCount(3) // 3 bigger goals
+    await goals.getByRole('button', { name: /Living Form Full/ }).click()
     await expect(banner).toHaveCount(0)
     await expect(page.getByRole('combobox', { name: 'Plan' })).toHaveValue('living-form-full')
 
@@ -99,6 +102,7 @@ test('debug panel: hidden without ?debug; quick start, mark all, clear and reset
   const debug = page.getByRole('region', { name: 'Debug' })
   await expect(debug).toBeVisible()
   await debug.getByRole('button', { name: 'Quick start' }).click()
+  await page.getByRole('link', { name: 'Home' }).click() // no list = the dashboard; the list lives on Home
   await expect(page.getByText('Mon 1', { exact: true })).toBeVisible()
   await debug.getByRole('button', { name: 'Mark all' }).click()
   await expect(debug.getByText('40 owned')).toBeVisible()
@@ -108,5 +112,5 @@ test('debug panel: hidden without ?debug; quick start, mark all, clear and reset
   await debug.getByRole('button', { name: 'Clear owned' }).click()
   await expect(debug.getByText('0 owned')).toBeVisible()
   await debug.getByRole('button', { name: 'Reset all data' }).click()
-  await expect(page.getByRole('region', { name: 'Choose what to collect' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Create your first list' })).toBeVisible()
 })

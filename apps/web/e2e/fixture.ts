@@ -45,6 +45,10 @@ export async function mockNetwork(page: Page) {
 // 3.19b: a new user has no list until a tier tile is tapped. With this fixture every Living tier is the same 40
 // entries, so Living Form has nothing bigger: its box plan is decided at once (no banner).
 export async function startList(page: Page) {
+  // 3.64: with no list the app starts on the dashboard; its button opens the tier picker (unless a test already did).
+  const picker = page.getByRole('region', { name: 'Choose what to collect' })
+  const create = page.getByRole('button', { name: 'Create your first list' })
+  if (!(await picker.isVisible()) && (await create.isVisible())) await create.click()
   await page.getByRole('region', { name: 'Choose what to collect' }).getByRole('button', { name: 'Living Form', exact: true }).click()
   await expect(page.getByText('Mon 1', { exact: true })).toBeVisible()
 }
