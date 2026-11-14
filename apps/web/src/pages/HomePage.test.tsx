@@ -1249,6 +1249,19 @@ test('the grid shows HOME-style boxes by the plan, marks owned, and the choice p
   expect(storedLists()[0].settings?.viewMode).toBe('grid')
 })
 
+test('switching to the grid keeps the table mounted (hidden) so switching back does not rebuild its rows (3.62)', async () => {
+  seedTieredList({ tier: 'final-form', layoutTier: 'living-form-full' })
+  renderWithData()
+  await waitFor(() => expect(screen.getByText('Charizard')).toBeInTheDocument())
+  const cell = screen.getByText('Charizard')
+  fireEvent.click(screen.getByRole('button', { name: 'Switch to grid view' }))
+  await screen.findByRole('region', { name: 'Box 1' })
+  expect(screen.queryByRole('table')).not.toBeInTheDocument() // hidden from the accessibility tree
+  fireEvent.click(screen.getByRole('button', { name: 'Switch to table view' }))
+  expect(await screen.findByRole('table')).toBeInTheDocument()
+  expect(screen.getByText('Charizard')).toBe(cell) // the very same DOM node
+})
+
 test('with an undecided plan the grid asks to decide it first (3.18)', async () => {
   seedTieredList({ tier: 'final-form' })
   const state = stored()

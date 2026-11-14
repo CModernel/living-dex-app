@@ -47,6 +47,15 @@ body {
   .btn-icon {
     @apply px-2;
   }
+  /* 3.63: native <select> with its own chevron, inset from the edge (the browser one hugs the border). */
+  .select {
+    appearance: none;
+    padding-right: 2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+    background-size: 0.7rem;
+  }
 }
 
 /* Dialog enter animation; disabled for users who ask for reduced motion. */
@@ -81,47 +90,39 @@ body {
   }
 }
 
-/* 3.57 theme switch: colours ease while the `theme-fade` class is on <html> (set for ~400 ms by useDarkMode.toggle). */
-html.theme-fade,
-html.theme-fade *,
-html.theme-fade *::before,
-html.theme-fade *::after {
-  transition:
-    background-color 300ms ease,
-    color 300ms ease,
-    border-color 300ms ease,
-    fill 300ms ease,
-    stroke 300ms ease !important;
+/* 3.57 theme switch: the browser cross-fades one snapshot of the page (View Transitions API, see useDarkMode), which
+   is cheap; transitioning every element's colours froze the page (13k nodes). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 350ms;
+  animation-timing-function: ease-in-out;
 }
 
-/* 3.58 view switch and 3.59 future rows: soft fade (+ slight blur) on mount. */
-@keyframes soft-in {
+/* 3.58 view switch / 3.59 future rows / 3.62 sidebar content: opacity-only fades (compositor-friendly; blur and
+   transforms on the whole table were what made the switch janky). */
+@keyframes fade-in {
   from {
     opacity: 0;
-    filter: blur(4px);
-    transform: translateY(4px);
   }
 }
 .view-fade {
-  animation: soft-in 220ms ease-out;
-}
-@keyframes row-in {
-  from {
-    opacity: 0;
-  }
+  animation: fade-in 200ms ease-out;
 }
 .row-fade {
-  animation: row-in 250ms ease-out;
+  animation: fade-in 250ms ease-out;
+}
+.sidebar-fade {
+  animation: fade-in 220ms ease-out 80ms backwards;
 }
 @media (prefers-reduced-motion: reduce) {
-  html.theme-fade,
-  html.theme-fade *,
-  html.theme-fade *::before,
-  html.theme-fade *::after {
-    transition: none !important;
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
   .view-fade,
-  .row-fade {
+  .row-fade,
+  .sidebar-fade {
     animation: none;
   }
 }

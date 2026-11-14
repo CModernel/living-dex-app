@@ -30,11 +30,11 @@ function PlanSelect({
       aria-label="Plan"
       value={decided ? layoutTier : ''}
       onChange={(e) => onPlan(e.target.value as TierId)}
-      className={`btn ${
+      className={
         decided
-          ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100'
-          : 'border-amber-600 bg-transparent font-medium dark:border-amber-300'
-      }`}
+          ? 'btn select border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100'
+          : 'select cursor-pointer rounded-lg border border-amber-600 bg-transparent py-1 pr-8 pl-2.5 text-xs font-medium hover:bg-amber-500/10 dark:border-amber-300'
+      }
     >
       {!decided && (
         <option value="" disabled>
@@ -81,22 +81,33 @@ function PlanSelect({
       </div>
     )
   }
-  // 3.60: the original banner for a new list: message, a "Plan for a bigger goal" dropdown and "Not now"
-  // (= same as the tier). Choosing either decides the plan, which unlocks Box/Slot.
+  // 3.60: the original banner of a new list: the light bulb and message on the left (with a small "i"), the actions on
+  // the right: a "Plan for a bigger goal" dropdown and "Not now" (= same as the tier). Choosing either decides the plan.
   return (
     <div
       role="region"
       aria-label="Plan your boxes"
-      className="flex min-w-64 flex-1 flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-100"
+      className="flex min-w-64 grow basis-full flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-100"
     >
       <span aria-hidden="true">💡</span>
-      <span className="min-w-40 flex-1">Planning to grow beyond {TIER_LABELS[tier]}? Reserve the slots now.</span>
-      {whyButton}
+      <span className="min-w-40 flex-1">
+        Planning to grow beyond {TIER_LABELS[tier]}? Reserve the slots now.
+        <button
+          type="button"
+          onClick={() => setWhy((v) => !v)}
+          aria-expanded={why}
+          aria-label="Why plan your boxes?"
+          title={WHY_PLAN}
+          className="ml-1.5 inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-amber-500/60 text-xs"
+        >
+          i
+        </button>
+      </span>
       {dropdown}
       <button
         type="button"
         onClick={() => onPlan(tier)}
-        className="btn border-gray-400 bg-transparent text-gray-700 dark:border-gray-500 dark:text-gray-200"
+        className="cursor-pointer rounded-lg border border-gray-400 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-500/10 dark:border-gray-500 dark:text-gray-300"
       >
         Not now
       </button>

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect } from 'react'
+import { flushSync } from 'react-dom'
 import { useUserState } from '../state/UserStateContext'
 
 function prefersDark() {
@@ -22,16 +23,20 @@ export function useDarkMode() {
     document.documentElement.classList.toggle('dark', isDark)
   }, [isDark])
 
-  const fadeTimer = useRef<number | undefined>(undefined)
   const toggle = useCallback(() => {
-    // 3.57: colours fade for a moment instead of snapping (class removed again so normal use has no transitions).
-    document.documentElement.classList.add('theme-fade')
-    window.clearTimeout(fadeTimer.current)
-    fadeTimer.current = window.setTimeout(() => document.documentElement.classList.remove('theme-fade'), 400)
-    setState((prev) => ({
-      ...prev,
-      preferences: { ...prev.preferences, darkMode: isDark ? 'light' : 'dark' },
-    }))
+    const next = isDark ? 'light' : 'dark'
+    const commit = () => {
+      flushSync(() =>
+        setState((prev) => ({ ...prev, preferences: { ...prev.preferences, darkMode: next } })),
+      )
+      // The effect above does this too; doing it here keeps the "after" snapshot of the transition correct.
+      document.documentElement.classList.toggle('dark', next === 'dark')
+    }
+    // 3.57: cross-fade a snapshot of the page (View Transitions). Without support, or for users who prefer reduced
+    // motion, it just switches.
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (!reduced && typeof document.startViewTransition === 'function') document.startViewTransition(commit)
+    else commit()
   }, [isDark, setState])
 
   return { isDark, toggle }

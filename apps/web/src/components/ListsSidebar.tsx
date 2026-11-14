@@ -47,8 +47,11 @@ function ListsSidebar({ children }: { children?: ReactNode }) {
   return (
     <aside
       aria-label="Lists"
-      className={`w-full shrink-0 rounded-lg border border-border bg-surface p-3 transition-[width] duration-200 ${collapsed ? 'md:w-16' : 'md:w-52'}`}
+      className={`w-full shrink-0 rounded-lg border border-border bg-surface p-3 transition-[width] duration-200 ease-in-out md:overflow-hidden ${collapsed ? 'md:w-16' : 'md:w-52'}`}
     >
+      {/* 3.62: the width eases while the new content (keyed per state) fades in, at a fixed minimum width so it is
+          clipped by the aside instead of re-wrapping on every frame. */}
+      <div key={collapsed ? 'rail' : 'full'} className={`sidebar-fade ${collapsed ? 'md:min-w-8' : 'md:min-w-[10.75rem]'}`}>
       <div className={`flex items-center gap-1.5 ${collapsed ? 'md:justify-center' : 'justify-between'}`}>
         <button
           type="button"
@@ -82,6 +85,7 @@ function ListsSidebar({ children }: { children?: ReactNode }) {
           {createButton('h-8 w-8')}
         </div>
       )}
+      </div>
       {isCreateOpen && (
         <Dialog label="Create new list" onClose={() => setIsCreateOpen(false)} className="w-[36rem]">
           <TierPicker onCreated={() => setIsCreateOpen(false)} />

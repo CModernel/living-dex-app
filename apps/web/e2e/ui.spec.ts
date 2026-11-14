@@ -120,14 +120,20 @@ test('the sidebar folds to a rail on desktop and is an accordion on a phone', as
   await page.screenshot({ path: 'e2e/results/sidebar-rail.png' })
 })
 
-// 3.57: the theme switch eases colours instead of snapping.
-test('toggling the theme fades colours: the page is mid-transition right after the click', async ({ page }) => {
+// 3.57: the theme switch cross-fades one page snapshot (View Transitions) instead of transitioning every element.
+test('toggling the theme runs a view transition and ends dark', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'no-preference' })
   await page.goto('./')
-  const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor)
-  const before = await bg()
+  await page.evaluate(() => {
+    const original = document.startViewTransition?.bind(document)
+    ;(window as unknown as { transitions: number }).transitions = 0
+    if (original) document.startViewTransition = (cb?: () => void) => {
+      ;(window as unknown as { transitions: number }).transitions++
+      return original(cb as never)
+    }
+  })
   await page.getByRole('button', { name: /dark|light/i }).first().click()
-  await expect(page.locator('html')).toHaveClass(/theme-fade/)
-  await expect(page.locator('html')).not.toHaveClass(/theme-fade/, { timeout: 2000 })
-  expect(await bg()).not.toBe(before)
+  await expect(page.locator('html')).toHaveClass(/dark/)
+  expect(await page.evaluate(() => (window as unknown as { transitions: number }).transitions)).toBe(1)
+  expect(await page.evaluate(() => document.querySelectorAll('html.theme-fade').length)).toBe(0)
 })

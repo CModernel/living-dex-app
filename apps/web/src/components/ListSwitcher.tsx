@@ -159,7 +159,7 @@ function ListSwitcher({ compact = false, showCreate = true }: { compact?: boolea
             </div>
             <label className="flex flex-col gap-1 text-sm">
               Box layout
-              <select value={editLayout} onChange={(e) => setEditLayout(e.target.value as TierId)} className="btn">
+              <select value={editLayout} onChange={(e) => setEditLayout(e.target.value as TierId)} className="btn select">
                 {layoutOptions.map((id) => (
                   <option key={id} value={id}>
                     {TIER_LABELS[id]}

@@ -482,6 +482,8 @@ function HomePage() {
     tierSets && decided ? validTargets(tierSets, tierId).filter((t) => coversTier(tierSets, layoutTier, t)) : []
   // 3.18 grid view: boxes of the planned tier, which slugs are tappable (in tier + filters/games), which are in tier.
   const viewMode = listSettings.viewMode
+  const [tableSeen, setTableSeen] = useState(viewMode === 'table')
+  if (viewMode === 'table' && !tableSeen) setTableSeen(true)
   const setViewMode = (mode: 'table' | 'grid') => updateSettings({ viewMode: mode })
   const boxes = useMemo(
     () => (dataset && viewMode === 'grid' ? layoutBoxes(Object.values(dataset.pokemon), TIERS[layoutTier].predicate) : []),
@@ -842,7 +844,7 @@ function HomePage() {
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-2 text-sm">
                 Tier
-                <select value={tierId} onChange={(e) => changeTier(e.target.value as TierId)} className="btn">
+                <select value={tierId} onChange={(e) => changeTier(e.target.value as TierId)} className="btn select">
                   {(Object.keys(TIER_LABELS) as TierId[]).map((id) => (
                     <option key={id} value={id}>
                       {TIER_LABELS[id]}
@@ -852,9 +854,11 @@ function HomePage() {
               </label>
               {tierSets && (!decided || validTargets(tierSets, tierId).length > 0) && (
                 <>
-                  <span aria-hidden="true" className="text-muted">
-                    ›
-                  </span>
+                  {decided && (
+                    <span aria-hidden="true" className="text-muted">
+                      ›
+                    </span>
+                  )}
                   <PlanSelect
                     sets={tierSets}
                     tier={tierId}
@@ -903,9 +907,11 @@ function HomePage() {
                 {ownedOutside} owned outside this tier (kept, shown again when you switch back)
               </p>
             )}
-            <div key={viewMode} className="view-fade">
+            {/* 3.58/3.62: the table (604 memoised rows) stays mounted, only hidden, while the grid is shown, so switching back
+                is a style change instead of a full re-render; the grid is cheap and mounts on demand. */}
             {viewMode === 'grid' && dataset && tierSets && (
-              decided ? (
+              <div className="view-fade">
+              {decided ? (
                 <BoxGrid
                   dataset={dataset}
                   boxes={boxes}
@@ -919,10 +925,11 @@ function HomePage() {
                 <p role="status" className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted">
                   🔒 Decide your box plan above to see your boxes.
                 </p>
-              )
+              )}
+              </div>
             )}
-            {viewMode === 'table' && (
-            <>
+            {(viewMode === 'table' || tableSeen) && (
+            <div hidden={viewMode !== 'table'} className="view-fade">
             {/* Column widths are percentages that always sum to 100% (see lib/columnWeights.ts), so
                 the table can never be wider or narrower than its container — nothing to scroll. */}
             <div className="overflow-clip rounded-lg border border-border">
@@ -1034,9 +1041,8 @@ function HomePage() {
                 </tbody>
               </table>
             </div>
-            </>
-            )}
             </div>
+            )}
           </>
         )}
       </div>
