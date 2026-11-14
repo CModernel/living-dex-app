@@ -3,19 +3,19 @@
 Cloud sync is optional (TODO 3.40/3.41). Without these settings the app builds and works exactly as before: everything stays
 on the device and the Settings page shows no cloud section.
 
-Living Dex uses its own schema, `living_dex`, inside a Supabase project that can be shared with other apps (e.g.
-leetcode-tracker-board). Nothing it creates is in `public`, so the two apps don't collide, and Living Dex can later move to
-its own project by dumping only that schema.
+Living Dex uses a **Supabase project of its own** (decision 3.72): its own users, sessions, JWT secret and keys, never shared
+with other apps such as leetcode-tracker-board. Its tables live in the schema `living_dex` (nothing in `public`), which can be
+dumped on its own. See [PORTABILITY.md](PORTABILITY.md) for the move to self-hosting and [EDITIONS.md](EDITIONS.md) for the
+community (local-only) build.
 
 ## 1. Project and database
-1. Create a Supabase project (or reuse the shared one).
+1. Create a new Supabase project just for Living Dex (do not reuse another app's project).
 2. SQL editor → run [`supabase/migrations/20261113000000_living_dex_init.sql`](../supabase/migrations/20261113000000_living_dex_init.sql).
 3. Project Settings → **Data API** → **Exposed schemas**: add `living_dex` (keep `public`).
 
 ## 2. Sign-in
 Authentication → **Sign In / Providers**:
-- **Email**: enabled, magic link (no password needed). Note: provider settings are project-wide, so this also enables email
-  for any other app on the project; an app that doesn't offer it in its UI is unaffected.
+- **Email**: enabled, magic link (no password needed).
 - **Google**: create an OAuth client (Google Cloud Console → APIs & Services → Credentials → Web application) with the
   authorized redirect URI `https://<project-ref>.supabase.co/auth/v1/callback` and authorized JavaScript origin
   `https://cmodernel.github.io`; paste its client id and secret into the Google provider.
@@ -24,7 +24,7 @@ Authentication → **URL Configuration** → **Redirect URLs**, add:
 - `https://cmodernel.github.io/living-dex-app/settings`
 - `http://localhost:5173/living-dex-app/settings`
 
-The Site URL can stay pointed at another app: Living Dex always passes its own redirect.
+Set the Site URL to `https://cmodernel.github.io/living-dex-app/`; Living Dex also passes its own redirect.
 
 The free email sender has a low hourly limit; set up custom SMTP if many people sign in.
 
@@ -36,6 +36,7 @@ Both values are public (the anon key only allows what the row level security pol
   VITE_SUPABASE_URL=https://<project-ref>.supabase.co
   VITE_SUPABASE_ANON_KEY=<anon / publishable key>
   ```
+- Hosted edition only: both values are ignored when the build sets `VITE_EDITION=community`.
 - Deploy: GitHub repo → Settings → Secrets and variables → Actions → **Variables**: `VITE_SUPABASE_URL`,
   `VITE_SUPABASE_ANON_KEY` (the deploy workflow passes them to the build).
 

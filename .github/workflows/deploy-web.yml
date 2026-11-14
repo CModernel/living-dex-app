@@ -49,6 +49,8 @@ jobs:
         run: npm run build:web
         # Optional cloud sync (docs/SUPABASE.md): public values from the repo's Actions Variables; unset = local-only build.
         env:
+          # Edition (docs/EDITIONS.md): unset = hosted; `community` builds local-only whatever the other variables hold.
+          VITE_EDITION: ${{ vars.VITE_EDITION }}
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
 

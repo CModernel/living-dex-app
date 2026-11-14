@@ -1,13 +1,16 @@
 import { parseImport, serializeExport, DEFAULT_USER_STATE, type PokemonList } from '@living-dex/business-logic'
 import type { Session, SupabaseClient } from '@supabase/supabase-js'
+import { capabilities } from './edition'
 
-// 3.40 optional cloud sync. Configured by VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY (both public, see docs/SUPABASE.md);
+// 3.40 optional cloud sync, only in the hosted edition (3.73, lib/edition.ts). Configured by VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY (both public, see docs/SUPABASE.md);
 // without them every function here is unused and the Settings page shows no cloud section. The Supabase library is
 // loaded with a dynamic import so it never weighs on the main bundle.
 
-const URL_ = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
-export const cloudConfigured = !!URL_ && !!KEY
+// Read behind the capability so a community build does not even carry the values (the bundler drops the dead branch).
+const COMMUNITY = import.meta.env.VITE_EDITION === 'community' // literal at build time, so the branches below fold away
+const URL_ = !COMMUNITY ? (import.meta.env.VITE_SUPABASE_URL as string | undefined) : undefined
+const KEY = !COMMUNITY ? (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) : undefined
+export const cloudConfigured = capabilities.cloudSync && !!URL_ && !!KEY
 
 const SCHEMA = 'living_dex'
 const TABLE = 'user_state'

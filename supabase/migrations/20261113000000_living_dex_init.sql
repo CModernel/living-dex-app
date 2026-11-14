@@ -1,6 +1,7 @@
 -- Living Dex cloud sync (TODO 3.40). One row per user holding the export envelope of their collections.
--- Lives in its own schema so it stays isolated inside the Supabase project shared with other apps, and can be moved to a
--- dedicated project later by dumping just this schema. Run once in the SQL editor (or `supabase db push`).
+-- Runs in a Supabase project dedicated to Living Dex (own users, JWT secret and keys; docs/PORTABILITY.md). The schema
+-- keeps everything out of `public` and can be dumped on its own (`pg_dump -n living_dex`). Run once in the SQL editor
+-- (or `supabase db push`).
 
 create schema if not exists living_dex;
 
