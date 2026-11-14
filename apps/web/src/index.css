@@ -80,3 +80,48 @@ body {
     animation: none;
   }
 }
+
+/* 3.57 theme switch: colours ease while the `theme-fade` class is on <html> (set for ~400 ms by useDarkMode.toggle). */
+html.theme-fade,
+html.theme-fade *,
+html.theme-fade *::before,
+html.theme-fade *::after {
+  transition:
+    background-color 300ms ease,
+    color 300ms ease,
+    border-color 300ms ease,
+    fill 300ms ease,
+    stroke 300ms ease !important;
+}
+
+/* 3.58 view switch and 3.59 future rows: soft fade (+ slight blur) on mount. */
+@keyframes soft-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(4px);
+  }
+}
+.view-fade {
+  animation: soft-in 220ms ease-out;
+}
+@keyframes row-in {
+  from {
+    opacity: 0;
+  }
+}
+.row-fade {
+  animation: row-in 250ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.theme-fade,
+  html.theme-fade *,
+  html.theme-fade *::before,
+  html.theme-fade *::after {
+    transition: none !important;
+  }
+  .view-fade,
+  .row-fade {
+    animation: none;
+  }
+}

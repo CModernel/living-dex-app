@@ -1061,7 +1061,7 @@ test('a new user picks a tier from big tiles; Box/Slot stay locked until the pla
   // The Plan dropdown only offers the tier itself and bigger tiers that contain Final Form, with the extra slots.
   const plan = within(banner).getByRole('combobox', { name: 'Plan' })
   expect(within(plan).getAllByRole('option').map((o) => o.textContent)).toEqual([
-    'Choose your plan…',
+    'Plan for a bigger goal…',
     'Final Form (same as tier)',
     'Living Form Full (+2 slots · Recommended)',
     'Living Form (+1 slots)',
@@ -1123,7 +1123,7 @@ test('changing the tier inside the plan asks again, offering to keep the old pla
   expect(screen.queryByRole('dialog', { name: 'Change tier' })).not.toBeInTheDocument()
   expect(screen.getAllByRole('img', { name: 'Locked until you plan your boxes' }).length).toBeGreaterThan(0)
   const plan = within(banner).getByRole('combobox', { name: 'Plan' })
-  const first = within(plan).getAllByRole('option')[2] // after "Choose your plan…" and "same as tier"
+  const first = within(plan).getAllByRole('option')[2] // after "Plan for a bigger goal…" and "same as tier"
   expect(first).toHaveTextContent('Keep Living Form Full')
   fireEvent.change(plan, { target: { value: (first as HTMLOptionElement).value } })
   await waitFor(() => expect(slotOf('Charizard')).toEqual(['1', '3']))

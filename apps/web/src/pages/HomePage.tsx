@@ -305,7 +305,7 @@ const TableRow = memo(function TableRow({
       // sprites desaturated, so they stay in the list but read as "not for you" at a glance.
       className={
         future
-          ? 'border-b border-border bg-border/10 text-muted opacity-60 last:border-b-0 [&_img]:brightness-75 [&_img]:grayscale'
+          ? 'row-fade border-b border-border bg-border/10 text-muted opacity-60 last:border-b-0 [&_img]:brightness-50 [&_img]:grayscale'
           : `cursor-pointer border-b border-border last:border-b-0 ${owned ? 'bg-brand/15' : 'hover:bg-border/20'} ${isInaccessible(row.original) ? 'text-muted [&_img]:grayscale' : ''}`
       }
     >
@@ -903,6 +903,7 @@ function HomePage() {
                 {ownedOutside} owned outside this tier (kept, shown again when you switch back)
               </p>
             )}
+            <div key={viewMode} className="view-fade">
             {viewMode === 'grid' && dataset && tierSets && (
               decided ? (
                 <BoxGrid
@@ -1035,6 +1036,7 @@ function HomePage() {
             </div>
             </>
             )}
+            </div>
           </>
         )}
       </div>

@@ -32,7 +32,7 @@ const Tile = memo(function Tile({
         role="img"
         aria-label={`${entry.name} (reserved for your planned goal)`}
         title={`${entry.name}: part of your planned goal`}
-        className="flex aspect-square rounded-lg border border-dashed border-border p-0.5 opacity-70 [&_img]:brightness-50 [&_img]:grayscale"
+        className="flex aspect-square rounded-lg border border-dashed border-border p-0.5 opacity-80 [&_img]:brightness-[.4] [&_img]:grayscale"
       >
         {sprite}
       </div>

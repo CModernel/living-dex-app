@@ -107,10 +107,27 @@ test('the sidebar folds to a rail on desktop and is an accordion on a phone', as
     return
   }
   await expect(list).toBeVisible()
+  // 3.61: "+" and collapse sit on one row, same size.
+  const plus = await page.getByRole('button', { name: 'Create new list' }).boundingBox()
+  const fold = await page.getByRole('button', { name: 'Collapse sidebar' }).boundingBox()
+  expect(plus!.y).toBeCloseTo(fold!.y, 0)
+  expect(plus!.height).toBeCloseTo(fold!.height, 0)
   await page.getByRole('button', { name: 'Collapse sidebar' }).click()
   await expect(list).toBeHidden()
   await expect(page.getByRole('button', { name: 'Switch to My Living Dex' })).toBeVisible()
   await page.reload()
   await expect(page.getByRole('button', { name: 'Expand sidebar' })).toBeVisible() // remembered
   await page.screenshot({ path: 'e2e/results/sidebar-rail.png' })
+})
+
+// 3.57: the theme switch eases colours instead of snapping.
+test('toggling the theme fades colours: the page is mid-transition right after the click', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'no-preference' })
+  await page.goto('./')
+  const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+  const before = await bg()
+  await page.getByRole('button', { name: /dark|light/i }).first().click()
+  await expect(page.locator('html')).toHaveClass(/theme-fade/)
+  await expect(page.locator('html')).not.toHaveClass(/theme-fade/, { timeout: 2000 })
+  expect(await bg()).not.toBe(before)
 })

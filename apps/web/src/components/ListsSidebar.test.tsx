@@ -44,3 +44,14 @@ test('collapsing folds the sidebar to a rail, remembers it, and the rail switche
   fireEvent.click(screen.getByRole('button', { name: 'Expand sidebar' }))
   await waitFor(() => expect(stored().preferences.sidebarCollapsed).toBe(false))
 })
+
+test('one "+" in the header and one in the rail, both opening the create dialog (3.61)', async () => {
+  renderSidebar()
+  await screen.findByText('Alpha')
+  expect(screen.getAllByRole('button', { name: 'Create new list' })).toHaveLength(1)
+  fireEvent.click(screen.getByRole('button', { name: 'Create new list' }))
+  expect(await screen.findByRole('dialog', { name: 'Create new list' })).toBeInTheDocument()
+  fireEvent.keyDown(document, { key: 'Escape' })
+  fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }))
+  await waitFor(() => expect(screen.getAllByRole('button', { name: 'Create new list' })).toHaveLength(2)) // the header one is only hidden by CSS
+})

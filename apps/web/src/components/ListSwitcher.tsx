@@ -81,7 +81,8 @@ function RowMenu({
   )
 }
 
-function ListSwitcher({ compact = false }: { compact?: boolean }) {
+// `showCreate={false}`: the host (ListsSidebar, 3.61) renders its own aligned "+" and create dialog.
+function ListSwitcher({ compact = false, showCreate = true }: { compact?: boolean; showCreate?: boolean }) {
   const { lists, activeListId, switchTo, deleteList, updateList, cloneList } = useLists()
   const { dataset } = useDataset()
   const tierSets = useTierSets(dataset)
@@ -187,15 +188,17 @@ function ListSwitcher({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
       <div className="flex flex-col items-center gap-1">
-        <button
-          type="button"
-          onClick={() => setIsCreateOpen(true)}
-          aria-label="Create new list"
-          title="Create new list"
-          className="btn btn-sm btn-icon h-8 w-8 text-base leading-none"
-        >
-          +
-        </button>
+        {showCreate && (
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            aria-label="Create new list"
+            title="Create new list"
+            className="btn btn-sm btn-icon h-8 w-8 text-base leading-none"
+          >
+            +
+          </button>
+        )}
         {lists.map((list) => (
           <button
             key={list.id}
@@ -218,17 +221,19 @@ function ListSwitcher({ compact = false }: { compact?: boolean }) {
 
   return (
     <div>
-      <div className="mb-2 flex justify-end">
-        <button
-          type="button"
-          onClick={() => setIsCreateOpen(true)}
-          aria-label="Create new list"
-          title="Create new list"
-          className="btn btn-sm btn-icon h-7 w-7 text-base leading-none"
-        >
-          +
-        </button>
-      </div>
+      {showCreate && (
+        <div className="mb-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            aria-label="Create new list"
+            title="Create new list"
+            className="btn btn-sm btn-icon h-7 w-7 text-base leading-none"
+          >
+            +
+          </button>
+        </div>
+      )}
 
       {lists.length === 0 && <p className="mb-3 text-sm text-muted">You don't have any lists yet.</p>}
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useUserState } from '../state/UserStateContext'
 
 function prefersDark() {
@@ -22,7 +22,12 @@ export function useDarkMode() {
     document.documentElement.classList.toggle('dark', isDark)
   }, [isDark])
 
+  const fadeTimer = useRef<number | undefined>(undefined)
   const toggle = useCallback(() => {
+    // 3.57: colours fade for a moment instead of snapping (class removed again so normal use has no transitions).
+    document.documentElement.classList.add('theme-fade')
+    window.clearTimeout(fadeTimer.current)
+    fadeTimer.current = window.setTimeout(() => document.documentElement.classList.remove('theme-fade'), 400)
     setState((prev) => ({
       ...prev,
       preferences: { ...prev.preferences, darkMode: isDark ? 'light' : 'dark' },
