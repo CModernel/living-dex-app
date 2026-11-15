@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 're
 import { useDataset } from '../hooks/useDataset'
 import { useLists } from '../hooks/useLists'
 import { TIER_LABELS, useTierSets } from '../lib/tiers'
+import ConfirmDialog from './ConfirmDialog'
 import Dialog from './Dialog'
 import TierPicker from './TierPicker'
 
@@ -91,6 +92,8 @@ function ListSwitcher({ compact = false, showCreate = true }: { compact?: boolea
   const [editName, setEditName] = useState('')
   const [editIcon, setEditIcon] = useState('')
   const [editLayout, setEditLayout] = useState<TierId>('living-form')
+  const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null)
+  const [cloning, setCloning] = useState<{ id: string; name: string } | null>(null)
   const editingList = editingId ? lists.find((l) => l.id === editingId) : undefined
   const editingTier = resolveListTiers(editingList).tier
   // Box layout choices (3.19b rule): the tier itself or a strict superset of it, never smaller.
@@ -111,14 +114,21 @@ function ListSwitcher({ compact = false, showCreate = true }: { compact?: boolea
     setEditingId(null)
   }
 
-  function handleClone(e: MouseEvent, id: string) {
+  function handleClone(e: MouseEvent, id: string, name: string) {
     e.stopPropagation()
-    cloneList(id)
+    setCloning({ id, name: `${name} (copy)` })
   }
 
   function handleDelete(e: MouseEvent, id: string, name: string) {
     e.stopPropagation() // Don't also trigger the row's own switchTo click handler.
-    if (window.confirm(`Delete "${name}"? This can't be undone.`)) deleteList(id)
+    setDeleting({ id, name })
+  }
+
+  function submitClone(e: FormEvent) {
+    e.preventDefault()
+    if (!cloning || !cloning.name.trim()) return
+    cloneList(cloning.id, { name: cloning.name.trim() })
+    setCloning(null)
   }
 
   const dialogs = (
@@ -126,6 +136,50 @@ function ListSwitcher({ compact = false, showCreate = true }: { compact?: boolea
       {isCreateOpen && (
         <Dialog label="Create new list" onClose={() => setIsCreateOpen(false)} className="w-[36rem]">
           <TierPicker onCreated={() => setIsCreateOpen(false)} />
+        </Dialog>
+      )}
+      {deleting && (
+        <ConfirmDialog
+          title={`Delete "${deleting.name}"?`}
+          icon="🗑️"
+          danger
+          confirmLabel="Delete list"
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => {
+            deleteList(deleting.id)
+            setDeleting(null)
+          }}
+        >
+          This removes the list and everything you marked in it. This can't be undone. Tip: export a backup first in Settings.
+        </ConfirmDialog>
+      )}
+      {cloning && (
+        <Dialog label="Clone list" onClose={() => setCloning(null)}>
+          <form onSubmit={submitClone} className="flex flex-col gap-3">
+            <h3 className="text-base font-semibold">Clone list</h3>
+            <p className="text-sm text-muted">
+              Makes an independent copy with everything you own, its tier, plan and filters. The copy becomes the active list.
+            </p>
+            <label className="flex flex-col gap-1 text-sm">
+              Name for the copy
+              <input
+                autoFocus
+                value={cloning.name}
+                onChange={(e) => setCloning({ ...cloning, name: e.target.value })}
+                onFocus={(e) => e.currentTarget.select()}
+                maxLength={60}
+                className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm"
+              />
+            </label>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setCloning(null)} className="btn btn-ghost">
+                Cancel
+              </button>
+              <button type="submit" disabled={!cloning.name.trim()} className="btn btn-primary">
+                Create copy
+              </button>
+            </div>
+          </form>
         </Dialog>
       )}
       {editingId && (
@@ -158,7 +212,7 @@ function ListSwitcher({ compact = false, showCreate = true }: { compact?: boolea
               ))}
             </div>
             <label className="flex flex-col gap-1 text-sm">
-              Box layout
+              Plan
               <select value={editLayout} onChange={(e) => setEditLayout(e.target.value as TierId)} className="btn select">
                 {layoutOptions.map((id) => (
                   <option key={id} value={id}>
@@ -167,7 +221,7 @@ function ListSwitcher({ compact = false, showCreate = true }: { compact?: boolea
                 ))}
               </select>
               <span className="text-xs text-muted">
-                Box/Slot follow this tier's order. Pick a bigger tier if you plan to grow into it.
+                The plan reserves slots so Box/Slot stay put as you grow. Pick a bigger tier if you plan to grow into it.
               </span>
             </label>
             <div className="flex justify-end gap-2">
@@ -256,7 +310,7 @@ function ListSwitcher({ compact = false, showCreate = true }: { compact?: boolea
             <RowMenu
               name={list.name}
               onEdit={(e) => openEditDialog(e, list.id, list.name, list.icon)}
-              onClone={(e) => handleClone(e, list.id)}
+              onClone={(e) => handleClone(e, list.id, list.name)}
               onDelete={(e) => handleDelete(e, list.id, list.name)}
             />
           </li>

@@ -93,8 +93,7 @@ test('clicking a different list switches which one is marked active', async () =
   expect(screen.getByText('Second').closest('li')).not.toHaveClass('bg-brand/15')
 })
 
-test('deleting a list removes it after confirming', async () => {
-  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+test('deleting a list removes it after confirming in the dialog', async () => {
   seedLists('Shinies')
   renderListsPage()
   await waitFor(() => expect(screen.getByText('Shinies')).toBeInTheDocument())
@@ -102,15 +101,14 @@ test('deleting a list removes it after confirming', async () => {
   fireEvent.click(await screen.findByRole('button', { name: /actions for shinies/i }))
   fireEvent.click(screen.getByRole('menuitem', { name: /delete shinies/i }))
 
-  expect(confirmSpy).toHaveBeenCalled()
+  const dialog = screen.getByRole('dialog', { name: /delete "shinies"\?/i })
+  expect(dialog).toHaveTextContent("can't be undone")
+  fireEvent.click(screen.getByRole('button', { name: 'Delete list' }))
   await waitFor(() => expect(screen.queryByText('Shinies')).not.toBeInTheDocument())
   expect(screen.getByText(/don't have any lists yet/i)).toBeInTheDocument()
-
-  confirmSpy.mockRestore()
 })
 
-test('declining the confirmation keeps the list', async () => {
-  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+test('cancelling the delete dialog keeps the list', async () => {
   seedLists('Shinies')
   renderListsPage()
   await waitFor(() => expect(screen.getByText('Shinies')).toBeInTheDocument())
@@ -118,14 +116,12 @@ test('declining the confirmation keeps the list', async () => {
   fireEvent.click(await screen.findByRole('button', { name: /actions for shinies/i }))
   fireEvent.click(screen.getByRole('menuitem', { name: /delete shinies/i }))
 
-  expect(confirmSpy).toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(screen.getByText('Shinies')).toBeInTheDocument()
-
-  confirmSpy.mockRestore()
 })
 
 test('clicking delete does not also switch the active list via the row handler', async () => {
-  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
   seedLists('First', 'Second')
   renderListsPage()
   await waitFor(() => expect(screen.getByText('Second').closest('li')).toHaveClass('bg-brand/15'))
@@ -135,8 +131,6 @@ test('clicking delete does not also switch the active list via the row handler',
   fireEvent.click(screen.getByRole('menuitem', { name: /delete first/i }))
   expect(screen.getByText('Second').closest('li')).toHaveClass('bg-brand/15')
   expect(screen.getByText('First').closest('li')).not.toHaveClass('bg-brand/15')
-
-  confirmSpy.mockRestore()
 })
 
 test('edit dialog renames the list and sets an icon', async () => {
@@ -155,14 +149,29 @@ test('edit dialog renames the list and sets an icon', async () => {
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 
-test('clone button adds a "(copy)" list', async () => {
+test('clone asks for a name (prefilled "(copy)") and creates the copy', async () => {
   seedLists('Dex')
   renderListsPage()
   await screen.findByText('Dex')
 
   fireEvent.click(await screen.findByRole('button', { name: /actions for dex/i }))
   fireEvent.click(screen.getByRole('menuitem', { name: /clone dex/i }))
-  expect(await screen.findByText('Dex (copy)')).toBeInTheDocument()
+  const input = screen.getByLabelText(/name for the copy/i)
+  expect(input).toHaveValue('Dex (copy)')
+  fireEvent.change(input, { target: { value: 'Dex backup' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Create copy' }))
+  expect(await screen.findByText('Dex backup')).toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+test('cancelling the clone dialog creates nothing', async () => {
+  seedLists('Dex')
+  renderListsPage()
+  await screen.findByText('Dex')
+  fireEvent.click(await screen.findByRole('button', { name: /actions for dex/i }))
+  fireEvent.click(screen.getByRole('menuitem', { name: /clone dex/i }))
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(screen.queryByText('Dex (copy)')).not.toBeInTheDocument()
 })
 
 test('cancelling the edit dialog keeps the list unchanged', async () => {
@@ -180,12 +189,12 @@ test('cancelling the edit dialog keeps the list unchanged', async () => {
   expect(screen.queryByText('Changed')).not.toBeInTheDocument()
 })
 
-test('the Box layout choices are the tier itself and bigger tiers that contain it, never smaller (3.19b)', async () => {
+test('the Plan choices in the edit dialog are the tier itself and bigger tiers that contain it, never smaller (3.19b)', async () => {
   seedState([testList('x', 'Dex', { tier: 'living-lite', layoutTier: 'living-lite' })])
   renderListsPage()
   fireEvent.click(await screen.findByRole('button', { name: /actions for dex/i }))
   fireEvent.click(screen.getByRole('menuitem', { name: /edit dex/i }))
-  const select = screen.getByLabelText(/box layout/i)
+  const select = screen.getByLabelText(/^plan/i)
   await waitFor(() => expect(select.querySelectorAll('option')).toHaveLength(1))
   expect(Array.from(select.querySelectorAll('option')).map((o) => o.textContent)).toEqual(['Living Lite'])
 })
