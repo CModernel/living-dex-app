@@ -1,6 +1,8 @@
 import { mergeImportedLists, parseImport, serializeExport } from '@living-dex/business-logic'
 import { useRef, useState, type ChangeEvent } from 'react'
 import CloudSection from '../components/CloudSection'
+import SupportNote from '../components/SupportNote'
+import { donateUrl } from '../lib/edition'
 import { useInstallPrompt } from '../hooks/usePwa'
 import { DISCLAIMER } from '../lib/disclaimer'
 import { useUserState } from '../state/UserStateContext'
@@ -98,6 +100,13 @@ function SettingsPage() {
           </p>
         )}
       </section>
+
+      {donateUrl && (
+        <section aria-label="Support" className="mt-4 rounded-lg border border-border bg-surface p-4">
+          <h2 className="mb-1 text-sm font-semibold">Support</h2>
+          <SupportNote className="text-xs text-muted" />
+        </section>
+      )}
 
       <section aria-label="About" className="mt-4 rounded-lg border border-border bg-surface p-4">
         <h2 className="mb-1 text-sm font-semibold">About</h2>

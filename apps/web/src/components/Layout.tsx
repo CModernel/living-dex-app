@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { DISCLAIMER } from '../lib/disclaimer'
 import Logo from './Logo'
+import SupportNote from './SupportNote'
 
 function navLinkClassName({ isActive }: { isActive: boolean }) {
   return isActive ? 'font-semibold text-foreground' : 'text-muted hover:text-foreground'
@@ -45,6 +46,7 @@ function Layout() {
       </main>
 
       <footer className="border-t border-border px-4 py-4 text-center text-xs text-muted">
+        <SupportNote className="mx-auto mb-2 max-w-3xl" />
         <p className="mx-auto max-w-3xl">{DISCLAIMER}</p>
       </footer>
     </div>
