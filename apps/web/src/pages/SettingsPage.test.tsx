@@ -101,6 +101,13 @@ test('the About section shows the unofficial-fan-tool disclaimer', () => {
   expect(about).toHaveTextContent('Nintendo, Game Freak, Creatures Inc. or The Pokémon Company')
 })
 
+test('the About section credits the data and sprite sources (3.74)', () => {
+  renderPage()
+  const about = screen.getByRole('region', { name: 'About' })
+  expect(about).toHaveTextContent('PokeAPI')
+  expect(about).toHaveTextContent('PokeJungle')
+})
+
 test('the Install section explains offline use and how to install (3.39)', () => {
   renderPage()
   const section = screen.getByRole('region', { name: 'Install' })

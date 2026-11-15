@@ -4,7 +4,7 @@ import CloudSection from '../components/CloudSection'
 import SupportNote from '../components/SupportNote'
 import { donateUrl } from '../lib/edition'
 import { useInstallPrompt } from '../hooks/usePwa'
-import { DISCLAIMER } from '../lib/disclaimer'
+import { CREDITS, DISCLAIMER } from '../lib/disclaimer'
 import { useUserState } from '../state/UserStateContext'
 
 function SettingsPage() {
@@ -111,6 +111,7 @@ function SettingsPage() {
       <section aria-label="About" className="mt-4 rounded-lg border border-border bg-surface p-4">
         <h2 className="mb-1 text-sm font-semibold">About</h2>
         <p className="text-xs text-muted">{DISCLAIMER}</p>
+        <p className="mt-2 text-xs text-muted">{CREDITS}</p>
       </section>
     </div>
   )
