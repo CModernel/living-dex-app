@@ -127,13 +127,14 @@ function DashboardPage() {
                 return (
                   <li key={list.id} className="flex flex-wrap items-center gap-3">
                     <div className="min-w-40 flex-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="truncate font-medium">
+                      {/* 3.22: name and tier stack on a phone instead of squeezing each other. */}
+                      <div className="flex flex-col text-sm sm:flex-row sm:justify-between sm:gap-2">
+                        <span className="min-w-0 truncate font-medium">
                           {list.icon ? `${list.icon} ` : ''}
                           {list.name}
                           {list.id === activeListId && <span className="ml-2 text-xs text-muted">(active)</span>}
                         </span>
-                        <span className="text-xs text-muted tabular-nums">
+                        <span className="shrink-0 text-xs text-muted tabular-nums">
                           {TIER_LABELS[tier]} · {owned} / {total}
                         </span>
                       </div>

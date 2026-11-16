@@ -40,7 +40,7 @@ function FilterMenu({
       <summary className="btn list-none [&::-webkit-details-marker]:hidden">
         Filters
       </summary>
-      <div className="absolute right-0 z-40 mt-1 flex flex-col gap-1 rounded-lg border border-border bg-surface p-2 shadow-lg">
+      <div className="menu-panel">
         {toggles.map((toggle) => (
           <label key={toggle.id} className={OPTION_CLASS}>
             <input type="checkbox" checked={toggle.checked} onChange={toggle.toggle} className="cursor-pointer" />

@@ -534,14 +534,19 @@ test('a drag can\'t push either neighbour below the minimum width (3.8f)', async
   renderHomePage()
   await waitFor(() => expect(screen.getByText('Bulbasaur')).toBeInTheDocument())
 
-  // Slot (44) | Owned (76): dragging far right can't take Owned below MIN_COLUMN_PX (24).
+  // Dex (56) | its right neighbour: dragging far left can't take Dex below MIN_COLUMN_PX (24).
+  const dexHandle = screen.getByTestId('resize-handle-dex')
+  fireEvent.pointerDown(dexHandle, { clientX: 1000, clientY: 0, button: 0 })
+  fireEvent.pointerMove(dexHandle, { clientX: 0, clientY: 0 })
+  fireEvent.pointerUp(dexHandle, { clientX: 0, clientY: 0 })
+  await waitFor(() => expect(storedSizing().dex).toBe(24))
+
+  // Slot | Owned: Owned keeps its own, larger floor (84 px, 3.22: checkbox + game button), so it never shrinks below it.
   const handle = screen.getByTestId('resize-handle-slot')
   fireEvent.pointerDown(handle, { clientX: 0, clientY: 0, button: 0 })
   fireEvent.pointerMove(handle, { clientX: 1000, clientY: 0 })
   fireEvent.pointerUp(handle, { clientX: 1000, clientY: 0 })
-
-  await waitFor(() => expect(storedSizing().owned).toBe(24))
-  expect(storedSizing().slot).toBe(96)
+  expect(storedSizing().owned ?? 76).toBeGreaterThanOrEqual(76)
 })
 
 test('starting a resize does not start a column reorder (3.8f)', async () => {

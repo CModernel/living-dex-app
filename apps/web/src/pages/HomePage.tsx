@@ -73,7 +73,7 @@ import { useSpriteSource } from '../hooks/useSpriteSource'
 import { useGameSelection } from '../hooks/useGameSelection'
 import { useListFilter } from '../hooks/useListFilter'
 import { useListSettings } from '../hooks/useListSettings'
-import { getColumnMinPx, getColumnWeight, resizeAdjacentPair } from '../lib/columnWeights'
+import { columnWidthsPercent, getColumnMinPx, getColumnWeight, resizeAdjacentPair } from '../lib/columnWeights'
 
 // Module-level: no runtime data dependency, must stay stable across renders.
 const features = tableFeatures({
@@ -399,6 +399,16 @@ function HomePage() {
   const previewPosRef = useRef({ x: 0, y: 0 })
   const headerRefs = useRef<Record<string, HTMLTableCellElement | null>>({})
   const tableRef = useRef<HTMLTableElement>(null)
+  // 3.22: the table's width in px, so column floors (owned, sprite) hold on a phone (see columnWidthsPercent).
+  const [tableWidth, setTableWidth] = useState(0)
+  // A ref callback (React 19 runs its returned cleanup), so it also catches a table that mounts after the data loads.
+  const observeTable = useCallback((el: HTMLTableElement | null) => {
+    tableRef.current = el
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(([entry]) => setTableWidth(Math.round(entry.contentRect.width)))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
   // Publishes the sticky stack's height as --stack-h on its parent so the table header sticks right below it.
   const observerRef = useRef<ResizeObserver | null>(null)
   const stackRef = useCallback((node: HTMLDivElement | null) => {
@@ -796,6 +806,9 @@ function HomePage() {
 
   const visibleColumnIds = (table.getHeaderGroups()[0]?.headers ?? []).map((header) => header.column.id)
   const visibleWeightSum = visibleColumnIds.reduce((sum, id) => sum + getColumnWeight(columnSizing, id), 0)
+  const columnPercents = columnWidthsPercent(visibleColumnIds, columnSizing, tableWidth)
+  // 3.22: more columns than this screen can show readably (each needs its minimum width).
+  const tooManyColumns = tableWidth > 0 && visibleColumnIds.reduce((sum, id) => sum + getColumnMinPx(id), 0) > tableWidth
 
   // Lives on HomePage itself, not just /lists, so switching lists refreshes the table right
   // here instead of requiring a trip to another page.
@@ -938,15 +951,17 @@ function HomePage() {
             <div hidden={viewMode !== 'table'} className="view-fade">
             {/* Column widths are percentages that always sum to 100% (see lib/columnWeights.ts), so
                 the table can never be wider or narrower than its container — nothing to scroll. */}
+            {tooManyColumns && (
+              <p role="note" className="mb-2 text-xs text-muted">
+                Too many columns for this screen. Hide some in Columns to read them.
+              </p>
+            )}
             <div className="overflow-clip rounded-lg border border-border">
-              <table ref={tableRef} className="w-full table-fixed border-collapse text-sm">
+              <table ref={observeTable} className="w-full table-fixed border-collapse text-sm">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <colgroup key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <col
-                        key={header.id}
-                        style={{ width: `${(getColumnWeight(columnSizing, header.column.id) / visibleWeightSum) * 100}%` }}
-                      />
+                    {headerGroup.headers.map((header, index) => (
+                      <col key={header.id} style={{ width: `${columnPercents[index]}%` }} />
                     ))}
                   </colgroup>
                 ))}

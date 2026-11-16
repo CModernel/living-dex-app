@@ -153,3 +153,37 @@ test('dialog buttons stay visible on a short screen while the content scrolls', 
   await expect(dialog.getByRole('button', { name: 'Save' })).toBeInViewport({ ratio: 1 })
   await page.screenshot({ path: 'e2e/results/dialog-short-screen.png' })
 })
+
+// 3.22: phone-width checks (they also run on desktop, where they must hold too).
+test('with every column on, the Owned cell keeps its checkbox and game button on screen', async ({ page }) => {
+  await page.getByText('Columns', { exact: true }).click()
+  for (const box of await page.locator('details', { hasText: 'Columns' }).getByRole('checkbox').all()) await box.check()
+  await page.getByText('Columns', { exact: true }).click()
+  const width = await page.evaluate(() => window.innerWidth)
+  const button = page.getByRole('button', { name: 'Obtained from games for Mon 1', exact: true })
+  const buttonBox = (await button.boundingBox())!
+  expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(width)
+  await page.getByRole('checkbox', { name: 'Mark Mon 1 as owned' }).check()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
+  if (width < 640) await expect(page.getByRole('note')).toHaveText(/Too many columns/)
+  await page.screenshot({ path: `e2e/results/all-columns-${width}.png` })
+})
+
+test('the Columns and Filters panels open inside the screen', async ({ page }) => {
+  const width = await page.evaluate(() => window.innerWidth)
+  for (const name of ['Columns', 'Filters']) {
+    await page.getByText(name, { exact: true }).click()
+    const panel = (await page.locator('details', { hasText: name }).locator('div').first().boundingBox())!
+    expect(panel.x).toBeGreaterThanOrEqual(0)
+    expect(panel.x + panel.width).toBeLessThanOrEqual(width)
+    await page.getByText(name, { exact: true }).click()
+  }
+})
+
+test('Dashboard, Lists and Settings have no horizontal scroll', async ({ page }) => {
+  for (const path of ['dashboard', 'lists', 'settings']) {
+    await page.goto(`./${path}`)
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), path).toBeLessThanOrEqual(0)
+  }
+})

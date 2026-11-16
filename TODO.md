@@ -742,10 +742,13 @@ even if the `3.X` task order below does.
 - [ ] **3.21 Testing standard (rule recorded in `docs/RULES.md` §6, 2026-11-12).** Backfill: every
       pending ticket (3.18, 3.19, 3.20, 3.22, Champions card, 3.10/3.11) lists its unit, component and
       e2e tests in its acceptance criteria before it starts.
-- [ ] **3.22 Mobile check and design (deferred, undecided).** Verify the web app at phone widths with
-      Playwright's mobile project (known: the Owned column is tight at 375 px when many columns are
-      visible), then decide responsive web vs native. Notes: Hermes lacks `crypto.randomUUID`; the
-      mobile provider has the hydration race fixed on web only. **Decision 2026-11-12: installable PWA first (3.39); React Native only if the app takes off.**
+- [x] **3.22 Mobile check and design** ✅ **Done 2026-11-16 (web/PWA).** Checked every page at 375 px with screenshots.
+      Fixed: column floors now hold at render time (`columnWidthsPercent`: Owned 84 px for checkbox + game button,
+      Sprite 48 px; with too many columns the others share the rest and a "Too many columns for this screen" note
+      shows); Columns/Filters panels (`.menu-panel`) span the screen on a phone instead of running off the left edge;
+      Dashboard "Your lists" rows stack name and tier on a phone. No overflow on Home, Dashboard, Lists, Settings.
+      Decision stays: installable PWA; React Native only if the app takes off (3.10/3.11 paused). Tests: columnWeights
+      (3), e2e (all columns keep Owned on screen, panels inside the screen, no overflow on every page; desktop + mobile).
 - [x] **3.24 IP compliance fixes** ✅ **Done 2026-11-12** (guide: `obsidian/IP-Guide.md`, skill
       `pokemon-fan-ip-compliance`). Logo and favicon redesigned as an abstract storage box (3x3 slot grid,
       one filled), no ball; `lib/disclaimer.ts` disclaimer shown in the footer, in Settings → About and in the

@@ -22,7 +22,7 @@ function ColumnVisibilityMenu({
       <summary className="btn list-none [&::-webkit-details-marker]:hidden">
         Columns
       </summary>
-      <div className="absolute right-0 z-40 mt-1 flex flex-col gap-1 rounded-lg border border-border bg-surface p-2 shadow-lg">
+      <div className="menu-panel">
         {columns.map((column) => (
           <label
             key={column.id}

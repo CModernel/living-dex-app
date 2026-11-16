@@ -5,9 +5,11 @@
 export const MIN_COLUMN_PX = 24
 
 // Columns whose content gets unreadable below the default minimum. Sprite's image scales with
-// its column, so below ~48px it turns into a smudge.
+// its column, so below ~48px it turns into a smudge. Owned holds the checkbox and the "obtained from"
+// button side by side, which a phone with many columns used to clip (3.22).
 export const COLUMN_MIN_PX: Record<string, number> = {
   sprite: 48,
+  owned: 84,
 }
 
 export function getColumnMinPx(columnId: string): number {
@@ -68,5 +70,33 @@ export function resizeAdjacentPair(args: {
   return {
     left: (leftPx + delta) / pxPerWeight,
     right: (rightPx - delta) / pxPerWeight,
+  }
+}
+
+/**
+ * Column widths in % of the table (always summing to 100), proportional to their weights but never below each
+ * column's minimum in px when the table width is known (3.22: on a phone with many columns the floors win and the
+ * other columns share what is left). With `tablePx` 0 (not measured yet) it is the plain proportional split.
+ */
+export function columnWidthsPercent(ids: readonly string[], sizing: Record<string, number>, tablePx: number): number[] {
+  const weights = ids.map((id) => getColumnWeight(sizing, id))
+  const total = weights.reduce((a, b) => a + b, 0)
+  if (!total) return ids.map(() => 100 / Math.max(ids.length, 1))
+  if (tablePx <= 0) return weights.map((w) => (w / total) * 100)
+  let mins = ids.map(getColumnMinPx)
+  // Too many columns for every floor: keep the special floors (owned, sprite) and let the others share the rest.
+  if (mins.reduce((a, b) => a + b, 0) >= tablePx) mins = ids.map((id) => COLUMN_MIN_PX[id] ?? 0)
+  const minSum = mins.reduce((a, b) => a + b, 0)
+  if (minSum >= tablePx) return mins.map((m) => (m / minSum) * 100)
+  // Pin every column whose share falls under its floor, then split the rest by weight; repeat until stable.
+  const pinned = new Set<number>()
+  for (;;) {
+    const freePx = tablePx - [...pinned].reduce((sum, i) => sum + mins[i], 0)
+    const freeWeight = weights.reduce((sum, w, i) => (pinned.has(i) ? sum : sum + w), 0)
+    const newlyPinned = weights.findIndex((w, i) => !pinned.has(i) && (w / freeWeight) * freePx < mins[i])
+    if (newlyPinned === -1) {
+      return weights.map((w, i) => ((pinned.has(i) ? mins[i] : (w / freeWeight) * freePx) / tablePx) * 100)
+    }
+    pinned.add(newlyPinned)
   }
 }
