@@ -22,7 +22,7 @@ function entry(i: number) {
     hasStatOrTypeDifference: false,
     sortIndex: i,
     // Obtainable in a few games so the "obtained from" picker has options (C = catchable).
-    availability: { red: 'C', blue: 'C', gold: 'C', scarlet: 'C' },
+    availability: { red: 'C', blue: 'C', gold: 'C', scarlet: 'C', go: 'C' },
   }
 }
 

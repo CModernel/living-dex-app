@@ -1,6 +1,9 @@
 // Signature color + generation per game, for the colored chips in the game picker and the Filters
 // menu. Official logos/box art are trademarks, so the app uses a color per game instead. Keyed by
 // the ids in business-logic's GAMES; a test fails when a game is added without an entry here.
+/** Pseudo-generation for games outside the core series (Pokémon GO), shown as a "Mobile" group. */
+export const MOBILE_GROUP = 99
+
 export const GAME_STYLE: Record<string, { color: string; generation: number }> = {
   red: { color: '#E3350D', generation: 1 },
   green: { color: '#3BA55D', generation: 1 },
@@ -43,6 +46,8 @@ export const GAME_STYLE: Record<string, { color: string; generation: number }> =
   scarlet: { color: '#E8472B', generation: 9 },
   violet: { color: '#7A3FB5', generation: 9 },
   'legends-za': { color: '#2E8F8A', generation: 9 },
+  // Not a core-series generation: its own "Mobile" group after Gen 9 (see GameChips).
+  go: { color: '#1FA7A0', generation: MOBILE_GROUP },
 }
 
 const FALLBACK = { color: '#888890', generation: 0 }
@@ -62,7 +67,7 @@ export const GAME_CODE: Record<string, string> = {
   sun: 'Su', moon: 'M', 'ultra-sun': 'US', 'ultra-moon': 'UM',
   'lets-go-pikachu': 'LP', 'lets-go-eevee': 'LE', sword: 'Sw', shield: 'Sh',
   'brilliant-diamond': 'BD', 'shining-pearl': 'SP', 'legends-arceus': 'LA',
-  scarlet: 'Sc', violet: 'V', 'legends-za': 'LZ',
+  scarlet: 'Sc', violet: 'V', 'legends-za': 'LZ', go: 'GO',
 }
 
 export function gameCode(gameId: string): string {

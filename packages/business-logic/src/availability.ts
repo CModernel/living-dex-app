@@ -74,7 +74,8 @@ export function tokenizeAvailabilityCell(cell: string | undefined): Availability
 
 export type Game = { id: string; name: string }
 
-// Release order, same as the organizer's GAME_COLUMNS.
+// Release order, same as the organizer's GAME_COLUMNS; then Pokémon GO (3.46), which is not a core-series game and
+// comes from a separate source (PvPoke via the organizer's go-released.json), so it sits last.
 export const GAMES: readonly Game[] = [
   { id: 'red', name: 'Red' },
   { id: 'green', name: 'Green' },
@@ -117,6 +118,7 @@ export const GAMES: readonly Game[] = [
   { id: 'scarlet', name: 'Scarlet' },
   { id: 'violet', name: 'Violet' },
   { id: 'legends-za', name: 'Legends: Z-A' },
+  { id: 'go', name: 'Pokémon GO' },
 ]
 
 /** Category of an entry in one game; a missing key in the sparse map means unobtainable. */

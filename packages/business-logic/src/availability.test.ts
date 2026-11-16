@@ -32,9 +32,10 @@ test('empty, dash, missing and unknown cells are unobtainable without throwing',
   assert.equal(tokenizeAvailabilityCell('CX').category, 'unobtainable')
 })
 
-test('GAMES lists the 41 organizer games with unique ids', () => {
-  assert.equal(GAMES.length, 41)
-  assert.equal(new Set(GAMES.map((g) => g.id)).size, 41)
+test('GAMES lists the 41 organizer games plus Pokémon GO last, with unique ids', () => {
+  assert.equal(GAMES.length, 42)
+  assert.equal(new Set(GAMES.map((g) => g.id)).size, 42)
+  assert.deepEqual(GAMES[GAMES.length - 1], { id: 'go', name: 'Pokémon GO' })
 })
 
 test('availableGames keeps obtainable/conditional games among the given ones', () => {
@@ -45,9 +46,9 @@ test('availableGames keeps obtainable/conditional games among the given ones', (
 })
 
 test('selectedGameIds is every game minus the excluded ones, in release order', () => {
-  assert.equal(selectedGameIds([]).length, 41)
+  assert.equal(selectedGameIds([]).length, 42)
   const ids = selectedGameIds(['red', 'legends-za'])
-  assert.equal(ids.length, 39)
+  assert.equal(ids.length, 40)
   assert.equal(ids[0], 'green')
   assert.equal(ids.includes('legends-za'), false)
 })

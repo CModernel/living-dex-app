@@ -837,9 +837,16 @@ even if the `3.X` task order below does.
       path is a new cache entry and `activate` drops caches not in the current set. `fetchDataset(url?)` accepts another
       URL (`VITE_DATASET_URL`, used by the offline e2e). Not done: bundling a copy for a very first offline visit
       (needs one online visit first; revisit if a store/Capacitor build is ever made).
-- [ ] **3.46 Pokémon GO as a game option** (2026-11-14). Research first: can we tell, per Pokémon/form, whether it is
-      or was obtainable in GO (data source, how to keep it updated)? Then add GO to the game picker and filters.
-      Opus medium, plan mode.
+- [x] **3.46 Pokémon GO as a game option** ✅ **Done 2026-11-16.** Source: PvPoke's gamemaster (MIT, one entry per
+      form, `released` flag), reduced in the organizer to `sheets/availability/go-released.json` and joined by Dex +
+      form label (`scripts/lib/go-availability.js`): battle-relevant forms need their own GO entry, cosmetic and gender
+      forms follow the species; overrides for Ditto/Shedinja/Spewpa/Gimmighoul Roaming. 1251 of 1387 entries get
+      `availability.go = 'C'`. The organizer's weekly workflow refreshes it from the latest PvPoke commit; if the
+      source fails or shrinks, it keeps the last good copy and opens an issue to find another provider. App: `go` is
+      the last game in `GAMES` (badge `GO`, own "Mobile" group in the chips); it starts selected in game filters.
+      Limits: "released" means in GO now or before, not catchable today; PvPoke may lack cosmetic forms GO lacks too.
+      Research: `obsidian/TODO-3.46-Pokemon-GO-Research.md`. Tests: organizer go-availability (6), business-logic
+      GAMES, GameChips Mobile group, HomePage counts, e2e picker tags GO.
 - [x] **3.47 Remove "(/)" from the search placeholder** ✅ **Done 2026-11-14.** Placeholder is now "Search by name or Dex number…"; the `/` shortcut is unchanged.
 - [x] **3.48 One "?" button only** ✅ **Done 2026-11-14.** Removed the guide "?" next to Tier; the only "?" is "Why plan your boxes?", whose text now has a "Learn more" link to the tiers guide.
 - [x] **3.49 Plan dropdown in a soft green tone** ✅ **Done 2026-11-14.** A decided plan select is soft green (emerald); undecided stays amber.
@@ -875,6 +882,12 @@ even if the `3.X` task order below does.
 - [x] **3.79 Clone asks for a name** ✅ **Done 2026-11-16.** Clone opens a dialog with the name prefilled "<name> (copy)" (selected) and "Create copy"; Cancel creates nothing.
 - [x] **3.80 "Box layout" renamed "Plan" in Edit** ✅ **Done 2026-11-16.** The rest of the app already says Plan ("Plan your boxes", "Plan for bigger goal"); the Edit dialog now matches (internally still `layoutTier`).
 - [x] **3.81 Dialog buttons pinned to the bottom** ✅ **Done 2026-11-16.** `.dialog-actions` (sticky, `-bottom-5` to offset the card's padding) on the delete, clone, edit and tier-change dialogs: on short screens the content scrolls and the buttons stay visible. e2e at 330 px height checks Save is fully in view.
+- [ ] **3.82 CI test job** (2026-11-16, deploy-related, waits for the host decision). The app repo's only workflow
+      deploys; nothing runs Vitest/Playwright on push or PR. Add `.github/workflows/test.yml` (business-logic + web
+      Vitest, Playwright with the bundled Chromium). Sonnet low.
+- [ ] **3.83 Apply the Supabase migrations** (2026-11-16, user step). Run `supabase/migrations/*.sql` in order on the
+      dedicated project and add the redirect URLs of whichever host is chosen (3.77). Needed before sync (3.42) and
+      account deletion (3.44) work for real.
 - [ ] **3.77 Hosted deploy pipeline** (2026-11-15). Second workflow/host integration for the hosted edition (Cloudflare Pages or Netlify), `VITE_BASE` for the root path, SPA fallback, env + redirect URLs documented. Needs the user's host account; re-check the host's current terms. Sonnet high.
 - [x] **3.31 Collapsible sidebar** ✅ **Done 2026-11-13.** `ListsSidebar`: desktop « / » folds it to a rail (one button
       per list: icon or initial, plus "+"), saved as `preferences.sidebarCollapsed`; phone: accordion header

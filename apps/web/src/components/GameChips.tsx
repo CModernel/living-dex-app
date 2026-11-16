@@ -1,4 +1,4 @@
-import { badgeTextColor, gameCode, gameStyle } from '../lib/gameColors'
+import { badgeTextColor, gameCode, gameStyle, MOBILE_GROUP } from '../lib/gameColors'
 
 export type GameChipOption = { id: string; name: string; note?: string; checked: boolean }
 
@@ -17,7 +17,11 @@ function GameChips({ options, onToggle }: { options: GameChipOption[]; onToggle:
         .sort(([a], [b]) => a - b)
         .map(([gen, items]) => (
           <div key={gen}>
-            {gen > 0 && <p className="mb-1 px-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase">Gen {gen}</p>}
+            {gen > 0 && (
+              <p className="mb-1 px-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase">
+                {gen === MOBILE_GROUP ? 'Mobile' : `Gen ${gen}`}
+              </p>
+            )}
             <div className="flex flex-wrap gap-1.5">
               {items.map((option) => (
                 <label

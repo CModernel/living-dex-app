@@ -53,10 +53,13 @@ test('the obtained-from button opens a picker of colored game chips and tags a g
   const picker = page.getByRole('dialog', { name: /Obtained from/ })
   await expect(picker.getByText('Gen 1')).toBeVisible()
   await picker.getByTitle('Red', { exact: true }).click()
+  // Pokémon GO (3.46) sits in its own "Mobile" group after the generations.
+  await expect(picker.getByText('Mobile')).toBeVisible()
+  await picker.getByTitle('Pokémon GO', { exact: true }).click()
   await page.waitForTimeout(150)
   await page.screenshot({ path: 'e2e/results/game-picker.png' })
   await page.keyboard.press('Escape')
-  await expect(button).toContainText('1')
+  await expect(button).toContainText('2')
   await expect(page.getByRole('checkbox', { name: 'Mark Mon 1 as owned' })).toBeChecked()
 })
 

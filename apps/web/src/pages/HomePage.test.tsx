@@ -743,9 +743,9 @@ async function renderWithAvailabilityColumn() {
 test('the Availability column counts selected games and lists them in a tooltip (3.8d)', async () => {
   await renderWithAvailabilityColumn()
 
-  expect(availabilityCell('Alpha').textContent).toBe('2 / 41')
+  expect(availabilityCell('Alpha').textContent).toBe('2 / 42')
   expect(availabilityCell('Alpha').querySelector('[title]')).toHaveAttribute('title', 'Red, Gold (conditional)')
-  expect(availabilityCell('Bravo').textContent).toBe('0 / 41')
+  expect(availabilityCell('Bravo').textContent).toBe('0 / 42')
   expect(availabilityCell('Bravo').querySelector('[title]')).toHaveAttribute('title', 'Not obtainable in the selected games')
   expect(availabilityCell('Charlie').textContent).toBe('—')
 })
@@ -756,7 +756,7 @@ test('deselecting a game in Filters updates the counts, and the selection is per
   fireEvent.click(screen.getByText('Filters'))
   fireEvent.click(screen.getByRole('checkbox', { name: 'Red' }))
 
-  await waitFor(() => expect(availabilityCell('Alpha').textContent).toBe('1 / 40'))
+  await waitFor(() => expect(availabilityCell('Alpha').textContent).toBe('1 / 41'))
   await waitFor(() =>
     expect(JSON.parse(window.localStorage.getItem('living-dex:user-state')!).lists[Object.keys(JSON.parse(window.localStorage.getItem('living-dex:user-state')!).lists)[0]].settings.excludedGameIds).toEqual(['red']),
   )

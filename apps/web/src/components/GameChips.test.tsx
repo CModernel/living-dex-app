@@ -15,6 +15,13 @@ test('groups games by generation in order, with the real checkbox state', () => 
   expect(screen.getByRole('checkbox', { name: 'Gold' })).not.toBeChecked()
 })
 
+test('Pokémon GO gets its own "Mobile" group after the generations (3.46)', () => {
+  render(<GameChips options={[...options, { id: 'go', name: 'Pokémon GO', checked: true }]} onToggle={() => {}} />)
+  expect(screen.getAllByText(/^(Gen \d|Mobile)$/).map((h) => h.textContent)).toEqual(['Gen 1', 'Gen 2', 'Gen 9', 'Mobile'])
+  expect(screen.getByText('GO')).toBeInTheDocument()
+  expect(screen.getByRole('checkbox', { name: 'Pokémon GO' })).toBeChecked()
+})
+
 test('clicking a chip toggles that game', () => {
   const onToggle = vi.fn()
   render(<GameChips options={options} onToggle={onToggle} />)
