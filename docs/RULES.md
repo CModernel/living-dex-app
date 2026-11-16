@@ -92,6 +92,19 @@
   Run the e2e suite with `npm run test:e2e -w apps/web` (set `PLAYWRIGHT_CHROMIUM_PATH` to reuse an
   installed Chromium-based browser instead of downloading one).
 
+### Clean-build check (before committing build or deploy relevant changes)
+
+A local build can pass thanks to leftovers (`node_modules`, `dist`, untracked files). Check a clean copy instead:
+
+- **Scratch directory** (no Docker needed): clone both repos from their commits into a temp folder, then
+  `npm ci && npm run build -w packages/business-logic && npm test -w packages/business-logic &&
+  (cd apps/web && npx tsc -b && npx vitest run) && VITE_EDITION=community npm run build:web`. The organizer clone must
+  sit next to the app clone (the `file:` dependency on `living-dex-organizer/packages/tiers`).
+- **Docker** (Linux like CI): mount the parent folder **read-only** and copy it inside the container before installing:
+  `docker run --rm -v "<path>/living-dex:/parent:ro" node:22 sh -c "cp -r /parent /tmp/p && cd /tmp/p/living-dex-app &&
+  npm ci && npm test && npm run build:web"`. Never bind-mount the real repo writable and run `npm ci` in it: it replaces
+  the host's native dependencies with Linux ones and breaks local dev.
+
 ## 7. TODO policy
 
 - TODOs are mandatory for security decisions or future architecture decisions intentionally left
