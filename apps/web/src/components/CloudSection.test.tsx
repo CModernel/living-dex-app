@@ -16,6 +16,7 @@ const mock = vi.hoisted(() => ({
   legacy: [] as unknown[],
   pushes: [] as Record<string, unknown>[],
   pullError: null as Error | null,
+  deleteError: null as Error | null,
 }))
 
 vi.mock('../lib/cloud', () => ({
@@ -34,6 +35,10 @@ vi.mock('../lib/cloud', () => ({
     return structuredClone(mock.rows)
   }),
   pullLists: vi.fn(async () => structuredClone(mock.legacy)),
+  deleteAccount: vi.fn(async () => {
+    if (mock.deleteError) throw mock.deleteError
+    mock.rows = {}
+  }),
   pushListRows: vi.fn(async (_id: string, rows: Record<string, unknown>) => {
     mock.pushes.push(rows)
     Object.assign(mock.rows, structuredClone(rows))
@@ -50,13 +55,14 @@ function ListsHandle() {
   return null
 }
 
+const onExport = vi.fn()
 const renderSection = () =>
   render(
     <MemoryRouter>
       <UserStateProvider>
         <CloudSyncProvider>
           <SyncIndicator />
-          <CloudSection />
+          <CloudSection onExport={onExport} />
           <ListsHandle />
         </CloudSyncProvider>
       </UserStateProvider>
@@ -69,7 +75,7 @@ const signIn = () => (mock.session = { user: { id: 'user-1', email: 'ash@example
 
 beforeEach(() => {
   window.localStorage.clear()
-  Object.assign(mock, { configured: true, session: null, rows: {}, legacy: [], pushes: [], pullError: null })
+  Object.assign(mock, { configured: true, session: null, rows: {}, legacy: [], pushes: [], pullError: null, deleteError: null })
   vi.clearAllMocks()
 })
 afterEach(() => {
@@ -161,4 +167,53 @@ test('signed out: no header indicator', async () => {
   renderSection()
   await screen.findByRole('button', { name: 'Send magic link' })
   expect(screen.queryByRole('status', { name: /Cloud sync/ })).not.toBeInTheDocument()
+})
+
+// ---- 3.44 account data ----
+test('a privacy note is there signed in and signed out', async () => {
+  renderSection()
+  await screen.findByRole('button', { name: 'Send magic link' })
+  fireEvent.click(screen.getByText('Privacy'))
+  expect(screen.getByText(/No ads, no tracking/)).toBeVisible()
+})
+
+async function openDelete() {
+  seedState([testList('a', 'Mine', { ownedIds: ['x'] })])
+  signIn()
+  renderSection()
+  await waitFor(() => expect(status()).toHaveTextContent('Last synced'))
+  fireEvent.click(screen.getByRole('button', { name: 'Delete account…' }))
+  return screen.getByRole('dialog', { name: 'Delete your account?' })
+}
+
+test('deleting the account needs the word DELETE, keeps this device\'s lists and forgets the sync copy', async () => {
+  const dialog = await openDelete()
+  const confirm = within(dialog).getByRole('button', { name: 'Delete account' })
+  expect(confirm).toBeDisabled()
+  fireEvent.change(within(dialog).getByLabelText('Type DELETE to confirm'), { target: { value: 'delete' } })
+  expect(confirm).toBeDisabled()
+  fireEvent.change(within(dialog).getByLabelText('Type DELETE to confirm'), { target: { value: 'DELETE' } })
+  fireEvent.click(confirm)
+  await waitFor(() => expect(cloud.deleteAccount).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(window.localStorage.getItem('living-dex:sync-base')).toBeNull()
+  expect(stored().a.ownedIds).toEqual(['x'])
+})
+
+test('the delete dialog offers an export first; Cancel deletes nothing', async () => {
+  const dialog = await openDelete()
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Export a backup first' }))
+  expect(onExport).toHaveBeenCalled()
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(cloud.deleteAccount).not.toHaveBeenCalled()
+})
+
+test('a failed delete says so and keeps the dialog open', async () => {
+  mock.deleteError = new Error('permission denied')
+  const dialog = await openDelete()
+  fireEvent.change(within(dialog).getByLabelText('Type DELETE to confirm'), { target: { value: 'DELETE' } })
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete account' }))
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent('Could not delete the account: permission denied')
+  expect(window.localStorage.getItem('living-dex:sync-base')).not.toBeNull()
 })

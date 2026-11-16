@@ -100,3 +100,11 @@ export async function pushListRows(userId: string, rows: RemoteLists): Promise<v
   const { error } = await client.schema(SCHEMA).from(LISTS).upsert(payload, { onConflict: 'user_id,list_id' })
   if (error) throw error
 }
+
+/** 3.44: deletes the signed-in account and all its cloud data (RPC `living_dex.delete_me`), then signs out here. */
+export async function deleteAccount(): Promise<void> {
+  const client = await getClient()
+  const { error } = await client.schema(SCHEMA).rpc('delete_me')
+  if (error) throw error
+  await client.auth.signOut({ scope: 'local' })
+}

@@ -52,3 +52,16 @@ test('a danger dialog focuses Cancel first and uses the danger button; a normal 
   expect(screen.getByRole('button', { name: 'Go' })).toHaveFocus()
   expect(screen.getByRole('button', { name: 'Go' })).toHaveClass('btn-primary')
 })
+
+test('confirmDisabled keeps the confirm button off (3.44)', () => {
+  const onConfirm = vi.fn()
+  render(
+    <ConfirmDialog title="C" confirmLabel="Go" onConfirm={onConfirm} onCancel={() => {}} confirmDisabled>
+      x
+    </ConfirmDialog>,
+  )
+  const go = screen.getByRole('button', { name: 'Go' })
+  expect(go).toBeDisabled()
+  fireEvent.click(go)
+  expect(onConfirm).not.toHaveBeenCalled()
+})

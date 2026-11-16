@@ -25,6 +25,11 @@ async function device(context: BrowserContext, rows: Map<string, Row>): Promise<
       for (const row of req.postDataJSON() as Row[]) rows.set(row.list_id, row)
       return route.fulfill({ status: 201, json: [] })
     }
+    if (url.pathname.endsWith('/rest/v1/rpc/delete_me')) {
+      rows.clear() // the cascade drops the account's rows
+      return route.fulfill({ status: 204, body: '' })
+    }
+    if (url.pathname.endsWith('/auth/v1/logout')) return route.fulfill({ status: 204, body: '' })
     if (url.pathname.endsWith('/auth/v1/user')) return route.fulfill({ json: USER })
     return route.fulfill({ status: 404, json: {} })
   })
@@ -53,4 +58,26 @@ test('a list, a mark and an un-mark travel between two signed-in devices', async
   await laptop.evaluate(() => window.dispatchEvent(new Event('focus')))
   await expect(owned(laptop)).not.toBeChecked()
   await laptop.screenshot({ path: 'e2e/results/sync-indicator.png' })
+})
+
+test('deleting the account (3.44) empties the cloud, signs out and keeps the list on this device', async ({ browser }) => {
+  const rows = new Map<string, Row>()
+  const page = await device(await browser.newContext(), rows)
+  await startList(page)
+  await owned(page).check()
+  await expect.poll(() => [...rows.values()].some((r) => JSON.stringify(r.data).includes('mon-1'))).toBe(true)
+  await expect(owned(page)).toBeChecked()
+  await page.getByRole('link', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: 'Delete account…' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Delete your account?' })
+  await expect(dialog.getByRole('button', { name: 'Delete account' })).toBeDisabled()
+  await dialog.getByLabel('Type DELETE to confirm').fill('DELETE')
+  await page.waitForTimeout(300) // let the dialog's enter animation finish for the screenshot
+  await page.screenshot({ path: 'e2e/results/delete-account.png' })
+  await dialog.getByRole('button', { name: 'Delete account' }).click()
+  await expect(page.getByRole('button', { name: 'Send magic link' })).toBeVisible()
+  expect(rows.size).toBe(0)
+  await expect(page.getByRole('status', { name: /Cloud sync/ })).toHaveCount(0)
+  await page.getByRole('link', { name: 'Home' }).click()
+  await expect(owned(page)).toBeChecked()
 })

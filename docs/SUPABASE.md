@@ -13,7 +13,9 @@ community (local-only) build.
 2. SQL editor → run the migrations in order:
    [`20261113000000_living_dex_init.sql`](../supabase/migrations/20261113000000_living_dex_init.sql) (v1 table),
    [`20261116000000_living_dex_lists.sql`](../supabase/migrations/20261116000000_living_dex_lists.sql) (per-list rows for
-   automatic sync, 3.42).
+   automatic sync, 3.42),
+   [`20261116000100_living_dex_delete_me.sql`](../supabase/migrations/20261116000100_living_dex_delete_me.sql) (account
+   deletion, 3.44).
 3. Project Settings → **Data API** → **Exposed schemas**: add `living_dex` (keep `public`).
 
 ## 2. Sign-in
@@ -53,4 +55,5 @@ sync of an account imports what v1 "Sync now" stored in `user_state`.
 
 ## Later
 - Free projects pause after a week without activity; a small scheduled keepalive can be added if needed.
-- Account deletion and a privacy note: TODO 3.44.
+- Account deletion (3.44): Settings → Cloud sync → Delete account calls `living_dex.delete_me()`, which deletes the caller
+  from `auth.users`; the foreign keys cascade to their rows. What is stored and why: [PRIVACY.md](PRIVACY.md).

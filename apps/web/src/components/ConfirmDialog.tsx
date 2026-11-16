@@ -10,6 +10,7 @@ function ConfirmDialog({
   onCancel,
   danger = false,
   icon,
+  confirmDisabled = false,
 }: {
   title: string
   children: ReactNode
@@ -18,6 +19,8 @@ function ConfirmDialog({
   onCancel: () => void
   danger?: boolean
   icon?: string
+  /** Keeps the confirm button disabled (e.g. until a confirmation word is typed). */
+  confirmDisabled?: boolean
 }) {
   const cancelRef = useRef<HTMLButtonElement>(null)
   return (
@@ -41,7 +44,7 @@ function ConfirmDialog({
           <button ref={cancelRef} type="button" autoFocus={danger} onClick={onCancel} className="btn btn-ghost">
             Cancel
           </button>
-          <button type="button" autoFocus={!danger} onClick={onConfirm} className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}>
+          <button type="button" autoFocus={!danger} disabled={confirmDisabled} onClick={onConfirm} className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}>
             {confirmLabel}
           </button>
         </div>

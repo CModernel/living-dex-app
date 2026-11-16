@@ -14,7 +14,8 @@ about Supabase; the merge (`sync.ts`) and the export envelope are plain TypeScri
 | Row level security | each user reads/writes only their row | Same policies in the migration (SQL, portable) |
 | Auth (magic link, Google) | sign-in | Self-hosted Supabase (GoTrue) or another OIDC/email provider; users are NOT portable by a plain dump (confirm the supported method, test it) |
 | Data API (PostgREST) schema exposure | `client.schema('living_dex')` | Same setting in the self-hosted stack |
-| Storage, Edge Functions, Realtime, RPC | **not used** (Realtime would come with 3.43) | n/a; document before adding |
+| RPC (`living_dex.delete_me()`, security definer) | account deletion (3.44): deletes the caller from `auth.users`, cascading to their rows | Plain PL/pgSQL; runs as is on self-hosted Supabase. On another auth provider, replace it with that provider's delete-user call |
+| Storage, Edge Functions, Realtime | **not used** (Realtime would come with 3.43) | n/a; document before adding |
 
 Before adding a Supabase-specific feature, add a row here with its self-hosted equivalent.
 

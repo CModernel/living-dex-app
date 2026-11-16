@@ -10,14 +10,17 @@ const calls: Record<string, unknown[]> = {}
 let row: unknown = null
 let rowError: unknown = null
 let listRows: unknown[] = []
+let rpcError: unknown = null
 const fakeClient = {
   auth: {
     signInWithOtp: vi.fn(async (args: unknown) => ((calls.otp = [args]), { error: null })),
     signInWithOAuth: vi.fn(async (args: unknown) => ((calls.oauth = [args]), { error: null })),
+    signOut: vi.fn(async (args: unknown) => ((calls.signOut = [args]), { error: null })),
   },
   schema: vi.fn((schema: string) => {
     calls.schema = [schema]
     return {
+      rpc: async (fn: string) => ((calls.rpc = [fn]), { error: rpcError }),
       from: (table: string) => {
         calls.table = [table]
         return {
@@ -50,6 +53,7 @@ beforeEach(() => {
   row = null
   rowError = null
   listRows = []
+  rpcError = null
   for (const k of Object.keys(calls)) delete calls[k]
 })
 afterEach(() => vi.unstubAllEnvs())
@@ -119,4 +123,16 @@ test('3.42 list rows: push upserts one row per list, null as a tombstone, and sk
   expect(value[0].data.app).toBe('living-dex')
   expect(value[0].data.state?.lists.a.ownedIds).toEqual(['x'])
   expect(value[1].data).toEqual({})
+})
+
+test('3.44 deleteAccount calls living_dex.delete_me and then signs out on this device only', async () => {
+  const cloud = await load()
+  await cloud.deleteAccount()
+  expect(calls.schema).toEqual(['living_dex'])
+  expect(calls.rpc).toEqual(['delete_me'])
+  expect(calls.signOut).toEqual([{ scope: 'local' }])
+  delete calls.signOut
+  rpcError = new Error('not signed in')
+  await expect(cloud.deleteAccount()).rejects.toThrow('not signed in')
+  expect(calls.signOut).toBeUndefined()
 })

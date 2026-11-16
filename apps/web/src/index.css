@@ -34,6 +34,7 @@ body {
     @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground shadow-sm transition duration-150 select-none;
     @apply hover:border-foreground/25 hover:bg-border/30 active:translate-y-px active:shadow-none;
     @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand;
+    @apply disabled:cursor-not-allowed disabled:opacity-50 disabled:active:translate-y-0;
   }
   .btn-primary {
     @apply border-transparent bg-brand text-white shadow-md hover:border-transparent hover:bg-brand hover:brightness-110;

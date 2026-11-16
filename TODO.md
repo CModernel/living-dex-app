@@ -833,8 +833,12 @@ even if the `3.X` task order below does.
       Tests: business-logic matrix (12), cloud rows (2), CloudSection auto-sync (7), e2e two devices (project `sync`).
 - [ ] **3.43 Realtime / op-based sync (future)** (2026-11-12). Owned as add/remove ops + Realtime, only if
       conflicts or latency hurt.
-- [ ] **3.44 Account data: privacy, delete, export** (2026-11-12). Delete account + cloud data, privacy note,
-      export link; required once real accounts exist. Tests: component, e2e. Sonnet medium.
+- [x] **3.44 Account data: privacy, delete, export** ✅ **Done 2026-11-16.** Migration `20261116000100_living_dex_delete_me.sql`
+      (`living_dex.delete_me()`, security definer, deletes only `auth.uid()`; cascade removes the rows; documented in
+      PORTABILITY). Settings → Cloud sync: "Export a backup", "Delete account…" (`ConfirmDialog` danger, confirm enabled only
+      after typing DELETE, offers an export first; local collections stay, sync copy forgotten), "Privacy" note signed in
+      and out; `docs/PRIVACY.md`. Needs the migration applied (3.83). Tests: CloudSection (privacy, delete, cancel, error),
+      ConfirmDialog `confirmDisabled`, cloud `deleteAccount`, e2e delete flow (project `sync`).
 - [x] **3.45 Dataset packaging and offline versioning** ✅ **Done 2026-11-13.** Finding: the dataset is NOT bundled; it is
       fetched at runtime from jsDelivr (`DATASET_URL`, `…/data/v1/…json`, main branch). Decision: keep it external (keeps
       the app small and data updates need no redeploy) and make it offline-safe: the service worker caches

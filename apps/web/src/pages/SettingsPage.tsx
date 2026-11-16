@@ -79,7 +79,7 @@ function SettingsPage() {
         )}
       </section>
 
-      <CloudSection />
+      <CloudSection onExport={handleExport} />
 
       <section aria-label="Install" className="mt-4 rounded-lg border border-border bg-surface p-4">
         <h2 className="mb-1 text-sm font-semibold">Install and offline</h2>

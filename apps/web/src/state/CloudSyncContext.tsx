@@ -63,6 +63,8 @@ export type CloudSync = {
   signInWithEmail: (email: string) => Promise<void>
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
+  /** 3.44: deletes the account and its cloud data; this device keeps its collections. */
+  deleteAccount: () => Promise<void>
 }
 
 const NOT_CONFIGURED: CloudSync = {
@@ -75,6 +77,7 @@ const NOT_CONFIGURED: CloudSync = {
   signInWithEmail: async () => {},
   signInWithGoogle: async () => {},
   signOut: async () => {},
+  deleteAccount: async () => {},
 }
 
 const CloudSyncContext = createContext<CloudSync>(NOT_CONFIGURED)
@@ -226,6 +229,12 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
       signInWithEmail: cloud.signInWithEmail,
       signInWithGoogle: cloud.signInWithGoogle,
       signOut: cloud.signOut,
+      deleteAccount: async () => {
+        await cloud.deleteAccount()
+        clearSyncBase()
+        setLastSync(null)
+        setStatus({ kind: 'idle' })
+      },
     }),
     [ready, session, status, lastSync, syncNow],
   )
