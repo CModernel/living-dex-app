@@ -9,6 +9,7 @@ const list = (id: string, ownedIds: string[] = []): PokemonList => ({
 const calls: Record<string, unknown[]> = {}
 let row: unknown = null
 let rowError: unknown = null
+let listRows: unknown[] = []
 const fakeClient = {
   auth: {
     signInWithOtp: vi.fn(async (args: unknown) => ((calls.otp = [args]), { error: null })),
@@ -20,7 +21,14 @@ const fakeClient = {
       from: (table: string) => {
         calls.table = [table]
         return {
-          select: () => ({ eq: (_c: string, id: string) => ((calls.eq = [id]), { maybeSingle: async () => ({ data: row, error: rowError }) }) }),
+          select: () => ({
+            eq: (_c: string, id: string) => {
+              calls.eq = [id]
+              const result = { data: listRows, error: rowError }
+              // `.maybeSingle()` for the v1 row; awaited directly for the 3.42 per-list rows.
+              return { maybeSingle: async () => ({ data: row, error: rowError }), then: (ok: (r: typeof result) => unknown) => ok(result) }
+            },
+          }),
           upsert: async (value: unknown, opts: unknown) => ((calls.upsert = [value, opts]), { error: null }),
         }
       },
@@ -41,6 +49,7 @@ async function load(configured = true) {
 beforeEach(() => {
   row = null
   rowError = null
+  listRows = []
   for (const k of Object.keys(calls)) delete calls[k]
 })
 afterEach(() => vi.unstubAllEnvs())
@@ -77,13 +86,37 @@ test('pull reads the user\'s own row in the living_dex schema and validates it l
   await expect(cloud.pullLists('user-1')).rejects.toThrow('permission denied')
 })
 
-test('push upserts the envelope for the user\'s own row', async () => {
+test('3.42 list rows: pull validates each list and reads tombstones as null', async () => {
   const cloud = await load()
-  await cloud.pushLists('user-1', { a: list('a', ['x']) })
-  const [value, opts] = calls.upsert as [{ user_id: string; data: { app: string; state: { lists: Record<string, PokemonList> } }; version: number }, unknown]
-  expect(value.user_id).toBe('user-1')
-  expect(value.data.app).toBe('living-dex')
-  expect(value.data.state.lists.a.ownedIds).toEqual(['x'])
-  expect(value.version).toBe(1)
-  expect(opts).toEqual({ onConflict: 'user_id' })
+  expect(await cloud.pullListRows('user-1')).toEqual({})
+  listRows = [
+    { list_id: 'a', deleted: false, data: JSON.parse(serializeExport({ ...DEFAULT_USER_STATE, lists: { a: list('a', ['x']) } })) },
+    { list_id: 'b', deleted: true, data: {} },
+  ]
+  const rows = await cloud.pullListRows('user-1')
+  expect(calls.table).toEqual(['lists'])
+  expect(calls.eq).toEqual(['user-1'])
+  expect(rows.a?.ownedIds).toEqual(['x'])
+  expect(rows.b).toBeNull()
+  listRows = [{ list_id: 'c', deleted: false, data: { app: 'something-else' } }]
+  await expect(cloud.pullListRows('user-1')).rejects.toThrow('could not be read')
+})
+
+test('3.42 list rows: push upserts one row per list, null as a tombstone, and skips an empty batch', async () => {
+  const cloud = await load()
+  await cloud.pushListRows('user-1', {})
+  expect(calls.upsert).toBeUndefined()
+  await cloud.pushListRows('user-1', { a: list('a', ['x']), gone: null })
+  const [value, opts] = calls.upsert as [
+    { user_id: string; list_id: string; deleted: boolean; data: { app?: string; state?: { lists: Record<string, PokemonList> } } }[],
+    unknown,
+  ]
+  expect(opts).toEqual({ onConflict: 'user_id,list_id' })
+  expect(value.map((r) => [r.user_id, r.list_id, r.deleted])).toEqual([
+    ['user-1', 'a', false],
+    ['user-1', 'gone', true],
+  ])
+  expect(value[0].data.app).toBe('living-dex')
+  expect(value[0].data.state?.lists.a.ownedIds).toEqual(['x'])
+  expect(value[1].data).toEqual({})
 })

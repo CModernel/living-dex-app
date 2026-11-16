@@ -10,7 +10,10 @@ community (local-only) build.
 
 ## 1. Project and database
 1. Create a new Supabase project just for Living Dex (do not reuse another app's project).
-2. SQL editor → run [`supabase/migrations/20261113000000_living_dex_init.sql`](../supabase/migrations/20261113000000_living_dex_init.sql).
+2. SQL editor → run the migrations in order:
+   [`20261113000000_living_dex_init.sql`](../supabase/migrations/20261113000000_living_dex_init.sql) (v1 table),
+   [`20261116000000_living_dex_lists.sql`](../supabase/migrations/20261116000000_living_dex_lists.sql) (per-list rows for
+   automatic sync, 3.42).
 3. Project Settings → **Data API** → **Exposed schemas**: add `living_dex` (keep `public`).
 
 ## 2. Sign-in
@@ -42,9 +45,11 @@ Both values are public (the anon key only allows what the row level security pol
 
 ## What syncs
 Only collections (owned Pokémon, games, tiers, filters and per-list view settings). Columns, theme and the open list stay
-per device. "Sync now" merges: owned Pokémon are combined, lists missing on either side are added, nothing owned is ever
-removed. Until automatic sync (TODO 3.42), un-marking a Pokémon or deleting a list on one device comes back after syncing
-with a device that still has it.
+per device. Since 3.42 sync is automatic while signed in: pull on start, on focus and when the network returns; push 2 s
+after a change. One row per list (`living_dex.lists`); a deleted list leaves a tombstone (`deleted = true`). Each device
+keeps its last synced copy and merges three ways against it, so un-marking and deleting propagate, while additions on two
+devices at once are both kept; a list deleted on one device but edited on another since the last sync is kept. The first
+sync of an account imports what v1 "Sync now" stored in `user_state`.
 
 ## Later
 - Free projects pause after a week without activity; a small scheduled keepalive can be added if needed.

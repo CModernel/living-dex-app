@@ -1,4 +1,4 @@
-import { parseImport, serializeExport, DEFAULT_USER_STATE, type PokemonList } from '@living-dex/business-logic'
+import { parseImport, serializeExport, DEFAULT_USER_STATE, type PokemonList, type RemoteLists } from '@living-dex/business-logic'
 import type { Session, SupabaseClient } from '@supabase/supabase-js'
 import { capabilities } from './edition'
 
@@ -13,7 +13,8 @@ const KEY = !COMMUNITY ? (import.meta.env.VITE_SUPABASE_ANON_KEY as string | und
 export const cloudConfigured = capabilities.cloudSync && !!URL_ && !!KEY
 
 const SCHEMA = 'living_dex'
-const TABLE = 'user_state'
+const TABLE = 'user_state' // 3.40/3.41 v1: one row per user; only read now, to import data synced before 3.42
+const LISTS = 'lists' // 3.42: one row per list, `deleted` marks a tombstone
 
 let clientPromise: Promise<SupabaseClient> | null = null
 
@@ -53,7 +54,8 @@ export async function watchSession(cb: (session: Session | null) => void): Promi
   return () => sub.subscription.unsubscribe()
 }
 
-/** The signed-in user's lists from the cloud ([] when there is no row yet), validated like an import file. */
+/** v1 (3.41) cloud row: the user's lists ([] when there is no row), validated like an import file. Read once by 3.42 to
+ * bring collections synced before per-list rows into the new table. */
 export async function pullLists(userId: string): Promise<PokemonList[]> {
   const client = await getClient()
   const { data, error } = await client.schema(SCHEMA).from(TABLE).select('data').eq('user_id', userId).maybeSingle()
@@ -64,13 +66,37 @@ export async function pullLists(userId: string): Promise<PokemonList[]> {
   return parsed.lists
 }
 
-/** Replaces the user's cloud row with these lists (in the export envelope). */
-export async function pushLists(userId: string, lists: Record<string, PokemonList>): Promise<void> {
+const envelopeOf = (list: PokemonList) => JSON.parse(serializeExport({ ...DEFAULT_USER_STATE, lists: { [list.id]: list } }))
+
+/** 3.42: every list row of the user: the list, or `null` for a list deleted on some device. Invalid rows throw. */
+export async function pullListRows(userId: string): Promise<RemoteLists> {
   const client = await getClient()
-  const envelope = JSON.parse(serializeExport({ ...DEFAULT_USER_STATE, lists }))
-  const { error } = await client
-    .schema(SCHEMA)
-    .from(TABLE)
-    .upsert({ user_id: userId, data: envelope, version: envelope.version }, { onConflict: 'user_id' })
+  const { data, error } = await client.schema(SCHEMA).from(LISTS).select('list_id, data, deleted').eq('user_id', userId)
+  if (error) throw error
+  const rows: RemoteLists = {}
+  for (const row of (data ?? []) as { list_id: string; data: unknown; deleted: boolean }[]) {
+    if (row.deleted) {
+      rows[row.list_id] = null
+      continue
+    }
+    const parsed = parseImport(JSON.stringify(row.data))
+    const list = parsed.ok ? parsed.lists.find((l) => l.id === row.list_id) : undefined
+    if (!list) throw new Error(`Cloud list ${row.list_id} could not be read${parsed.ok ? '' : `: ${parsed.error}`}`)
+    rows[row.list_id] = list
+  }
+  return rows
+}
+
+/** 3.42: writes these lists (upsert by list id); `null` marks a list deleted (tombstone kept so it does not come back). */
+export async function pushListRows(userId: string, rows: RemoteLists): Promise<void> {
+  const payload = Object.entries(rows).map(([listId, list]) => ({
+    user_id: userId,
+    list_id: listId,
+    data: list ? envelopeOf(list) : {},
+    deleted: !list,
+  }))
+  if (!payload.length) return
+  const client = await getClient()
+  const { error } = await client.schema(SCHEMA).from(LISTS).upsert(payload, { onConflict: 'user_id,list_id' })
   if (error) throw error
 }

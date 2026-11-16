@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
-import { useCloudSync } from '../hooks/useCloudSync'
+import { useCloudSync } from '../state/CloudSyncContext'
 
-// 3.40/3.41: optional sign-in and manual "Sync now" in Settings. Not rendered at all when this build has no cloud config.
+// 3.40/3.41/3.42: optional sign-in, automatic sync status and a manual "Sync now" in Settings. Not rendered at all when this build has no cloud config.
 function CloudSection() {
   const { configured, ready, session, status, lastSync, syncNow, signInWithEmail, signInWithGoogle, signOut } = useCloudSync()
   const [email, setEmail] = useState('')
@@ -49,14 +49,16 @@ function CloudSection() {
           </div>
           <p role="status" className="text-xs text-muted">
             {status.kind === 'error'
-              ? `Sync failed: ${status.message}`
-              : lastSync
+              ? `Sync failed: ${status.message}. Retrying automatically.`
+              : status.kind === 'offline'
+                ? 'Offline: changes will sync when you are back online.'
+                : lastSync
                 ? `Last synced ${new Date(lastSync).toLocaleString()}`
                 : 'Not synced yet on this device.'}
           </p>
           <p className="text-xs text-muted">
-            Sync combines this device with the cloud: owned Pokémon are never removed. For now, un-marking a Pokémon or
-            deleting a list comes back if another device still has it.
+            Your collections sync automatically while you are signed in: changes go up a couple of seconds after you
+            make them and come down when you open the app. Changes made offline are sent when you are back online.
           </p>
         </div>
       ) : (

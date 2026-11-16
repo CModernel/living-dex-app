@@ -5,12 +5,12 @@ follow from it: standard PostgreSQL, versioned migrations, one independent backe
 keys; nothing shared with other apps), no secrets in the client, provider specifics in one place.
 
 ## Where Supabase touches the code
-Only `apps/web/src/lib/cloud.ts` (plus `useCloudSync` and `CloudSection`, which call it). Nothing in `business-logic` knows
+Only `apps/web/src/lib/cloud.ts` (plus `state/CloudSyncContext.tsx` and `CloudSection`, which call it). Nothing in `business-logic` knows
 about Supabase; the merge (`sync.ts`) and the export envelope are plain TypeScript.
 
 | Supabase feature | Used for | Self-hosted equivalent |
 | --- | --- | --- |
-| Postgres + `living_dex` schema | `user_state` table, `touch_updated_at` trigger | Any PostgreSQL; migration `supabase/migrations/*.sql` |
+| Postgres + `living_dex` schema | `lists` (per-list rows + tombstones, 3.42) and v1 `user_state` tables, `touch_updated_at` trigger | Any PostgreSQL; migration `supabase/migrations/*.sql` |
 | Row level security | each user reads/writes only their row | Same policies in the migration (SQL, portable) |
 | Auth (magic link, Google) | sign-in | Self-hosted Supabase (GoTrue) or another OIDC/email provider; users are NOT portable by a plain dump (confirm the supported method, test it) |
 | Data API (PostgREST) schema exposure | `client.schema('living_dex')` | Same setting in the self-hosted stack |

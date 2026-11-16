@@ -3,6 +3,7 @@ import { useDarkMode } from '../hooks/useDarkMode'
 import { DISCLAIMER } from '../lib/disclaimer'
 import Logo from './Logo'
 import SupportNote from './SupportNote'
+import SyncIndicator from './SyncIndicator'
 
 function navLinkClassName({ isActive }: { isActive: boolean }) {
   return isActive ? 'font-semibold text-foreground' : 'text-muted hover:text-foreground'
@@ -29,6 +30,7 @@ function Layout() {
             <NavLink to="/settings" className={navLinkClassName}>
               Settings
             </NavLink>
+            <SyncIndicator />
             <button
               type="button"
               onClick={toggle}

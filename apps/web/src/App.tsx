@@ -4,6 +4,7 @@ import AppRoutes from './AppRoutes'
 import UpdateToast from './components/UpdateToast'
 import { useDebugEnabled } from './hooks/useDebugEnabled'
 import { useServiceWorkerUpdate } from './hooks/usePwa'
+import { CloudSyncProvider } from './state/CloudSyncContext'
 import { UserStateProvider } from './state/UserStateContext'
 
 // Dev-only debug panel (TODO 3.20): the dynamic import sits behind `import.meta.env.DEV`, which Vite
@@ -15,15 +16,17 @@ function App() {
   const { updateReady, applyUpdate } = useServiceWorkerUpdate()
   return (
     <UserStateProvider>
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <AppRoutes />
-        {updateReady && <UpdateToast onReload={applyUpdate} />}
-        {DebugPanel && debug && (
-          <Suspense fallback={null}>
-            <DebugPanel />
-          </Suspense>
-        )}
-      </BrowserRouter>
+      <CloudSyncProvider>
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
+          <AppRoutes />
+          {updateReady && <UpdateToast onReload={applyUpdate} />}
+          {DebugPanel && debug && (
+            <Suspense fallback={null}>
+              <DebugPanel />
+            </Suspense>
+          )}
+        </BrowserRouter>
+      </CloudSyncProvider>
     </UserStateProvider>
   )
 }

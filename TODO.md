@@ -823,9 +823,14 @@ even if the `3.X` task order below does.
       locally → push. Only lists sync (preferences and active list stay per device). Known v1 limitation until 3.42:
       un-marking or deleting a list comes back from a device that still has it. Tests: sync (5), CloudSection (merge +
       push, failure changes nothing). Web 214, business-logic 102, e2e 34.
-- [ ] **3.42 Automatic sync** (2026-11-12, needs 3.36). Per-list rows, debounced upload, pull on open/focus,
-      offline queue, owned = union merge (nothing ever lost), last-writer-wins for names/settings, status
-      indicator. Tests: conflict matrix unit, two-tab e2e. Opus high, plan mode.
+- [x] **3.42 Automatic sync** ✅ **Done 2026-11-16.** Migration `20261116000000_living_dex_lists.sql` (one row per list,
+      `deleted` tombstone, RLS own rows; `user_state` kept and read once to import v1 data). business-logic `sync.ts`:
+      `mergeList3`/`syncLists` three-way merge against the last synced copy (decision with the user: un-marking and
+      deleting propagate; adds on two devices are both kept; deleted-but-edited-elsewhere is kept; for names/settings the
+      side that changed wins, this device if both). `state/CloudSyncContext.tsx`: pull on start/focus/visible/online,
+      push 2 s after a change, retry with backoff; the base copy (`living-dex:sync-base`) is the offline queue. Header
+      indicator (Synced / Syncing… / Offline / Sync error) and Settings status. Needs the migration applied (3.83).
+      Tests: business-logic matrix (12), cloud rows (2), CloudSection auto-sync (7), e2e two devices (project `sync`).
 - [ ] **3.43 Realtime / op-based sync (future)** (2026-11-12). Owned as add/remove ops + Realtime, only if
       conflicts or latency hurt.
 - [ ] **3.44 Account data: privacy, delete, export** (2026-11-12). Delete account + cloud data, privacy note,
