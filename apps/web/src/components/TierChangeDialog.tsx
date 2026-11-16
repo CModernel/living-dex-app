@@ -27,16 +27,15 @@ function TierChangeDialog({
       <div className="flex flex-col gap-3">
         <h3 className="text-base font-semibold">Switch to {TIER_LABELS[to]}?</h3>
         <p className="text-sm">
-          This list's boxes are planned for <strong>{TIER_LABELS[layoutTier]}</strong>. {TIER_LABELS[to]} adds {extra}{' '}
-          Pokémon that don't fit that plan, so Box and Slot numbers would change.
+          Your boxes are planned for <strong>{TIER_LABELS[layoutTier]}</strong>. {TIER_LABELS[to]} adds {extra} Pokémon
+          outside that plan, so Box/Slot numbers would change.
         </p>
         <ul className="list-disc pl-5 text-sm text-muted">
           <li>
-            <strong>Copy to a new list</strong>: keeps this list as it is and creates a copy (with everything you own)
-            whose boxes are planned for {TIER_LABELS[to]}.
+            <strong>Copy to a new list</strong>: keeps this one and plans the copy for {TIER_LABELS[to]}.
           </li>
           <li>
-            <strong>Switch anyway</strong>: shows {TIER_LABELS[to]} here; Box/Slot follow it while you stay on it.
+            <strong>Switch anyway</strong>: shows {TIER_LABELS[to]} here.
           </li>
         </ul>
         <div className="dialog-actions flex-wrap">
