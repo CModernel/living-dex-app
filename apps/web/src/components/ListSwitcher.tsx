@@ -171,7 +171,7 @@ function ListSwitcher({ compact = false, showCreate = true }: { compact?: boolea
                 className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm"
               />
             </label>
-            <div className="flex justify-end gap-2">
+            <div className="dialog-actions">
               <button type="button" onClick={() => setCloning(null)} className="btn btn-ghost">
                 Cancel
               </button>
@@ -224,7 +224,7 @@ function ListSwitcher({ compact = false, showCreate = true }: { compact?: boolea
                 The plan reserves slots so Box/Slot stay put as you grow. Pick a bigger tier if you plan to grow into it.
               </span>
             </label>
-            <div className="flex justify-end gap-2">
+            <div className="dialog-actions">
               <button type="button" onClick={() => setEditingId(null)} className="btn btn-ghost">
                 Cancel
               </button>

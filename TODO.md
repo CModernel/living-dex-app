@@ -874,6 +874,7 @@ even if the `3.X` task order below does.
 - [x] **3.78 Styled delete confirmation** ✅ **Done 2026-11-16.** `ConfirmDialog` replaces `window.confirm`: red "Delete list" button, Cancel focused first, mentions exporting a backup. New `.btn-danger`.
 - [x] **3.79 Clone asks for a name** ✅ **Done 2026-11-16.** Clone opens a dialog with the name prefilled "<name> (copy)" (selected) and "Create copy"; Cancel creates nothing.
 - [x] **3.80 "Box layout" renamed "Plan" in Edit** ✅ **Done 2026-11-16.** The rest of the app already says Plan ("Plan your boxes", "Plan for bigger goal"); the Edit dialog now matches (internally still `layoutTier`).
+- [x] **3.81 Dialog buttons pinned to the bottom** ✅ **Done 2026-11-16.** `.dialog-actions` (sticky, `-bottom-5` to offset the card's padding) on the delete, clone, edit and tier-change dialogs: on short screens the content scrolls and the buttons stay visible. e2e at 330 px height checks Save is fully in view.
 - [ ] **3.77 Hosted deploy pipeline** (2026-11-15). Second workflow/host integration for the hosted edition (Cloudflare Pages or Netlify), `VITE_BASE` for the root path, SPA fallback, env + redirect URLs documented. Needs the user's host account; re-check the host's current terms. Sonnet high.
 - [x] **3.31 Collapsible sidebar** ✅ **Done 2026-11-13.** `ListsSidebar`: desktop « / » folds it to a rail (one button
       per list: icon or initial, plus "+"), saved as `preferences.sidebarCollapsed`; phone: accordion header

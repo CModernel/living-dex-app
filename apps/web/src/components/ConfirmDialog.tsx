@@ -37,7 +37,7 @@ function ConfirmDialog({
             <div className="mt-1 text-sm text-muted">{children}</div>
           </div>
         </div>
-        <div className="flex justify-end gap-2">
+        <div className="dialog-actions">
           <button ref={cancelRef} type="button" autoFocus={danger} onClick={onCancel} className="btn btn-ghost">
             Cancel
           </button>

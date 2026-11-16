@@ -39,7 +39,7 @@ function TierChangeDialog({
             <strong>Switch anyway</strong>: shows {TIER_LABELS[to]} here; Box/Slot follow it while you stay on it.
           </li>
         </ul>
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="dialog-actions flex-wrap">
           <button type="button" onClick={onCancel} className="btn btn-ghost">
             Cancel
           </button>

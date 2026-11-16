@@ -137,3 +137,16 @@ test('toggling the theme runs a view transition and ends dark', async ({ page })
   expect(await page.evaluate(() => (window as unknown as { transitions: number }).transitions)).toBe(1)
   expect(await page.evaluate(() => document.querySelectorAll('html.theme-fade').length)).toBe(0)
 })
+
+// 3.81: on a short screen the dialog content scrolls but its buttons stay pinned to the bottom edge.
+test('dialog buttons stay visible on a short screen while the content scrolls', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 330 })
+  await openSidebar(page)
+  await page.getByRole('button', { name: 'Actions for My Living Dex' }).click()
+  await page.getByRole('menuitem', { name: 'Edit My Living Dex' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Edit list' })
+  const overflows = await dialog.evaluate((el) => el.scrollHeight > el.clientHeight)
+  expect(overflows).toBe(true)
+  await expect(dialog.getByRole('button', { name: 'Save' })).toBeInViewport({ ratio: 1 })
+  await page.screenshot({ path: 'e2e/results/dialog-short-screen.png' })
+})
