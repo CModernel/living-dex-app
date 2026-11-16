@@ -739,9 +739,9 @@ even if the `3.X` task order below does.
       F 3.39+3.45 (Sonnet medium) · G 3.40+3.41 (Opus high, plan) · H 3.42+3.44 (Opus high, plan) ·
       I 3.21+3.25+Docker verify (Sonnet low) · J 3.47–3.55 UI feedback (Sonnet medium, light plan) · 3.46 GO
       (Opus medium, plan, research first). Order A→E, then F→H, I/J anytime. Details: `obsidian/Work-Groups.md`.
-- [ ] **3.21 Testing standard (rule recorded in `docs/RULES.md` §6, 2026-11-12).** Backfill: every
-      pending ticket (3.18, 3.19, 3.20, 3.22, Champions card, 3.10/3.11) lists its unit, component and
-      e2e tests in its acceptance criteria before it starts.
+- [x] **3.21 Testing standard** ✅ **Done 2026-11-16** (rule in `docs/RULES.md` §6). Backfilled: every open ticket
+      (3.43, 3.77, 3.82, 3.83, 3.10, 3.11) lists its tests; 3.18-3.20 and 3.22 are done with tests. Keep it: a new
+      ticket is written with its "Tests:" line.
 - [x] **3.22 Mobile check and design** ✅ **Done 2026-11-16 (web/PWA).** Checked every page at 375 px with screenshots.
       Fixed: column floors now hold at render time (`columnWidthsPercent`: Owned 84 px for checkbox + game button,
       Sprite 48 px; with too many columns the others share the rest and a "Too many columns for this screen" note
@@ -757,7 +757,8 @@ even if the `3.X` task order below does.
 - [ ] **3.25 IP audit run (skill `pokemon-ip-audit`, created 2026-11-12).** Run the audit skill against
       this repo (names/IDs, bundled art, runtime art, logo/favicon, game refs, ads, disclaimer, deploy URL) and
       file any new findings as tickets. Re-run before every public release and after changing names, logos,
-      images or monetization. Last run: 2026-11-12, no FAIL. Notes: mobile app icon/splash are still the default Expo template
+      images or monetization. Last run: 2026-11-16, no FAIL (GO name as text only; PvPoke and Bulbapedia now credited in
+      Settings → About and README; Bulbapedia data is CC BY-NC-SA, one more reason for no monetization). Earlier run: 2026-11-12. Notes: mobile app icon/splash are still the default Expo template
       (not an IP issue, but replace with the box mark before any store publish); mobile has no bundle ID yet,
       so set one without "pokemon"; sprites stay runtime-fetched from PokeJungle/PokeAPI (residual risk).
       Tests: none (read-only audit).
@@ -836,6 +837,8 @@ even if the `3.X` task order below does.
       Tests: business-logic matrix (12), cloud rows (2), CloudSection auto-sync (7), e2e two devices (project `sync`).
 - [ ] **3.43 Realtime / op-based sync (future)** (2026-11-12). Owned as add/remove ops + Realtime, only if
       conflicts or latency hurt.
+      Tests: business-logic op log merge (add/remove ops, replay order), cloud Realtime subscription (mocked channel),
+      e2e two devices seeing a mark without a focus/reload (project `sync`).
 - [x] **3.44 Account data: privacy, delete, export** ✅ **Done 2026-11-16.** Migration `20261116000100_living_dex_delete_me.sql`
       (`living_dex.delete_me()`, security definer, deletes only `auth.uid()`; cascade removes the rows; documented in
       PORTABILITY). Settings → Cloud sync: "Export a backup", "Delete account…" (`ConfirmDialog` danger, confirm enabled only
@@ -897,10 +900,15 @@ even if the `3.X` task order below does.
 - [ ] **3.82 CI test job** (2026-11-16, deploy-related, waits for the host decision). The app repo's only workflow
       deploys; nothing runs Vitest/Playwright on push or PR. Add `.github/workflows/test.yml` (business-logic + web
       Vitest, Playwright with the bundled Chromium). Sonnet low.
+      Tests: the workflow itself (a failing test fails the job; check once with a deliberate failure on a branch).
 - [ ] **3.83 Apply the Supabase migrations** (2026-11-16, user step). Run `supabase/migrations/*.sql` in order on the
       dedicated project and add the redirect URLs of whichever host is chosen (3.77). Needed before sync (3.42) and
       account deletion (3.44) work for real.
+      Tests: manual on the real project: sign in, sync two devices, un-mark on one, delete a list, delete the account
+      (the e2e `sync` project covers the app side with a fake backend).
 - [ ] **3.77 Hosted deploy pipeline** (2026-11-15). Second workflow/host integration for the hosted edition (Cloudflare Pages or Netlify), `VITE_BASE` for the root path, SPA fallback, env + redirect URLs documented. Needs the user's host account; re-check the host's current terms. Sonnet high.
+      Tests: `edition.test.ts` for `VITE_BASE`, bundle grep (community build has no Supabase URL / donate URL, hosted has
+      both), e2e smoke on the hosted preview build (served from `/`, deep link to /settings works).
 - [x] **3.31 Collapsible sidebar** ✅ **Done 2026-11-13.** `ListsSidebar`: desktop « / » folds it to a rail (one button
       per list: icon or initial, plus "+"), saved as `preferences.sidebarCollapsed`; phone: accordion header
       "Lists · <active list> ▾", closed by default (trophies live inside it). Tests: ListsSidebar, ListsPage menu,
@@ -1479,6 +1487,8 @@ even if the `3.X` task order below does.
       - Verify `crypto.randomUUID()` (used by `useActiveList`'s list-creation logic on web) is
       actually available in this project's Hermes/RN setup before assuming the hook ports as-is —
       flagged as an open question in an earlier conversation, never actually checked.
+      Tests (when resumed): component tests of the native screens, a Maestro/Detox smoke flow, and the shared
+      business-logic suite unchanged.
 - [ ] **3.11 #23 — Mobile portrait/landscape.**
 
 ### Tests
