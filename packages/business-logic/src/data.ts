@@ -33,7 +33,7 @@ export type PokemonEntry = {
   region: string | null
   hasStatOrTypeDifference: boolean
   sortIndex: number
-  // Sparse `{ [gameId]: rawBulbapediaCode }` (missing key = unobtainable), decoded with
+  // Sparse `{ [gameId]: rawCode }` (missing key = unobtainable), decoded with
   // availability.ts. Optional because older published datasets predate it.
   availability?: Record<string, string>
 }

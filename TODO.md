@@ -5,6 +5,9 @@ not feature-by-feature. Every phase must complete before the next starts.
 
 See `living-dex-organizer/TODO.md` for data pipeline and infrastructure items.
 
+Manual tests (real Supabase project, hosted previews, console steps) belong to the user and are marked
+**Pending: user runs it.** in the ticket's `Tests:` line; I do not run them unless asked.
+
 ## Testing Convention
 
 **Every TODO item must explicitly state what type(s) of tests it includes.** Pick from:
@@ -757,8 +760,8 @@ even if the `3.X` task order below does.
 - [ ] **3.25 IP audit run (skill `pokemon-ip-audit`, created 2026-11-12).** Run the audit skill against
       this repo (names/IDs, bundled art, runtime art, logo/favicon, game refs, ads, disclaimer, deploy URL) and
       file any new findings as tickets. Re-run before every public release and after changing names, logos,
-      images or monetization. Last run: 2026-11-16, no FAIL (GO name as text only; PvPoke and Bulbapedia now credited in
-      Settings → About and README; Bulbapedia data is CC BY-NC-SA, one more reason for no monetization). Earlier run: 2026-11-12. Notes: mobile app icon/splash are still the default Expo template
+      images or monetization. Last run: 2026-11-16, no FAIL (GO name as text only; PvPoke credited in
+      Settings → About and README; Earlier run: 2026-11-12. Notes: mobile app icon/splash are still the default Expo template
       (not an IP issue, but replace with the box mark before any store publish); mobile has no bundle ID yet,
       so set one without "pokemon"; sprites stay runtime-fetched from PokeJungle/PokeAPI (residual risk).
       Tests: none (read-only audit).
@@ -901,31 +904,30 @@ even if the `3.X` task order below does.
       deploys; nothing runs Vitest/Playwright on push or PR. Add `.github/workflows/test.yml` (business-logic + web
       Vitest, Playwright with the bundled Chromium). Sonnet low.
       Tests: the workflow itself (a failing test fails the job; check once with a deliberate failure on a branch).
+      **Pending: user runs it.**
 - [ ] **3.83 Apply the Supabase migrations** (2026-11-16, user step). Run `supabase/migrations/*.sql` in order on the
       dedicated project and add the redirect URLs of whichever host is chosen (3.77). Needed before sync (3.42) and
       account deletion (3.44) work for real.
       Tests: manual on the real project: sign in, sync two devices, un-mark on one, delete a list, delete the account
-      (the e2e `sync` project covers the app side with a fake backend).
+      (the e2e `sync` project covers the app side with a fake backend). **Pending: user runs it.** Verified on the real
+      project 2026-11-17: Google sign-in, sync (the collection came back after sign-out and sign-in). Not verified:
+      two-profile propagation of an un-mark and a list delete, and Delete account.
 - [ ] **3.84 Official sprites: reduce IP risk before public promotion** (2026-11-17). No sprite is bundled, but at run
       time the app loads official game sprites from PokeJungle/PokeAPI (`hooks/useSpriteSource.ts`); the 3.25 audit
       rates this REVIEW, not PASS. Options: sprites off by default (opt-in in Settings), silhouettes/own icons, or keep
       as is for the free web edition only. Decide before posting on Reddit; promo screenshots must not feature sprites.
+      Manual check: with the default setting the network tab shows no external image requests. **Pending: user runs it.**
       A store build (3.10/3.11) must not ship them. Opus medium, plan mode (it is a product decision first).
       Tests: component (sprite column/grid respects the setting), e2e (default state has no external image requests).
 - [ ] **3.85 Custom SMTP for sign-in emails** (2026-11-17, before the public deploy). Supabase's built-in sender allows
       2 emails per hour for the whole project (their docs); custom SMTP raises the default to 30/h and is configurable.
       Google sign-in is already enabled on the project and needs no email. Pick a provider (check its current free
       plan), set it in Supabase → Authentication → SMTP Settings, add the host URL to the Google client's origins.
-      Sonnet low, user does the console steps. Tests: manual (several magic links within an hour).
-- [ ] **3.86 Monetization readiness: IP and data licences** (2026-11-17, only if monetizing is ever considered; the app
-      stays free + external donation until then). Open points: (1) the per-game availability CSV in the organizer
-      (`sheets/availability/pokemon-availability.csv`) comes from Bulbapedia, CC BY-NC-SA (non-commercial), and how it was
-      compiled is undocumented; (2) official sprites loaded at run time (3.84); (3) the "Pokémon" name and branding;
-      (4) PokeAPI/PokeJungle asset terms. Run the full review in `Pokemon/Living Dex — Comprehensive Project Revie.md`
-      (Opus high, plan mode) and talk to an Australian IP lawyer before any ads or subscriptions.
+      Sonnet low, user does the console steps. Tests: manual (several magic links within an hour). **Pending: user runs it.**
 - [ ] **3.77 Hosted deploy pipeline** (2026-11-15). Second workflow/host integration for the hosted edition (Cloudflare Pages or Netlify), `VITE_BASE` for the root path, SPA fallback, env + redirect URLs documented. Needs the user's host account; re-check the host's current terms. Sonnet high.
       Tests: `edition.test.ts` for `VITE_BASE`, bundle grep (community build has no Supabase URL / donate URL, hosted has
-      both), e2e smoke on the hosted preview build (served from `/`, deep link to /settings works).
+      both), e2e smoke on the hosted preview build (served from `/`, deep link to /settings works). Manual: open the
+      hosted preview, sign in with Google, deep link. **Pending: user runs it.**
 - [x] **3.31 Collapsible sidebar** ✅ **Done 2026-11-13.** `ListsSidebar`: desktop « / » folds it to a rail (one button
       per list: icon or initial, plus "+"), saved as `preferences.sidebarCollapsed`; phone: accordion header
       "Lists · <active list> ▾", closed by default (trophies live inside it). Tests: ListsSidebar, ListsPage menu,
@@ -1544,9 +1546,9 @@ even if the `3.X` task order below does.
   gap is the majority of what makes this column interesting, and nothing found so far solves it —
   needs its own verification pass (same rigor as the PokeJungle sprite-id work) before this
   becomes a real ticket.
-  **Update (2026-09-16)**: `living-dex-organizer` TODO `#31` closes exactly that gap — Bulbapedia's
-  own "List of Pokémon by availability" has a row per regional form (`Rattata ( Alolan Form )`,
-  etc.), and `scripts/lib/availability.js` there parses its per-game codes into a tested
+  **Update (2026-09-16)**: `living-dex-organizer` TODO `#31` closes exactly that gap — the
+  availability table has a row per regional form (`Rattata ( Alolan Form )`, etc.), and
+  `scripts/lib/availability.js` there parses its per-game codes into a tested
   `obtainable`/`conditional`/`unobtainable` rules layer. Still not wired into the generated dataset,
   `PokemonEntry`, or this UI — that's the remaining step before this column can actually be built.
 

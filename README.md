@@ -11,7 +11,7 @@ mobile app.
 > Inc. or The Pokémon Company. All character names, trademarks, game data and related images are the property
 > of their respective owners. IP rules for this project: see the IP guide in the Obsidian vault.
 
-**Credits.** Pokémon data is compiled with the help of [PokeAPI](https://pokeapi.co), game availability from Bulbapedia and Pokémon GO availability from [PvPoke](https://github.com/pvpoke/pvpoke) (MIT). Sprites are loaded at run time from PokeAPI and PokeJungle (never bundled) and belong to their respective owners.
+**Credits.** Pokémon data uses [PokeAPI](https://pokeapi.co), and Pokémon GO availability comes from [PvPoke](https://github.com/pvpoke/pvpoke) (MIT). Sprites are loaded at run time from PokeAPI and PokeJungle (never bundled) and belong to their respective owners.
 
 This repo is only the app. The dataset and tier predicates (`@cmodernel/living-dex-tiers`) are
 built and versioned in the sibling

@@ -9,6 +9,6 @@ export const DISCLAIMER =
 // 3.74: where the data and images come from. Shown in Settings → About and the README. Sprites are loaded at run time from
 // these services, never bundled.
 export const CREDITS =
-  'Pokémon data is compiled with the help of PokeAPI (pokeapi.co), game availability from Bulbapedia and Pokémon GO ' +
-  'availability from PvPoke (pvpoke.com, MIT). Sprites are loaded at run time from PokeAPI and ' +
+  'Pokémon data uses PokeAPI (pokeapi.co); Pokémon GO availability comes from PvPoke (pvpoke.com, MIT). ' +
+  'Sprites are loaded at run time from PokeAPI and ' +
   'PokeJungle (pokejungle.net) and belong to their respective owners.'
