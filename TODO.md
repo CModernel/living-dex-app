@@ -912,6 +912,17 @@ even if the `3.X` task order below does.
       as is for the free web edition only. Decide before posting on Reddit; promo screenshots must not feature sprites.
       A store build (3.10/3.11) must not ship them. Opus medium, plan mode (it is a product decision first).
       Tests: component (sprite column/grid respects the setting), e2e (default state has no external image requests).
+- [ ] **3.85 Custom SMTP for sign-in emails** (2026-11-17, before the public deploy). Supabase's built-in sender allows
+      2 emails per hour for the whole project (their docs); custom SMTP raises the default to 30/h and is configurable.
+      Google sign-in is already enabled on the project and needs no email. Pick a provider (check its current free
+      plan), set it in Supabase → Authentication → SMTP Settings, add the host URL to the Google client's origins.
+      Sonnet low, user does the console steps. Tests: manual (several magic links within an hour).
+- [ ] **3.86 Monetization readiness: IP and data licences** (2026-11-17, only if monetizing is ever considered; the app
+      stays free + external donation until then). Open points: (1) the per-game availability CSV in the organizer
+      (`sheets/availability/pokemon-availability.csv`) comes from Bulbapedia, CC BY-NC-SA (non-commercial), and how it was
+      compiled is undocumented; (2) official sprites loaded at run time (3.84); (3) the "Pokémon" name and branding;
+      (4) PokeAPI/PokeJungle asset terms. Run the full review in `Pokemon/Living Dex — Comprehensive Project Revie.md`
+      (Opus high, plan mode) and talk to an Australian IP lawyer before any ads or subscriptions.
 - [ ] **3.77 Hosted deploy pipeline** (2026-11-15). Second workflow/host integration for the hosted edition (Cloudflare Pages or Netlify), `VITE_BASE` for the root path, SPA fallback, env + redirect URLs documented. Needs the user's host account; re-check the host's current terms. Sonnet high.
       Tests: `edition.test.ts` for `VITE_BASE`, bundle grep (community build has no Supabase URL / donate URL, hosted has
       both), e2e smoke on the hosted preview build (served from `/`, deep link to /settings works).
