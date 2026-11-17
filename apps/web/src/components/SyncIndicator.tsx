@@ -9,10 +9,21 @@ const LABEL: Record<SyncStatus['kind'], { text: string; dot: string }> = {
   error: { text: 'Sync error', dot: 'bg-red-500' },
 }
 
-// 3.42: small header status for automatic sync, only when signed in. Links to Settings → Cloud sync for details.
+// Debug aid: `localStorage.setItem('living-dex:debug-sync', '1')` shows the status in every state.
+function debugSync(): boolean {
+  try {
+    return localStorage.getItem('living-dex:debug-sync') === '1'
+  } catch {
+    return false
+  }
+}
+
+// 3.42: small header status for automatic sync, only when signed in. Normal operation is silent (the state and the
+// last sync time live in Settings → Cloud sync); the header only speaks up when something needs attention.
 function SyncIndicator() {
   const { configured, session, status } = useCloudSync()
   if (!configured || !session) return null
+  if (status.kind !== 'offline' && status.kind !== 'error' && !debugSync()) return null
   const { text, dot } = LABEL[status.kind]
   return (
     <Link

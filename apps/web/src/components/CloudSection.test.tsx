@@ -134,7 +134,15 @@ test('signed in, it syncs on start with no click: cloud lists arrive, merged and
   expect([...stored().a.ownedIds].sort()).toEqual(['x', 'y'])
   expect(stored().b.ownedIds).toEqual(['z'])
   expect(Object.keys(mock.pushes[0]).sort()).toEqual(['a', 'n']) // b is already in the cloud as is
-  expect(screen.getByRole('status', { name: 'Cloud sync: Synced' })).toBeInTheDocument()
+  // Normal operation is silent in the header; Settings shows the state.
+  expect(screen.queryByRole('status', { name: /Cloud sync:/ })).not.toBeInTheDocument()
+})
+
+test('the header indicator shows every state when the debug flag is set', async () => {
+  window.localStorage.setItem('living-dex:debug-sync', '1')
+  signIn()
+  renderSection()
+  expect(await screen.findByRole('status', { name: 'Cloud sync: Synced' })).toBeInTheDocument()
 })
 
 test('the first sync imports collections stored by the v1 "Sync now" row', async () => {

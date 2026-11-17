@@ -13,7 +13,10 @@ const accessToken = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: USER.id, 
 const session = { access_token: accessToken, refresh_token: 'r', token_type: 'bearer', expires_in: 86400, expires_at: exp, user: USER }
 
 async function device(context: BrowserContext, rows: Map<string, Row>): Promise<Page> {
-  await context.addInitScript((s) => localStorage.setItem('sb-example-auth-token', JSON.stringify(s)), session)
+  await context.addInitScript((s) => {
+    localStorage.setItem('sb-example-auth-token', JSON.stringify(s))
+    localStorage.setItem('living-dex:debug-sync', '1') // the header indicator is silent unless offline/error or debug
+  }, session)
   const page = await context.newPage()
   await mockNetwork(page)
   await page.route('https://example.supabase.co/**', async (route) => {
