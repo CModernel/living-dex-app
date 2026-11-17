@@ -906,6 +906,12 @@ even if the `3.X` task order below does.
       account deletion (3.44) work for real.
       Tests: manual on the real project: sign in, sync two devices, un-mark on one, delete a list, delete the account
       (the e2e `sync` project covers the app side with a fake backend).
+- [ ] **3.84 Official sprites: reduce IP risk before public promotion** (2026-11-17). No sprite is bundled, but at run
+      time the app loads official game sprites from PokeJungle/PokeAPI (`hooks/useSpriteSource.ts`); the 3.25 audit
+      rates this REVIEW, not PASS. Options: sprites off by default (opt-in in Settings), silhouettes/own icons, or keep
+      as is for the free web edition only. Decide before posting on Reddit; promo screenshots must not feature sprites.
+      A store build (3.10/3.11) must not ship them. Opus medium, plan mode (it is a product decision first).
+      Tests: component (sprite column/grid respects the setting), e2e (default state has no external image requests).
 - [ ] **3.77 Hosted deploy pipeline** (2026-11-15). Second workflow/host integration for the hosted edition (Cloudflare Pages or Netlify), `VITE_BASE` for the root path, SPA fallback, env + redirect URLs documented. Needs the user's host account; re-check the host's current terms. Sonnet high.
       Tests: `edition.test.ts` for `VITE_BASE`, bundle grep (community build has no Supabase URL / donate URL, hosted has
       both), e2e smoke on the hosted preview build (served from `/`, deep link to /settings works).
