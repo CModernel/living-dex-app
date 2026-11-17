@@ -42,10 +42,9 @@ vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn(() => fakeClient) 
 
 async function load(configured = true) {
   vi.resetModules()
-  if (configured) {
-    vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co')
-    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'public-anon-key')
-  }
+  // Always set both, so a developer's own .env.local (real project) never leaks into these tests.
+  vi.stubEnv('VITE_SUPABASE_URL', configured ? 'https://example.supabase.co' : '')
+  vi.stubEnv('VITE_SUPABASE_ANON_KEY', configured ? 'public-anon-key' : '')
   return import('./cloud')
 }
 

@@ -28,16 +28,22 @@ function CloudSection({ onExport }: { onExport?: () => void }) {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
   if (!configured) return null
 
   async function sendLink(e: FormEvent) {
     e.preventDefault()
+    // Enter plus a click (or two clicks) must not send two requests: the second one races the first to create the user.
+    if (sending) return
     setError(null)
+    setSending(true)
     try {
       await signInWithEmail(email.trim())
       setSent(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSending(false)
     }
   }
 
@@ -163,8 +169,8 @@ function CloudSection({ onExport }: { onExport?: () => void }) {
                 autoComplete="email"
                 className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
               />
-              <button type="submit" className="btn btn-primary">
-                Send magic link
+              <button type="submit" disabled={sending} className="btn btn-primary">
+                {sending ? 'Sending…' : 'Send magic link'}
               </button>
             </form>
           )}

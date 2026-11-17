@@ -99,6 +99,31 @@ test('signed out: magic link and Google sign-in', async () => {
   expect(cloud.signInWithGoogle).toHaveBeenCalled()
 })
 
+test('magic link: a second submit while the first is in flight sends nothing and the button shows progress', async () => {
+  let finish: () => void = () => {}
+  vi.mocked(cloud.signInWithEmail).mockImplementationOnce(() => new Promise<void>((resolve) => (finish = resolve)))
+  renderSection()
+  const input = await screen.findByRole('textbox', { name: 'Email' })
+  fireEvent.change(input, { target: { value: 'ash@example.com' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send magic link' }))
+  const busy = await screen.findByRole('button', { name: 'Sending…' })
+  expect(busy).toBeDisabled()
+  fireEvent.submit(input.closest('form')!) // Enter pressed while sending
+  expect(cloud.signInWithEmail).toHaveBeenCalledTimes(1)
+  await act(async () => finish())
+  expect(await screen.findByText('Check your email for the sign-in link.')).toBeInTheDocument()
+  expect(cloud.signInWithEmail).toHaveBeenCalledTimes(1)
+})
+
+test('magic link: after a failed send the button is usable again', async () => {
+  vi.mocked(cloud.signInWithEmail).mockRejectedValueOnce(new Error('rate limit'))
+  renderSection()
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Email' }), { target: { value: 'ash@example.com' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send magic link' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('rate limit')
+  expect(screen.getByRole('button', { name: 'Send magic link' })).toBeEnabled()
+})
+
 test('signed in, it syncs on start with no click: cloud lists arrive, merged and new lists go up (3.42)', async () => {
   seedState([testList('a', 'Mine', { ownedIds: ['x'] }), testList('n', 'New here')])
   signIn()
